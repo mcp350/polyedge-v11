@@ -1371,7 +1371,7 @@ def _handle(cmd, chat_id):
     """Command handler — routes all /commands"""
     text = cmd
     parts = cmd.split()
-    cmd = parts[0].lower()
+    cmd = parts[0].lower().split("@")[0]  # strip @botname suffix
 
     # ── FREE COMMANDS (no subscription required) ──
 
