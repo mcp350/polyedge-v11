@@ -1,7 +1,6 @@
 """
 POLYTRAGENT — Polymarket AI Trading Agent v11
-Full Spec: 5-Section Menu + NO Theta / Scalp NO Strategies
-Portfolio | Research Hub | Trade | Backtest | Settings
+Event Research | Portfolio | Strategies | Research | Settings
 Wallet Tracking — Read-Only via Public Address
 PAID-ONLY ACCESS — $99/mo subscription or access code
 """
@@ -52,11 +51,9 @@ def _kill_other_instances():
 def _set_bot_commands():
     try:
         commands = [
-            {"command": "start", "description": "Start Polytragent"},
             {"command": "menu", "description": "Open main menu"},
             {"command": "subscribe", "description": "Subscribe — $99/mo"},
             {"command": "code", "description": "Redeem access code"},
-            {"command": "help", "description": "All commands"},
         ]
         r = requests.post(
             f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/setMyCommands",
@@ -141,7 +138,7 @@ def show_quick_research_prompt(chat_id):
     """Prompt user to send a Polymarket event link for full AI analysis"""
     _waiting_for_research_link[str(chat_id)] = True
     onboarding.send_inline(chat_id,
-        "🔬 <b>Research Event</b>\n\n"
+        "🔬 <b>Polytragent — Event Research</b>\n\n"
         "Paste a Polymarket event link and get:\n\n"
         "📊 <b>Market Analysis</b> — prices, volume, liquidity\n"
         "🧠 <b>AI Recommendation</b> — buy YES/NO/SKIP\n"
@@ -218,13 +215,13 @@ def handle_research_link(chat_id, link):
             _send_long(result, chat_id)
             onboarding.send_inline(chat_id,
                 "👆 <b>Full analysis above</b>\n\nWhat would you like to do?",
-                [[{"text": "🔬 Research Another", "callback_data": "quick_research"}],
+                [[{"text": "🔬 Research Event", "callback_data": "quick_research"}],
                  [{"text": "📊 Portfolio", "callback_data": "menu_portfolio"},
                   {"text": "💰 Trade", "callback_data": "menu_trade"}],
                  [{"text": "← Main Menu", "callback_data": "main_menu"}]])
         else:
             onboarding.send_inline(chat_id, result,
-                [[{"text": "🔬 Research Another", "callback_data": "quick_research"}],
+                [[{"text": "🔬 Research Event", "callback_data": "quick_research"}],
                  [{"text": "📊 Portfolio", "callback_data": "menu_portfolio"},
                   {"text": "💰 Trade", "callback_data": "menu_trade"}],
                  [{"text": "← Main Menu", "callback_data": "main_menu"}]])
@@ -256,11 +253,10 @@ def send_main_menu(chat_id):
         f"🤖 <b>Polytragent</b>{greeting}\n\n"
         "Your AI-Powered Polymarket Trading Agent.\n"
         "Select a section below to get started.",
-        [[{"text": "🔬 Research Event", "callback_data": "quick_research"}],
-         [{"text": "📊 Portfolio", "callback_data": "menu_portfolio"},
-          {"text": "📡 Research Hub", "callback_data": "menu_research"}],
-         [{"text": "💰 Trade", "callback_data": "menu_trade"},
-          {"text": "📉 Backtest", "callback_data": "menu_backtest"}],
+        [[{"text": "🔬 Event Research", "callback_data": "quick_research"}],
+         [{"text": "📊 Portfolio", "callback_data": "menu_portfolio"}],
+         [{"text": "📈 Strategies", "callback_data": "menu_trade"}],
+         [{"text": "🔬 Research", "callback_data": "menu_research"}],
          [{"text": "⚙️ Settings", "callback_data": "menu_settings"}]])
 
 # ═══════════════════════════════════════════════
@@ -556,95 +552,215 @@ def show_performance(chat_id):
 # ═══════════════════════════════════════════════
 
 def show_research_menu(chat_id):
-    """Research Hub sub-menu (Spec Section 2.3.2) — renamed from show_markets_menu"""
+    """Research sub-menu — market intelligence, alerts, analysis"""
     onboarding.send_inline(chat_id,
-        "🔬 <b>Research Hub</b>\n\n"
+        "🔬 <b>Polytragent — Research</b>\n\n"
         "Market intelligence, alerts, and analysis.",
         [[{"text": "📈 Trending Events", "callback_data": "research_trending"}],
          [{"text": "🆕 New Markets", "callback_data": "research_new_markets"}],
          [{"text": "🐋 Whale Alerts", "callback_data": "research_whale"}],
-         [{"text": "🔔 Price Alerts", "callback_data": "research_price_alerts"}],
-         [{"text": "📰 News Digest", "callback_data": "research_news"}],
+         [{"text": "📰 Breaking News", "callback_data": "research_breaking_news"}],
          [{"text": "📊 Global Stats", "callback_data": "research_stats"}],
-         [{"text": "📂 Sources", "callback_data": "research_sources"}],
          [{"text": "← Main Menu", "callback_data": "main_menu"}]])
 
 def show_trending_events(chat_id):
-    """NEW: Trending Events — top 10 by volume change 24h"""
-    tg.send("📈 <b>Loading trending events...</b>\n~60-90s.", chat_id)
-    _run_locked("Trending", chat_id, swings_mod.run_swings)
+    """Trending Events — most recent data from Polymarket by 24h volume"""
+    tg.send("📈 <b>Loading trending events by 24h volume...</b>", chat_id)
+    try:
+        r = requests.get("https://gamma-api.polymarket.com/events",
+            params={"active": "true", "closed": "false", "order": "volume24hr",
+                     "ascending": "false", "limit": 10}, timeout=15)
+        if r.ok:
+            events = r.json()
+            msg = "📈 <b>Polytragent — Trending Events</b>\n"
+            msg += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+            msg += "<i>Top events by 24h trading volume</i>\n\n"
+            for i, ev in enumerate(events[:10], 1):
+                title = (ev.get("title") or "Untitled")[:55]
+                vol24 = float(ev.get("volume24hr", 0) or 0)
+                slug = ev.get("slug", "")
+                # Get top market yes price
+                markets = ev.get("markets") or []
+                yes_price = ""
+                if markets:
+                    try:
+                        tokens = markets[0].get("tokens") or []
+                        for t in tokens:
+                            if t.get("outcome", "").lower() == "yes":
+                                yes_price = f" | YES: ${float(t.get('price', 0)):.2f}"
+                    except: pass
+                msg += f"{i}. <b>{title}</b>\n"
+                msg += f"   24h Vol: ${vol24:,.0f}{yes_price}\n"
+                if slug:
+                    msg += f"   🔗 polymarket.com/event/{slug}\n"
+                msg += "\n"
+            onboarding.send_inline(chat_id, msg,
+                [[{"text": "🔄 Refresh", "callback_data": "research_trending"}],
+                 [{"text": "← Research", "callback_data": "menu_research"}]])
+        else:
+            tg.send("❌ Could not fetch trending events. Try again.", chat_id)
+    except Exception as e:
+        tg.send(f"❌ Trending error: {e}", chat_id)
 
 def show_new_markets(chat_id):
-    """NEW: New Markets — 48h new markets matching user categories"""
-    tg.send("🆕 <b>Scanning new markets...</b>\n~60-90s.", chat_id)
-    _run_locked("NewMarkets", chat_id, scanner.run_deep_scan)
+    """New Markets — markets opened in the past 24 hours"""
+    tg.send("🆕 <b>Scanning for new markets (past 24h)...</b>", chat_id)
+    try:
+        from datetime import timedelta
+        cutoff = (datetime.now(timezone.utc) - timedelta(hours=24)).isoformat()
+        r = requests.get("https://gamma-api.polymarket.com/events",
+            params={"active": "true", "closed": "false", "order": "startDate",
+                     "ascending": "false", "limit": 50}, timeout=15)
+        if r.ok:
+            events = r.json()
+            # Filter to events created in past 24h
+            new_events = []
+            for ev in events:
+                created = ev.get("createdAt") or ev.get("startDate") or ""
+                if created >= cutoff[:19]:
+                    new_events.append(ev)
+            if not new_events:
+                # Fallback: show most recent ones
+                new_events = events[:10]
+
+            msg = "🆕 <b>Polytragent — New Markets</b>\n"
+            msg += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+            msg += "<i>Markets opened in the past 24 hours</i>\n\n"
+            for i, ev in enumerate(new_events[:10], 1):
+                title = (ev.get("title") or "Untitled")[:55]
+                slug = ev.get("slug", "")
+                vol = float(ev.get("volume", 0) or 0)
+                msg += f"{i}. <b>{title}</b>\n"
+                msg += f"   Volume: ${vol:,.0f}\n"
+                if slug:
+                    msg += f"   🔗 polymarket.com/event/{slug}\n"
+                msg += "\n"
+            if not new_events:
+                msg += "No new markets in the past 24h.\n"
+            onboarding.send_inline(chat_id, msg,
+                [[{"text": "🔄 Refresh", "callback_data": "research_new_markets"}],
+                 [{"text": "← Research", "callback_data": "menu_research"}]])
+        else:
+            tg.send("❌ Could not fetch new markets. Try again.", chat_id)
+    except Exception as e:
+        tg.send(f"❌ New markets error: {e}", chat_id)
 
 def show_global_stats(chat_id):
-    """Spec Section 6.1 — Global Statistics"""
-    tg.send("📊 <b>Loading market stats...</b>", chat_id)
+    """Global Stats — Polymarket-wide dashboard"""
+    tg.send("📊 <b>Loading Polymarket stats...</b>", chat_id)
     try:
+        # Fetch Polymarket-wide data
+        total_markets = 0
+        total_volume = 0
+        active_markets = 0
+        try:
+            r = requests.get("https://gamma-api.polymarket.com/events",
+                params={"active": "true", "closed": "false", "limit": 100}, timeout=15)
+            if r.ok:
+                events = r.json()
+                active_markets = len(events)
+                for ev in events:
+                    for m in (ev.get("markets") or []):
+                        total_markets += 1
+                        total_volume += float(m.get("volume", 0) or 0)
+        except: pass
+
+        # Internal stats
         perf = pstore.get_performance()
         ct_stats = ct.get_copy_stats()
+        user_stats = user_store.get_stats()
 
         msg = (
-            "📊 <b>Polytragent — Global Statistics</b>\n"
+            "📊 <b>Polytragent — Global Stats</b>\n"
             "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-            f"<b>AI Predictions</b>\n"
-            f"Total: {perf.get('total', 0)}\n"
+            "<b>🌐 Polymarket</b>\n"
+            f"Active Events: {active_markets}\n"
+            f"Active Markets: {total_markets}\n"
+            f"Total Volume: ${total_volume:,.0f}\n\n"
+            "<b>🤖 Polytragent</b>\n"
+            f"Users: {user_stats['total_users']}\n"
+            f"Subscribers: {user_stats['active_subscribers']}\n"
+            f"AI Predictions: {perf.get('total', 0)}\n"
             f"Win Rate: {(perf.get('win_rate') or 0):.1f}%\n"
-            f"Resolved: {perf.get('resolved', 0)}\n"
-            f"Pending: {perf.get('total', 0) - perf.get('resolved', 0)}\n\n"
-            f"<b>Copy Trading</b>\n"
             f"Tracked Wallets: {ct_stats.get('total_wallets', 0)}\n"
-            f"Active Followers: {ct_stats.get('active_followers', 0)}\n"
-            f"Total Signals: {ct_stats.get('total_signals', 0)}\n"
         )
 
         onboarding.send_inline(chat_id, msg,
-            [[{"text": "🔄 Refresh", "callback_data": "research_stats"},
-              {"text": "📈 Trending", "callback_data": "research_trending"}],
-             [{"text": "← Research Hub", "callback_data": "menu_research"}]])
+            [[{"text": "🔄 Refresh", "callback_data": "research_stats"}],
+             [{"text": "← Research", "callback_data": "menu_research"}]])
     except Exception as e:
         tg.send(f"❌ Error: {e}", chat_id)
 
 def show_whale_alerts(chat_id):
-    """Spec Section 6.2 — Whale Action Alerts with weekly leaderboard"""
+    """Whale Alerts — track wallets, get notifications when whales from My Follows buy"""
+    following_count = len(ct.get_following(chat_id))
     onboarding.send_inline(chat_id,
-        "🐋 <b>Whale Alerts — Copy Trading</b>\n\n"
-        "Track top Polymarket wallets and get signals when they trade.\n\n"
-        f"📊 Tracked wallets: {ct.get_copy_stats()['total_wallets']}\n"
-        f"👤 Your following: {len(ct.get_following(chat_id))}\n"
-        f"🔔 Total signals: {ct.get_copy_stats()['total_signals']}",
-        [[{"text": "🏆 Weekly Leaderboard", "callback_data": "research_leaderboard"},
-          {"text": "📋 Leaderboard", "callback_data": "ct_leaderboard"}],
+        "🐋 <b>Polytragent — Whale Alerts</b>\n\n"
+        "Track top Polymarket wallets and get push notifications\n"
+        "when whales from your Follows list make trades.\n\n"
+        f"👤 Following: {following_count} wallets\n"
+        f"🔔 Notifications: {'Active' if following_count > 0 else 'Add wallets to activate'}",
+        [[{"text": "🏆 Monthly Leaderboard", "callback_data": "research_leaderboard"}],
+         [{"text": "➕ Add Whale Wallet", "callback_data": "ct_follow_prompt"}],
          [{"text": "👤 My Follows", "callback_data": "ct_following"}],
-         [{"text": "🔔 Recent Signals", "callback_data": "ct_signals"},
-          {"text": "➕ Follow Trader", "callback_data": "ct_follow_prompt"}],
-         [{"text": "← Research Hub", "callback_data": "menu_research"}]])
+         [{"text": "← Research", "callback_data": "menu_research"}]])
 
 def show_research_leaderboard(chat_id):
-    """NEW: Weekly Leaderboard — top weekly polymarket accounts by volume and profit"""
-    onboarding.send_inline(chat_id,
-        "🏆 <b>Weekly Leaderboard</b>\n\n"
-        "Top Polymarket accounts by volume and profit (last 7 days)\n\n"
-        "1. 0x1a2b...3c4d — Vol: $125K | Profit: +$8,400\n"
-        "2. 0x5e6f...7g8h — Vol: $98K | Profit: +$6,200\n"
-        "3. 0x9i0j...1k2l — Vol: $76K | Profit: +$5,100\n\n"
-        "<i>Click a wallet to follow or view details.</i>",
-        [[{"text": "📊 Global Stats", "callback_data": "research_stats"},
-          {"text": "← Research Hub", "callback_data": "menu_research"}]])
+    """Monthly Leaderboard — top Polymarket wallets by P&L (30 days)"""
+    tg.send("🏆 <b>Loading Monthly Leaderboard...</b>", chat_id)
+    try:
+        leaders = ct.refresh_leaderboard()
+        if leaders:
+            msg = "🏆 <b>Polytragent — Monthly Leaderboard</b>\n"
+            msg += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+            msg += "<i>Top wallets by profit &amp; loss (30 days)</i>\n\n"
+            for i, w in enumerate(leaders[:10], 1):
+                addr = w.get("address", "")
+                short = addr[:6] + "..." + addr[-4:] if len(addr) > 10 else addr
+                pnl = w.get("pnl", 0)
+                vol = w.get("volume", 0)
+                pnl_sign = "+" if pnl >= 0 else ""
+                msg += (f"{i}. <code>{short}</code>\n"
+                        f"   P&L: {pnl_sign}${pnl:,.0f} | Vol: ${vol:,.0f}\n\n")
+            msg += "<i>Use ➕ Add Whale Wallet to follow any address</i>"
+        else:
+            msg = "🏆 <b>Monthly Leaderboard</b>\n\nLoading leaderboard data..."
+        onboarding.send_inline(chat_id, msg,
+            [[{"text": "➕ Follow Wallet", "callback_data": "ct_follow_prompt"}],
+             [{"text": "← Whale Alerts", "callback_data": "research_whale"}]])
+    except Exception as e:
+        tg.send(f"❌ Leaderboard error: {e}", chat_id)
 
-def show_research_price_alerts(chat_id):
-    """Spec Section 6.4 — Price Alerts"""
-    onboarding.send_inline(chat_id,
-        "🔔 <b>Price Alerts</b>\n\n"
-        "Get notified when market prices move.\n\n"
-        "📈 <b>Price Swings</b> — Track 1H/12H/1D movements\n"
-        "₿ <b>BTC Order Book</b> — Large order detection\n\n"
-        "<i>Set up custom alerts with threshold and direction.</i>",
-        [[{"text": "📈 Price Swings", "callback_data": "research_trending"},
-          {"text": "₿ BTC Book", "callback_data": "research_btcbook"}],
-         [{"text": "← Research Hub", "callback_data": "menu_research"}]])
+def show_breaking_news(chat_id):
+    """Breaking News — pulls latest from Polymarket breaking news"""
+    tg.send("📰 <b>Loading Breaking News...</b>", chat_id)
+    try:
+        import polymarket_api as papi
+        # Fetch trending/breaking events from Polymarket
+        r = requests.get("https://gamma-api.polymarket.com/events",
+            params={"active": "true", "closed": "false", "order": "volume24hr",
+                     "ascending": "false", "limit": 10}, timeout=15)
+        if r.ok:
+            events = r.json()
+            msg = "📰 <b>Polytragent — Breaking News</b>\n"
+            msg += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+            msg += "<i>Latest high-volume events from Polymarket</i>\n\n"
+            for i, ev in enumerate(events[:10], 1):
+                title = (ev.get("title") or "Untitled")[:60]
+                vol24 = ev.get("volume24hr", 0) or 0
+                slug = ev.get("slug", "")
+                msg += f"{i}. <b>{title}</b>\n"
+                msg += f"   24h Vol: ${float(vol24):,.0f}\n"
+                if slug:
+                    msg += f"   🔗 polymarket.com/event/{slug}\n"
+                msg += "\n"
+        else:
+            msg = "📰 <b>Breaking News</b>\n\nUnable to fetch latest events. Try again."
+        onboarding.send_inline(chat_id, msg,
+            [[{"text": "🔄 Refresh", "callback_data": "research_breaking_news"}],
+             [{"text": "← Research", "callback_data": "menu_research"}]])
+    except Exception as e:
+        tg.send(f"❌ Breaking News error: {e}", chat_id)
 
 def show_research_news(chat_id):
     """NEW: News Digest — AI-summarized news"""
@@ -662,22 +778,19 @@ def show_research_sources(chat_id):
           {"text": "🇺🇳 UNSC", "callback_data": "run_unsc"}],
          [{"text": "🔴 Conflicts", "callback_data": "run_conflicts"}],
          [{"text": "📋 Full Briefing", "callback_data": "run_briefing"}],
-         [{"text": "← Research Hub", "callback_data": "menu_research"}]])
+         [{"text": "← Research", "callback_data": "menu_research"}]])
 
 # ═══════════════════════════════════════════════
 # SECTION 3: TRADE (Betting Hub — Spec Section 7)
 # ═══════════════════════════════════════════════
 
 def show_trade_menu(chat_id):
-    """Trade sub-menu (Spec Section 2.3.3)"""
+    """Strategies sub-menu (renamed from Trade)"""
     onboarding.send_inline(chat_id,
-        "💰 <b>Trade — Betting Hub</b>\n\n"
-        "Strategy signals, direct bets, and tools.",
+        "📈 <b>Polytragent — Strategies</b>\n\n"
+        "AI-powered trading strategy signals.",
         [[{"text": "🎯 NO Theta Signals", "callback_data": "trade_no_theta"}],
          [{"text": "⚡ Scalping Signals", "callback_data": "trade_scalp_signals"}],
-         [{"text": "📋 My Strategies", "callback_data": "trade_my_strategies"}],
-         [{"text": "📊 Direct Bet", "callback_data": "trade_direct"}],
-         [{"text": "🔧 Strategy Builder", "callback_data": "trade_builder"}],
          [{"text": "← Main Menu", "callback_data": "main_menu"}]])
 
 def show_no_theta_signals(chat_id):
@@ -699,7 +812,7 @@ def show_my_strategies(chat_id):
         [[{"text": "🎯 NO Theta", "callback_data": "trade_no_theta"},
           {"text": "⚡ Scalp NO", "callback_data": "trade_scalp_signals"}],
          [{"text": "🔧 Strategy Builder", "callback_data": "trade_builder"}],
-         [{"text": "← Trade", "callback_data": "menu_trade"}]])
+         [{"text": "← Strategies", "callback_data": "menu_trade"}]])
 
 def show_strategy_signals(chat_id):
     """Strategy Module — Pre-built strategies from PTA spec"""
@@ -719,7 +832,7 @@ def show_strategy_signals(chat_id):
          [{"text": "⚡ Scalping NO", "callback_data": "strategy_scalp_no"}],
          [{"text": "📋 Strategy Details", "callback_data": "strategy_details_menu"}],
          [{"text": "🏆 TOP 10 (All)", "callback_data": "run_top10"}],
-         [{"text": "← Trade", "callback_data": "menu_trade"}]])
+         [{"text": "← Strategies", "callback_data": "menu_trade"}]])
 
 # ── NO THETA DECAY STRATEGY — Full Spec ──
 
@@ -1043,7 +1156,7 @@ def show_direct_bet(chat_id):
         "• Volatility-Adjusted: Scale by market vol",
         [[{"text": "🔬 Research Market", "callback_data": "trade_research_prompt"},
           {"text": "📂 My Positions", "callback_data": "portfolio_positions"}],
-         [{"text": "← Trade", "callback_data": "menu_trade"}]])
+         [{"text": "← Strategies", "callback_data": "menu_trade"}]])
 
 def show_strategy_builder(chat_id):
     """Strategy Builder"""
@@ -1062,7 +1175,7 @@ def show_strategy_builder(chat_id):
         "<i>Custom strategy builder coming in Phase 2.</i>\n"
         "<i>For now, use pre-built strategies or TOP 10 AI picks.</i>",
         [[{"text": "🎯 Pre-Built Strategies", "callback_data": "trade_signals"}],
-         [{"text": "← Trade", "callback_data": "menu_trade"}]])
+         [{"text": "← Strategies", "callback_data": "menu_trade"}]])
 
 # ═══════════════════════════════════════════════
 # SECTION 4: BACKTEST (Spec Section 8)
@@ -1746,8 +1859,10 @@ def _extended_handle_callback(callback_query):
         show_research_leaderboard(chat_id)
     elif data == "research_news":
         show_research_news(chat_id)
+    elif data == "research_breaking_news":
+        show_breaking_news(chat_id)
     elif data == "research_price_alerts":
-        show_research_price_alerts(chat_id)
+        show_breaking_news(chat_id)  # redirect old callback
     elif data == "research_trending":
         show_trending_events(chat_id)
     elif data == "research_new_markets":
@@ -2032,10 +2147,19 @@ def _polling_loop():
                         if updates:
                             user_store.update_user(cid, updates)
 
-                    # Research link input (non-command text with polymarket URL)
+                    # Research link input — auto-trigger Event Research when user sends Polymarket link ANYTIME
+                    if not text.startswith("/") and "polymarket.com" in text.lower():
+                        try:
+                            threading.Thread(target=handle_research_link, args=(cid, text.strip()), daemon=True).start()
+                        except Exception as e:
+                            print(f"[BOT] research input error: {e}")
+                            tg.send(f"❌ Error: {e}", cid)
+                        continue
+
+                    # Research link input (when explicitly waiting)
                     if not text.startswith("/") and is_waiting_for_research(cid):
                         try:
-                            if "polymarket.com" in text.lower() or text.startswith("http"):
+                            if text.startswith("http"):
                                 threading.Thread(target=handle_research_link, args=(cid, text.strip()), daemon=True).start()
                             else:
                                 tg.send("❌ Please send a valid Polymarket link.\n\n<i>Example: https://polymarket.com/event/...</i>", cid)
@@ -2120,8 +2244,8 @@ def main():
     tg.send(
         f"🤖 <b>Polytragent v11 Online</b>\n"
         f"🔒 <b>PAID-ONLY MODE</b>\n\n"
-        f"📱 5-Section Menu Architecture\n"
-        f"📊 Portfolio | 🔬 Research Hub | 💰 Trade | 📉 Backtest | ⚙️ Settings\n\n"
+        f"📱 Menu Architecture\n"
+        f"🔬 Event Research | 📊 Portfolio | 📈 Strategies | 🔬 Research | ⚙️ Settings\n\n"
         f"👥 Users: {stats['total_users']}\n"
         f"💎 Subscribers: {stats['active_subscribers']}\n"
         f"  └ Stripe: {stats.get('stripe_subscribers', 0)}\n"
