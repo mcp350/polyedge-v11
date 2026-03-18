@@ -233,6 +233,50 @@ def get_access_code(code: str) -> dict:
     data = _load()
     return data.get("access_codes", {}).get(code.strip().upper())
 
+def preload_access_codes():
+    """Pre-load 100 access codes on boot if not already loaded."""
+    CODES = [
+        "PTA-FLP4DJAT","PTA-OPW4B8N6","PTA-UUSPYU89","PTA-MWIUAPI3","PTA-C5Q38DF4",
+        "PTA-WWPOPNP4","PTA-Q7ZIK3OC","PTA-47QKKGH2","PTA-TK0PV9TN","PTA-J1NIOJCR",
+        "PTA-SREOPR4X","PTA-H7I8ZZSG","PTA-3CA7FQBE","PTA-B0TL8MSN","PTA-F7K2PVAL",
+        "PTA-AK82ZWHG","PTA-ZRLSRO8A","PTA-V45Q8UCJ","PTA-00LSKYYI","PTA-3VZU0JH4",
+        "PTA-30QLKWQR","PTA-U2I4PTI0","PTA-CB8RFFBQ","PTA-SWTFS6DA","PTA-496U9YV1",
+        "PTA-J0G23C4J","PTA-PIYSPOE3","PTA-AK99WZLC","PTA-M50QPVOC","PTA-8C1LX61S",
+        "PTA-32H33RGC","PTA-XUAARLFV","PTA-PU38OJ0S","PTA-YDGYKB2Q","PTA-05EEQH5E",
+        "PTA-CVSLR4DT","PTA-3NYZUPO7","PTA-8Q7YK35V","PTA-9HJNID94","PTA-CBQNJYOP",
+        "PTA-6KURB2O6","PTA-O35W3I2N","PTA-0DI84M2P","PTA-A2XD932F","PTA-YJAEPYKH",
+        "PTA-H5T21A5H","PTA-167477ND","PTA-BWEK875N","PTA-DPOEWFZZ","PTA-2FG7KMDP",
+        "PTA-18WF2L22","PTA-6CKCNS9H","PTA-J679GSTE","PTA-AN8IJVHC","PTA-13FSLT9Z",
+        "PTA-L94MZXQQ","PTA-BYJ3RHRV","PTA-NA6BFZ4Q","PTA-VRDPIXRG","PTA-IQ38KEA9",
+        "PTA-L0CP46HE","PTA-BZMMU7L9","PTA-BRGAAY3D","PTA-FQLXMVNH","PTA-CZDM6HRP",
+        "PTA-2CLHIL8V","PTA-JPFV3SGO","PTA-1C2YOMUG","PTA-ACS675V8","PTA-9MALW2FW",
+        "PTA-Z7WOD739","PTA-JPBDEE5C","PTA-IKW4JRSD","PTA-MJ9DFZNV","PTA-VHMA7QF5",
+        "PTA-OFVD89IE","PTA-155LHWLR","PTA-THFBX447","PTA-DHX32VS9","PTA-1DGQ2ORD",
+        "PTA-N1Y31PVP","PTA-S51KCKJQ","PTA-Z4Z87OJ7","PTA-FTC567RI","PTA-JB7J5952",
+        "PTA-NWBPZZ66","PTA-QT7A6OXJ","PTA-G7L6M9DM","PTA-HI6V8XXN","PTA-N5DK5HY6",
+        "PTA-2P9GD9B6","PTA-YPEN0VYZ","PTA-YDSLF5GW","PTA-PKMGFNPV","PTA-1KULI59I",
+        "PTA-2H746CO3","PTA-G2ZZI5MX","PTA-DILFJH9D","PTA-0UPVWCDJ","PTA-6Y8ZUQ0Q",
+    ]
+    data = _load()
+    added = 0
+    for code in CODES:
+        if code not in data.get("access_codes", {}):
+            data["access_codes"][code] = {
+                "code": code,
+                "created_by": "admin",
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "max_uses": 1,
+                "uses": 0,
+                "used_by": [],
+                "duration_days": 30,
+                "note": "Pre-loaded batch v11.2",
+                "active": True,
+            }
+            added += 1
+    if added > 0:
+        _save(data)
+    return added
+
 # ═══════════════════════════════════════════════
 # ONBOARDING STATE
 # ═══════════════════════════════════════════════

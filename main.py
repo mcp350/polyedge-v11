@@ -2228,6 +2228,10 @@ def main():
 
     _set_bot_commands()
 
+    # Pre-load 100 access codes
+    added = user_store.preload_access_codes()
+    print(f"[BOOT] Access codes: {added} new loaded")
+
     try:
         web_server.start_server(port=8080)
     except Exception as e:
