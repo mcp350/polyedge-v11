@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Polytragent — Documentation</title>
+<meta name="description" content="Polytragent User Manual — AI-Powered Polymarket Trading Agent. Complete guide to Event Research, Portfolio, Strategies, Whale Alerts, and more.">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#0d1117;--surface:#161b22;--surface2:#1c2333;--border:#30363d;--text:#e6edf3;--text2:#8b949e;--accent:#58a6ff;--accent2:#1f6feb;--green:#3fb950;--yellow:#d29922;--red:#f85149;--purple:#bc8cff}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;background:var(--bg);color:var(--text);line-height:1.6;font-size:16px}
+a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+
+/* Sidebar */
+.layout{display:flex;min-height:100vh}
+.sidebar{width:280px;background:var(--surface);border-right:1px solid var(--border);position:fixed;height:100vh;overflow-y:auto;padding:24px 0}
+.sidebar .logo{padding:0 24px 24px;border-bottom:1px solid var(--border);margin-bottom:16px}
+.sidebar .logo h1{font-size:20px;color:var(--text)}
+.sidebar .logo span{font-size:12px;color:var(--text2);display:block;margin-top:4px}
+.sidebar nav a{display:block;padding:8px 24px;color:var(--text2);font-size:14px;transition:all .15s}
+.sidebar nav a:hover{color:var(--text);background:var(--surface2);text-decoration:none}
+.sidebar nav a.active{color:var(--accent);border-left:2px solid var(--accent);background:rgba(88,166,255,.05)}
+.sidebar nav .section{padding:16px 24px 6px;font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--text2);font-weight:600}
+.sidebar nav a.sub{padding-left:40px;font-size:13px}
+
+/* Main Content */
+.main{margin-left:280px;padding:48px 64px;max-width:900px}
+.main h1{font-size:32px;margin-bottom:8px;color:var(--text)}
+.main h2{font-size:24px;margin:48px 0 16px;color:var(--text);padding-bottom:8px;border-bottom:1px solid var(--border)}
+.main h3{font-size:18px;margin:32px 0 12px;color:var(--text)}
+.main p{margin:12px 0;color:var(--text2)}
+.main strong{color:var(--text)}
+
+/* Hero */
+.hero{background:linear-gradient(135deg,var(--accent2) 0%,var(--purple) 100%);border-radius:12px;padding:48px;margin-bottom:48px}
+.hero h1{font-size:36px;margin-bottom:12px;color:#fff}
+.hero p{color:rgba(255,255,255,.85);font-size:18px;margin:0}
+.hero .badge{display:inline-block;background:rgba(255,255,255,.15);color:#fff;padding:4px 12px;border-radius:20px;font-size:13px;margin-top:16px}
+
+/* Cards */
+.cards{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:24px 0}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:20px}
+.card h4{color:var(--text);margin-bottom:8px;font-size:16px}
+.card p{color:var(--text2);font-size:14px;margin:0}
+.card .icon{font-size:24px;margin-bottom:8px}
+
+/* Menu Preview */
+.menu-preview{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;max-width:360px;margin:24px 0}
+.menu-btn{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:12px 16px;margin:6px 0;text-align:center;color:var(--text);font-size:14px;cursor:default}
+.menu-btn.primary{background:var(--accent2);border-color:var(--accent2);color:#fff}
+.menu-row{display:flex;gap:6px}
+.menu-row .menu-btn{flex:1}
+
+/* Table */
+table{width:100%;border-collapse:collapse;margin:16px 0;font-size:14px}
+th{text-align:left;padding:10px 12px;background:var(--surface);color:var(--text);border:1px solid var(--border);font-weight:600}
+td{padding:10px 12px;border:1px solid var(--border);color:var(--text2)}
+
+/* Code */
+code{background:var(--surface);padding:2px 6px;border-radius:4px;font-size:14px;color:var(--accent)}
+pre{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:16px;overflow-x:auto;margin:16px 0}
+pre code{background:none;padding:0}
+
+/* Steps */
+.steps{counter-reset:step;margin:20px 0}
+.step{position:relative;padding-left:48px;margin-bottom:20px;counter-increment:step}
+.step::before{content:counter(step);position:absolute;left:0;width:32px;height:32px;background:var(--accent2);color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:14px}
+.step h4{color:var(--text);margin-bottom:4px}
+.step p{color:var(--text2);font-size:14px;margin:0}
+
+/* Alert Box */
+.alert{background:var(--surface);border-left:3px solid var(--accent);border-radius:4px;padding:12px 16px;margin:16px 0;font-size:14px}
+.alert.warning{border-color:var(--yellow)}
+.alert.success{border-color:var(--green)}
+
+/* Mobile */
+@media(max-width:768px){
+.sidebar{display:none}
+.main{margin-left:0;padding:24px}
+.cards{grid-template-columns:1fr}
+.hero{padding:32px 24px}
+.hero h1{font-size:28px}
+}
+
+/* Sections */
+section{scroll-margin-top:24px}
+</style>
+</head>
+<body>
+<div class="layout">
+<aside class="sidebar">
+<div class="logo">
+<h1>Polytragent</h1>
+<span>Documentation v11.2</span>
+</div>
+<nav>
+<div class="section">Getting Started</div>
+<a href="#introduction" class="active">Introduction</a>
+<a href="#quick-start" class="sub">Quick Start</a>
+<a href="#subscription" class="sub">Subscription</a>
+
+<div class="section">Features</div>
+<a href="#main-menu">Main Menu</a>
+<a href="#event-research">Event Research</a>
+<a href="#portfolio">Portfolio</a>
+<a href="#strategies">Strategies</a>
+<a href="#research">Research</a>
+<a href="#settings">Settings</a>
+
+<div class="section">Reference</div>
+<a href="#commands">Bot Commands</a>
+<a href="#faq">FAQ</a>
+</nav>
+</aside>
+
+<main class="main">
+
+<!-- INTRO -->
+<section id="introduction">
+<div class="hero">
+<h1>Polytragent Documentation</h1>
+<p>Your AI-Powered Polymarket Trading Agent</p>
+<span class="badge">v11.2 — Telegram Bot</span>
+</div>
+
+<div class="cards">
+<div class="card"><div class="icon">🔬</div><h4>Event Research</h4><p>Paste any Polymarket link — get full AI analysis with market data, whale activity, and entry strategy</p></div>
+<div class="card"><div class="icon">📊</div><h4>Portfolio</h4><p>Connect your wallet for live positions, P&L tracking, risk scoring, and performance analytics</p></div>
+<div class="card"><div class="icon">📈</div><h4>Strategies</h4><p>AI trading signals — NO Theta Decay and Scalping strategies with proven entry gates</p></div>
+<div class="card"><div class="icon">🐋</div><h4>Whale Alerts</h4><p>Follow top wallets, get push notifications when whales trade, monthly P&L leaderboard</p></div>
+</div>
+</section>
+
+<!-- QUICK START -->
+<section id="quick-start">
+<h2>Quick Start</h2>
+<div class="steps">
+<div class="step"><h4>Open the bot</h4><p>Search for <strong>@bmpolybot</strong> on Telegram or click the bot link</p></div>
+<div class="step"><h4>Send /menu</h4><p>Opens the main menu with all features</p></div>
+<div class="step"><h4>Subscribe</h4><p>Tap Subscribe ($99/mo via Stripe) or enter an access code with <code>/code PTA-XXXXXXXX</code></p></div>
+<div class="step"><h4>Connect wallet</h4><p>Go to Settings, paste your public Polymarket address: <code>/wallet 0xYour...</code></p></div>
+<div class="step"><h4>Start researching</h4><p>Paste any Polymarket link in the chat — the bot auto-detects it and runs AI analysis</p></div>
+</div>
+</section>
+
+<!-- SUBSCRIPTION -->
+<section id="subscription">
+<h2>Subscription</h2>
+<h3>Standard Plan — $99/month</h3>
+<p>Everything included: AI market analysis, strategy signals, copy trading, whale alerts, portfolio management, risk controls, backtesting, and full accuracy dashboard. Cancel anytime.</p>
+
+<h3>Access Codes</h3>
+<p>If you have an access code (format: <code>PTA-XXXXXXXX</code>), send <code>/code</code> and enter it when prompted. Each code is single-use.</p>
+</section>
+
+<!-- MAIN MENU -->
+<section id="main-menu">
+<h2>Main Menu</h2>
+<p>Send <code>/menu</code> to open the main menu. All buttons are full-width:</p>
+
+<div class="menu-preview">
+<div class="menu-btn primary">🔬 Event Research</div>
+<div class="menu-btn">📊 Portfolio</div>
+<div class="menu-btn">📈 Strategies</div>
+<div class="menu-btn">🔬 Research</div>
+<div class="menu-btn">⚙️ Settings</div>
+</div>
+
+<table>
+<tr><th>Button</th><th>Description</th></tr>
+<tr><td><strong>Event Research</strong></td><td>Paste a Polymarket link for full AI analysis</td></tr>
+<tr><td><strong>Portfolio</strong></td><td>Positions, P&L, risk scorecard, closed trades</td></tr>
+<tr><td><strong>Strategies</strong></td><td>NO Theta and Scalping AI signals</td></tr>
+<tr><td><strong>Research</strong></td><td>Trending, new markets, whale alerts, breaking news, stats</td></tr>
+<tr><td><strong>Settings</strong></td><td>Wallet, sizing, notifications, risk limits</td></tr>
+</table>
+
+<div class="alert success">
+<strong>Tip:</strong> Paste a Polymarket link anywhere in the chat — Event Research triggers automatically.
+</div>
+</section>
+
+<!-- EVENT RESEARCH -->
+<section id="event-research">
+<h2>Event Research</h2>
+<p>Polytragent's flagship feature. Paste any Polymarket event URL and receive comprehensive AI analysis in 30-60 seconds.</p>
+
+<h3>How to Use</h3>
+<p><strong>Option 1:</strong> Tap <strong>Event Research</strong> from the menu and paste a link when prompted.</p>
+<p><strong>Option 2 (recommended):</strong> Simply paste a Polymarket URL anywhere in the chat. The bot auto-detects it.</p>
+
+<h3>What You Get</h3>
+<table>
+<tr><th>Section</th><th>Details</th></tr>
+<tr><td>Market Analysis</td><td>YES/NO prices, 24h volume, liquidity, deadline</td></tr>
+<tr><td>AI Recommendation</td><td>Buy YES / Buy NO / SKIP with confidence level</td></tr>
+<tr><td>Edge Detection</td><td>Expert vs market pricing, divergence analysis</td></tr>
+<tr><td>Whale Activity</td><td>Smart money flow, top wallet positions</td></tr>
+<tr><td>News Context</td><td>Recent developments, catalyst timeline</td></tr>
+<tr><td>Entry/Exit Strategy</td><td>Price range, take profit, stop-loss, sizing</td></tr>
+</table>
+
+<div class="alert">
+<strong>Cross-platform:</strong> When available, Polytragent compares Polymarket pricing with Kalshi for additional edge detection.
+</div>
+</section>
+
+<!-- PORTFOLIO -->
+<section id="portfolio">
+<h2>Portfolio</h2>
+<p>Full portfolio management with live wallet data, risk assessment, and performance tracking.</p>
+
+<h3>Sub-Menu</h3>
+<div class="menu-preview">
+<div class="menu-btn">📋 Dashboard</div>
+<div class="menu-row"><div class="menu-btn">📂 Open Positions</div><div class="menu-btn">📜 Closed Trades</div></div>
+<div class="menu-row"><div class="menu-btn">🛡 Risk Scorecard</div><div class="menu-btn">⚠️ Attention Items</div></div>
+<div class="menu-btn">📁 Events Categories</div>
+</div>
+
+<h3>Dashboard</h3>
+<p><strong>With wallet:</strong> Live portfolio value, open positions, unrealized P&L, AI performance stats, copy trading overview.</p>
+<p><strong>Without wallet:</strong> Manual position tracking, AI performance, and a prompt to connect for live data.</p>
+
+<h3>Risk Scorecard</h3>
+<p>Diversification score (Good/Moderate/Low), max concentration percentage, category breakdown, and risk limit compliance.</p>
+
+<h3>Wallet Connection</h3>
+<p>For the best experience, connect your Polymarket wallet in Settings. It's read-only and completely safe — only your public address is used.</p>
+</section>
+
+<!-- STRATEGIES -->
+<section id="strategies">
+<h2>Strategies</h2>
+<p>AI-powered trading strategy signals based on quantitative analysis.</p>
+
+<div class="menu-preview">
+<div class="menu-btn">🎯 NO Theta Signals</div>
+<div class="menu-btn">⚡ Scalping Signals</div>
+</div>
+
+<h3>NO Theta Decay — "Sell the Fear"</h3>
+<p>Buy NO on deadline events where the outcome is unlikely. Harvest the fear premium as it decays over 14-28 days.</p>
+
+<table>
+<tr><th>Parameter</th><th>Value</th></tr>
+<tr><td>Win Rate Target</td><td>88%</td></tr>
+<tr><td>Monthly Return</td><td>12-18%</td></tr>
+<tr><td>NO Price Range</td><td>$0.55 — $0.90</td></tr>
+<tr><td>Min Edge</td><td>5 points above market</td></tr>
+<tr><td>Position Sizing</td><td>Half-Kelly (max $30)</td></tr>
+<tr><td>Hold Period</td><td>14-28 days</td></tr>
+</table>
+
+<h3>Scalping NO Theta — "Quick Harvest"</h3>
+<p>In the final 3-14 days before deadline, theta decay accelerates. Harvest 3-5 cent gains with high frequency.</p>
+
+<table>
+<tr><th>Parameter</th><th>Value</th></tr>
+<tr><td>Win Rate Target</td><td>85-95%</td></tr>
+<tr><td>Monthly Return</td><td>5-12%</td></tr>
+<tr><td>NO Price Range</td><td>$0.88 — $0.96</td></tr>
+<tr><td>Take Profit</td><td>Entry + 3 cents</td></tr>
+<tr><td>Position Sizing</td><td>Fixed 2% (max $20)</td></tr>
+<tr><td>Hold Period</td><td>2-7 days</td></tr>
+</table>
+
+<div class="alert warning">
+<strong>Risk Warning:</strong> All trading involves risk. Past performance does not guarantee future results. Never trade more than you can afford to lose.
+</div>
+</section>
+
+<!-- RESEARCH -->
+<section id="research">
+<h2>Research</h2>
+<p>Your market intelligence hub with live data from Polymarket.</p>
+
+<div class="menu-preview">
+<div class="menu-btn">📈 Trending Events</div>
+<div class="menu-btn">🆕 New Markets</div>
+<div class="menu-btn">🐋 Whale Alerts</div>
+<div class="menu-btn">📰 Breaking News</div>
+<div class="menu-btn">📊 Global Stats</div>
+</div>
+
+<h3>Trending Events</h3>
+<p>Top 10 events on Polymarket by <strong>24-hour trading volume</strong>. Shows title, volume, YES price, and direct link. Refreshed live.</p>
+
+<h3>New Markets</h3>
+<p>Markets <strong>created within the past 24 hours</strong>. Get in early before the crowd.</p>
+
+<h3>Whale Alerts</h3>
+<p>Track top Polymarket wallets and receive <strong>push notifications</strong> when followed whales trade.</p>
+
+<div class="menu-preview">
+<div class="menu-btn">🏆 Monthly Leaderboard</div>
+<div class="menu-btn">➕ Add Whale Wallet</div>
+<div class="menu-btn">👤 My Follows</div>
+</div>
+
+<p><strong>Monthly Leaderboard</strong> ranks wallets by 30-day P&L. <strong>Add Whale Wallet</strong> lets you follow any address. <strong>My Follows</strong> shows your tracked wallets.</p>
+
+<h3>Breaking News</h3>
+<p>Latest high-volume events from Polymarket — what's trending in prediction markets right now.</p>
+
+<h3>Global Stats</h3>
+<p>Polymarket-wide dashboard: active events, active markets, total volume, plus Polytragent user stats and AI performance.</p>
+</section>
+
+<!-- SETTINGS -->
+<section id="settings">
+<h2>Settings</h2>
+
+<div class="menu-preview">
+<div class="menu-btn">👛 Connect Wallet</div>
+<div class="menu-btn">📐 Bet Sizing</div>
+<div class="menu-btn">🔔 Notifications</div>
+<div class="menu-btn">🛡 Risk Limits</div>
+<div class="menu-btn">🔑 API Keys</div>
+<div class="menu-btn">📥 Export Data</div>
+</div>
+
+<h3>Wallet Connection</h3>
+<p>Connect your Polymarket wallet for live portfolio tracking. <strong>100% read-only</strong> — no private keys needed.</p>
+<p>Send <code>/wallet 0xYourAddress</code> to connect. Find your address at polymarket.com → Profile → Settings → Funding.</p>
+
+<h3>Bet Sizing</h3>
+<table>
+<tr><th>Method</th><th>Description</th></tr>
+<tr><td>Half-Kelly (default)</td><td>Math-optimal sizing based on edge</td></tr>
+<tr><td>Fixed Amount</td><td>Same dollar amount every trade</td></tr>
+<tr><td>% of Portfolio</td><td>Scales with account size</td></tr>
+<tr><td>Vol-Adjusted</td><td>Scales with market volatility</td></tr>
+</table>
+
+<h3>Risk Limits</h3>
+<table>
+<tr><th>Limit</th><th>Default</th></tr>
+<tr><td>Max Position Size</td><td>25% of portfolio</td></tr>
+<tr><td>Daily Loss Limit</td><td>10% of portfolio</td></tr>
+<tr><td>Max Drawdown</td><td>25% from peak</td></tr>
+<tr><td>Max Open Positions</td><td>6</td></tr>
+<tr><td>Cash Reserve</td><td>15% minimum</td></tr>
+</table>
+</section>
+
+<!-- COMMANDS -->
+<section id="commands">
+<h2>Bot Commands</h2>
+
+<h3>Menu Commands</h3>
+<table>
+<tr><th>Command</th><th>Description</th></tr>
+<tr><td><code>/menu</code></td><td>Open the main menu</td></tr>
+<tr><td><code>/subscribe</code></td><td>Subscribe — $99/mo</td></tr>
+<tr><td><code>/code</code></td><td>Redeem access code</td></tr>
+</table>
+
+<h3>Portfolio & Trading</h3>
+<table>
+<tr><th>Command</th><th>Description</th></tr>
+<tr><td><code>/wallet &lt;address&gt;</code></td><td>Connect Polymarket wallet</td></tr>
+<tr><td><code>/wallet_label &lt;name&gt;</code></td><td>Label your wallet</td></tr>
+<tr><td><code>/research &lt;url&gt;</code></td><td>Research a market</td></tr>
+<tr><td><code>/add &lt;id&gt; &lt;entry&gt; &lt;size&gt;</code></td><td>Track a position</td></tr>
+<tr><td><code>/performance</code></td><td>AI prediction stats</td></tr>
+<tr><td><code>/manage</code></td><td>Manage subscription</td></tr>
+</table>
+
+<h3>Copy Trading</h3>
+<table>
+<tr><th>Command</th><th>Description</th></tr>
+<tr><td><code>/ct_leaderboard</code></td><td>Top trader leaderboard</td></tr>
+<tr><td><code>/ct_follow &lt;addr&gt;</code></td><td>Follow a wallet</td></tr>
+<tr><td><code>/ct_following</code></td><td>Your followed wallets</td></tr>
+<tr><td><code>/ct_signals</code></td><td>Recent copy signals</td></tr>
+</table>
+</section>
+
+<!-- FAQ -->
+<section id="faq">
+<h2>FAQ</h2>
+
+<h3>Is my wallet safe?</h3>
+<p>Yes. Only your public address is stored. No private keys, no signing, no custody. Same as viewing your wallet on Polygonscan.</p>
+
+<h3>Can Polytragent trade for me?</h3>
+<p>No. Polytragent provides research, signals, and alerts. You execute trades on Polymarket directly.</p>
+
+<h3>How do Whale Alerts work?</h3>
+<p>Follow wallets from the Monthly Leaderboard or add addresses manually. When a followed wallet trades, you get an instant Telegram notification.</p>
+
+<h3>Are strategies guaranteed to profit?</h3>
+<p>No. All trading involves risk. Strategies are based on quantitative analysis and historical patterns. Never trade more than you can afford to lose.</p>
+
+<h3>How do I cancel?</h3>
+<p>Send <code>/manage</code> in the bot to get your Stripe subscription management link. Cancel anytime.</p>
+
+<h3>The bot isn't responding</h3>
+<p>Wait 30 seconds and try again. If it persists, the bot may be restarting. Try <code>/menu</code> after a few minutes.</p>
+</section>
+
+<div style="margin-top:64px;padding:32px 0;border-top:1px solid var(--border);text-align:center;color:var(--text2);font-size:14px">
+<p>Polytragent v11.2 — Built by LuvKaizen</p>
+<p style="margin-top:8px"><a href="https://polytragent.com">polytragent.com</a></p>
+</div>
+
+</main>
+</div>
+
+<script>
+// Smooth scroll + active sidebar
+document.querySelectorAll('.sidebar nav a').forEach(a=>{
+  a.addEventListener('click',e=>{
+    document.querySelectorAll('.sidebar nav a').forEach(x=>x.classList.remove('active'));
+    a.classList.add('active');
+  });
+});
+window.addEventListener('scroll',()=>{
+  const sections=document.querySelectorAll('section[id]');
+  let current='';
+  sections.forEach(s=>{if(window.scrollY>=s.offsetTop-100)current=s.id});
+  document.querySelectorAll('.sidebar nav a').forEach(a=>{
+    a.classList.toggle('active',a.getAttribute('href')==='#'+current);
+  });
+});
+</script>
+</body>
+</html>
