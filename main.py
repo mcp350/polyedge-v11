@@ -560,6 +560,7 @@ def show_research_menu(chat_id):
          [{"text": "🆕 New Markets", "callback_data": "research_new_markets"}],
          [{"text": "🐋 Whale Alerts", "callback_data": "research_whale"}],
          [{"text": "📰 Breaking News", "callback_data": "research_breaking_news"}],
+         [{"text": "📊 Kalshi Markets", "callback_data": "research_kalshi"}],
          [{"text": "📊 Global Stats", "callback_data": "research_stats"}],
          [{"text": "← Main Menu", "callback_data": "main_menu"}]])
 
@@ -766,6 +767,16 @@ def show_research_news(chat_id):
     """NEW: News Digest — AI-summarized news"""
     tg.send("📰 <b>Building News Digest...</b>\n~60-90s.", chat_id)
     _run_locked("Digest", chat_id, digest.run_digest)
+
+def show_kalshi_menu(chat_id):
+    """Kalshi Markets sub-menu — cross-platform market data"""
+    onboarding.send_inline(chat_id,
+        "📊 <b>Polytragent — Kalshi Markets</b>\n\n"
+        "Cross-platform market intelligence from Kalshi exchange.\n"
+        "Compare prices, find divergences, spot edge.",
+        [[{"text": "🔍 Geo & Trending Scan", "callback_data": "kalshi_scan"}],
+         [{"text": "📈 Top Markets by Volume", "callback_data": "kalshi_top_volume"}],
+         [{"text": "← Research", "callback_data": "menu_research"}]])
 
 def show_research_sources(chat_id):
     """NEW: Sources sub-menu with GDELT, Kalshi, RSS Intel, UNSC, Conflicts, Full Briefing"""
@@ -1867,6 +1878,14 @@ def _extended_handle_callback(callback_query):
         show_trending_events(chat_id)
     elif data == "research_new_markets":
         show_new_markets(chat_id)
+    elif data == "research_kalshi":
+        show_kalshi_menu(chat_id)
+    elif data == "kalshi_scan":
+        tg.send("📊 <b>Scanning Kalshi markets...</b>", chat_id)
+        _run_locked("Kalshi", chat_id, kalshi_api.run_kalshi_scan)
+    elif data == "kalshi_top_volume":
+        tg.send("📊 <b>Loading Kalshi top markets...</b>", chat_id)
+        _run_locked("KalshiTop", chat_id, kalshi_api.run_kalshi_top_volume)
     elif data == "research_sources":
         show_research_sources(chat_id)
     elif data == "research_btcbook":
