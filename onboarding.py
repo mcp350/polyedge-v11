@@ -329,7 +329,7 @@ def _start_subscribe(chat_id, username, message_id=None):
         return
 
     text = (
-        "⚡ <b>Subscribe to Polytragent — $79.99/mo$79.99/month</b>\n\n"
+        "⚡ <b>Subscribe to Polytragent — $79.99/month</b>\n\n"
         "<b>Unlock everything:</b>\n"
         "• 📊 Portfolio dashboard & risk management\n"
         "• 🏆 AI strategy signals & direct betting\n"
