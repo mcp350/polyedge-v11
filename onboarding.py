@@ -96,7 +96,7 @@ def handle_access_code_input(chat_id: str, text: str):
         send_inline(chat_id,
             f"❌ <b>Invalid Code</b>\n\n{result['message']}",
             [[{"text": "🔄 Try Another Code", "callback_data": "enter_code"}],
-             [{"text": "⚡ Subscribe — $99/mo", "callback_data": "subscribe"}],
+             [{"text": "⚡ Subscribe — $79.99/mo", "callback_data": "subscribe"}],
              [{"text": "← Back", "callback_data": "main_menu"}]])
 
 # ═══════════════════════════════════════════════
@@ -228,7 +228,7 @@ def handle_start(chat_id, username="", first_name=""):
         "🧠 <b>What I do:</b>\n"
         "I use AI to research every market on Polymarket, score them, "
         "and deliver actionable trading signals — so you don't have to.\n\n"
-        "🔥 <b>What you get ($99/mo):</b>\n"
+        "🔥 <b>What you get ($79.99/mo):</b>\n"
         "• 📊 Portfolio dashboard & risk management\n"
         "• 🏆 AI strategy signals & direct betting\n"
         "• 📈 Market analysis, whale alerts & news intel\n"
@@ -240,7 +240,7 @@ def handle_start(chat_id, username="", first_name=""):
         "✅ Cancel anytime. No lock-in.\n"
         "🔒 Secure payment via Stripe.\n\n"
         "👇 Choose how to get started:",
-        [[{"text": "⚡ Subscribe — $99/mo", "callback_data": "subscribe"}],
+        [[{"text": "⚡ Subscribe — $79.99/mo", "callback_data": "subscribe"}],
          [{"text": "🔑 I Have an Access Code", "callback_data": "enter_code"}]])
 
 
@@ -329,7 +329,7 @@ def _start_subscribe(chat_id, username, message_id=None):
         return
 
     text = (
-        "⚡ <b>Subscribe to Polytragent — $99/month</b>\n\n"
+        "⚡ <b>Subscribe to Polytragent — $79.99/mo$79.99/month</b>\n\n"
         "<b>Unlock everything:</b>\n"
         "• 📊 Portfolio dashboard & risk management\n"
         "• 🏆 AI strategy signals & direct betting\n"
@@ -342,7 +342,7 @@ def _start_subscribe(chat_id, username, message_id=None):
         "👇 Click below to complete payment:"
     )
     buttons = [
-        [{"text": "💳 Pay $99/mo — Open Checkout", "url": url}],
+        [{"text": "💳 Pay $79.99/mo — Open Checkout", "url": url}],
         [{"text": "🔑 I Have an Access Code", "callback_data": "enter_code"}],
         [{"text": "← Back", "callback_data": "main_menu"}],
     ]
@@ -406,7 +406,7 @@ def _manage_subscription(chat_id):
         send_inline(chat_id,
             "❌ No active Stripe subscription found.\n\n"
             "You can subscribe or use an access code.",
-            [[{"text": "⚡ Subscribe — $99/mo", "callback_data": "subscribe"}],
+            [[{"text": "⚡ Subscribe — $79.99/mo", "callback_data": "subscribe"}],
              [{"text": "🔑 Enter Access Code", "callback_data": "enter_code"}]])
 
 
@@ -435,5 +435,5 @@ def notify_cancelled(chat_id):
         "😔 <b>Subscription Cancelled</b>\n\n"
         "Your Polytragent access has been deactivated. "
         "You can resubscribe anytime to get back in.",
-        [[{"text": "⚡ Resubscribe — $99/mo", "callback_data": "subscribe"}],
+        [[{"text": "⚡ Resubscribe — $79.99/mo", "callback_data": "subscribe"}],
          [{"text": "🔑 Enter Access Code", "callback_data": "enter_code"}]])
