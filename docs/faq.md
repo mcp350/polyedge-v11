@@ -6,7 +6,7 @@
 Polytragent is an AI-powered trading agent for Polymarket, the world's largest prediction market. It runs inside Telegram and provides market research, portfolio tracking, trading strategy signals, and whale alerts.
 
 ### How much does it cost?
-$99/month. Cancel anytime, no lock-in. You can also use an access code if you have one.
+$79.99/month. Cancel anytime, no lock-in. You can also use an access code if you have one.
 
 ### Is my data safe?
 Yes. We only store your Telegram chat ID and public wallet address (if connected). No private keys, no passwords, no trading access. Wallet connection is 100% read-only.
