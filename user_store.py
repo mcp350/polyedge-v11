@@ -8,7 +8,7 @@ import json, os, time, secrets, hashlib, string, random
 from datetime import datetime, timezone, timedelta
 
 FILE = os.path.join(os.path.dirname(__file__), "users.json")
-PLAN_PRICE = 99  # $99/mo single tier
+PLAN_PRICE = 79.99  # $79.99/mo single tier
 
 # ═══════════════════════════════════════════════
 # STORAGE
