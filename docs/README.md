@@ -16,7 +16,7 @@ Polytragent is a Telegram-based AI trading agent for Polymarket — the world's 
 
 1. Open Telegram and search for **@bmpolybot**
 2. Send `/menu` to open the main menu
-3. Subscribe for $99/mo or enter an access code
+3. Subscribe for $79.99/mo or enter an access code
 4. Connect your Polymarket wallet in Settings
 5. Start researching events and trading
 
