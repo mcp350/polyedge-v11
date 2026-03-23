@@ -2,7 +2,7 @@
 POLYTRAGENT — Polymarket AI Trading Agent v11
 Event Research | Portfolio | Strategies | Research | Settings
 Wallet Tracking — Read-Only via Public Address
-PAID-ONLY ACCESS — $99/mo subscription or access code
+PAID-ONLY ACCESS — $79.99/mo subscription or access code
 """
 import os, sys, signal, atexit
 import time, threading, requests
@@ -52,7 +52,7 @@ def _set_bot_commands():
     try:
         commands = [
             {"command": "menu", "description": "Open main menu"},
-            {"command": "subscribe", "description": "Subscribe — $99/mo"},
+            {"command": "subscribe", "description": "Subscribe — $79.99/mo"},
             {"command": "code", "description": "Redeem access code"},
         ]
         r = requests.post(
@@ -79,7 +79,7 @@ def _require_subscription(chat_id) -> bool:
     onboarding.send_inline(chat_id,
         "🔒 <b>Polytragent — Members Only</b>\n\n"
         "This bot is exclusively for subscribers.\n\n"
-        "🧠 <b>What you get for $99/mo:</b>\n"
+        "🧠 <b>What you get for $79.99/mo:</b>\n"
         "• AI-powered market analysis & strategy signals\n"
         "• Copy trading — follow top wallets\n"
         "• Real-time whale & price alerts\n"
@@ -88,7 +88,7 @@ def _require_subscription(chat_id) -> bool:
         "• Full accuracy dashboard\n\n"
         f"📊 Track record: <b>{total} predictions, {win_rate:.0f}% win rate</b>\n\n"
         "✅ Cancel anytime. No lock-in.",
-        [[{"text": "⚡ Subscribe — $99/mo", "callback_data": "subscribe"}],
+        [[{"text": "⚡ Subscribe — $79.99/mo", "callback_data": "subscribe"}],
          [{"text": "🔑 Enter Access Code", "callback_data": "enter_code"}]])
     return False
 
@@ -2227,7 +2227,7 @@ def main():
     print("=" * 50)
     print(" POLYTRAGENT — Polymarket AI Trading Agent v11")
     print(" 5-Section Menu: Portfolio|Research|Trade|Backtest|Settings")
-    print(" PAID-ONLY ACCESS — $99/mo or Access Code")
+    print(" PAID-ONLY ACCESS — $79.99/mo or Access Code")
     print("=" * 50)
 
     _kill_other_instances()
