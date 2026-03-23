@@ -13,7 +13,7 @@ Your account is created automatically when you first interact with the bot. Your
 
 Polytragent is a premium, members-only bot. All features require an active subscription.
 
-### Standard Plan — $99/month
+### Standard Plan — $79.99/month
 
 Everything included:
 
@@ -27,7 +27,7 @@ Everything included:
 
 ### How to Subscribe
 
-1. Send `/subscribe` or tap **Subscribe — $99/mo** in the bot
+1. Send `/subscribe` or tap **Subscribe — $79.99/mo** in the bot
 2. You'll receive a secure Stripe payment link
 3. Complete payment with your credit card
 4. Access is activated instantly
