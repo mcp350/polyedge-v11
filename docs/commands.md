@@ -7,7 +7,7 @@ These commands appear in Telegram's command menu (tap the `/` button):
 | Command | Description |
 |---------|-------------|
 | `/menu` | Open the main menu |
-| `/subscribe` | Subscribe — $99/mo |
+| `/subscribe` | Subscribe — $79.99/mo |
 | `/code` | Redeem an access code |
 
 ## Additional Commands
