@@ -7,6 +7,15 @@ TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN", "")
 TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "")
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
 
+# ── Polymarket Trading API (builders.polymarket.com) ──
+POLY_API_KEY = os.environ.get("POLY_API_KEY", "")
+POLY_API_SECRET = os.environ.get("POLY_API_SECRET", "")
+POLY_API_PASSPHRASE = os.environ.get("POLY_API_PASSPHRASE", "")
+POLY_PRIVATE_KEY = os.environ.get("POLY_PRIVATE_KEY", "")
+
+# ── Polygon Network ──
+POLYGON_RPC_URL = os.environ.get("POLYGON_RPC_URL", "https://polygon-rpc.com")
+
 # ── Stripe ──
 STRIPE_SECRET_KEY = os.environ.get("STRIPE_SECRET_KEY", "")
 STRIPE_WEBHOOK_SECRET = os.environ.get("STRIPE_WEBHOOK_SECRET", "")
@@ -67,3 +76,5 @@ ENABLE_SWING = os.environ.get("ENABLE_SWING", "true").lower() == "true"
 ENABLE_NEWS = os.environ.get("ENABLE_NEWS", "true").lower() == "true"
 ENABLE_REPORTER = os.environ.get("ENABLE_REPORTER", "true").lower() == "true"
 ENABLE_DIGEST = os.environ.get("ENABLE_DIGEST", "true").lower() == "true"
+ENABLE_LIVE_TRADING = os.environ.get("ENABLE_LIVE_TRADING", "true").lower() == "true"
+ENABLE_AUTO_COPY = os.environ.get("ENABLE_AUTO_COPY", "true").lower() == "true"

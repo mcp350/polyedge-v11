@@ -2,7 +2,7 @@
 POLYTRAGENT — Polymarket AI Trading Agent v11
 Event Research | Portfolio | Strategies | Research | Settings
 Wallet Tracking — Read-Only via Public Address
-PAID-ONLY ACCESS — $79.99/mo subscription or access code
+PAID-ONLY ACCESS — $99/mo subscription or access code
 """
 import os, sys, signal, atexit
 import time, threading, requests
@@ -24,6 +24,9 @@ import web_server
 import copy_trading as ct
 import copy_signals
 import wallet_tracker as wt
+import polymarket_trading as trading
+import wallet_manager as wm
+import copy_executor as ce
 
 _last_update_id = 0
 _locks = {}
@@ -52,7 +55,7 @@ def _set_bot_commands():
     try:
         commands = [
             {"command": "menu", "description": "Open main menu"},
-            {"command": "subscribe", "description": "Subscribe — $79.99/mo"},
+            {"command": "subscribe", "description": "Subscribe — $99/mo"},
             {"command": "code", "description": "Redeem access code"},
         ]
         r = requests.post(
@@ -79,7 +82,7 @@ def _require_subscription(chat_id) -> bool:
     onboarding.send_inline(chat_id,
         "🔒 <b>Polytragent — Members Only</b>\n\n"
         "This bot is exclusively for subscribers.\n\n"
-        "🧠 <b>What you get for $79.99/mo:</b>\n"
+        "🧠 <b>What you get for $99/mo:</b>\n"
         "• AI-powered market analysis & strategy signals\n"
         "• Copy trading — follow top wallets\n"
         "• Real-time whale & price alerts\n"
@@ -88,7 +91,7 @@ def _require_subscription(chat_id) -> bool:
         "• Full accuracy dashboard\n\n"
         f"📊 Track record: <b>{total} predictions, {win_rate:.0f}% win rate</b>\n\n"
         "✅ Cancel anytime. No lock-in.",
-        [[{"text": "⚡ Subscribe — $79.99/mo", "callback_data": "subscribe"}],
+        [[{"text": "⚡ Subscribe — $99/mo", "callback_data": "subscribe"}],
          [{"text": "🔑 Enter Access Code", "callback_data": "enter_code"}]])
     return False
 
@@ -249,14 +252,21 @@ def send_main_menu(chat_id):
         name = user.get("first_name") or user.get("username") or ""
     greeting = f", {name}" if name else ""
 
+    # Trading engine status
+    trade_status = "🟢 Live" if trading.is_trading_enabled() else "⚪ Signals Only"
+
     onboarding.send_inline(chat_id,
         f"🤖 <b>Polytragent</b>{greeting}\n\n"
         "Your AI-Powered Polymarket Trading Agent.\n"
+        f"Trading: {trade_status}\n\n"
         "Select a section below to get started.",
         [[{"text": "🔬 Event Research", "callback_data": "quick_research"}],
+         [{"text": "💰 Trade", "callback_data": "menu_trading"},
+          {"text": "👛 Wallet", "callback_data": "menu_wallet"}],
          [{"text": "📊 Portfolio", "callback_data": "menu_portfolio"}],
          [{"text": "📈 Strategies", "callback_data": "menu_trade"}],
          [{"text": "🔬 Research", "callback_data": "menu_research"}],
+         [{"text": "🤖 Auto Copy", "callback_data": "menu_auto_copy"}],
          [{"text": "⚙️ Settings", "callback_data": "menu_settings"}]])
 
 # ═══════════════════════════════════════════════
@@ -1491,6 +1501,329 @@ def show_account(chat_id):
           {"text": "📧 Contact Support", "callback_data": "support"}],
          [{"text": "← Settings", "callback_data": "menu_settings"}]])
 
+# ═══════════════════════════════════════════════
+# SECTION: LIVE TRADING
+# ═══════════════════════════════════════════════
+
+def show_trading_menu(chat_id):
+    """Trading hub — buy, sell, positions, orders"""
+    enabled = trading.is_trading_enabled()
+    if not enabled:
+        onboarding.send_inline(chat_id,
+            "💰 <b>Live Trading</b>\n\n"
+            "⚠️ Trading engine not configured.\n\n"
+            "Admin needs to set these env vars:\n"
+            "• POLY_API_KEY\n"
+            "• POLY_API_SECRET\n"
+            "• POLY_API_PASSPHRASE\n"
+            "• POLY_PRIVATE_KEY\n\n"
+            "Get keys at builders.polymarket.com",
+            [[{"text": "← Main Menu", "callback_data": "main_menu"}]])
+        return
+
+    addr = trading.get_wallet_address() or "Not connected"
+    short = f"{addr[:6]}...{addr[-4:]}" if addr and addr.startswith("0x") else addr
+
+    onboarding.send_inline(chat_id,
+        f"💰 <b>Live Trading</b>\n\n"
+        f"🔗 Wallet: <code>{short}</code>\n\n"
+        "Buy or sell on any Polymarket event.\n"
+        "Send a Polymarket link to start.",
+        [[{"text": "🟩 Quick Buy", "callback_data": "trading_buy_prompt"},
+          {"text": "🟥 Quick Sell", "callback_data": "trading_sell_prompt"}],
+         [{"text": "📊 My Positions", "callback_data": "trading_positions"},
+          {"text": "📋 Open Orders", "callback_data": "trading_orders"}],
+         [{"text": "📜 Trade History", "callback_data": "trading_history"}],
+         [{"text": "❌ Cancel All Orders", "callback_data": "trading_cancel_all"}],
+         [{"text": "← Main Menu", "callback_data": "main_menu"}]])
+
+
+_waiting_for_trade = {}  # chat_id -> {"action": "buy"|"sell", "step": ...}
+
+def show_buy_prompt(chat_id):
+    """Prompt user to enter market URL + amount for buying"""
+    _waiting_for_trade[str(chat_id)] = {"action": "buy", "step": "market"}
+    onboarding.send_inline(chat_id,
+        "🟩 <b>Buy — Step 1/3</b>\n\n"
+        "Send a Polymarket event link or slug:\n\n"
+        "<i>Example: https://polymarket.com/event/will-trump...</i>\n"
+        "<i>Or just: will-trump-win-2024</i>",
+        [[{"text": "← Cancel", "callback_data": "trading_cancel_flow"}]])
+
+
+def show_sell_prompt(chat_id):
+    """Show positions to sell from"""
+    positions = trading.get_positions()
+    if not positions:
+        tg.send("📭 No open positions to sell.", chat_id)
+        show_trading_menu(chat_id)
+        return
+
+    _waiting_for_trade[str(chat_id)] = {"action": "sell", "step": "market"}
+    msg = "🟥 <b>Sell Position</b>\n\nSend a Polymarket event link for the position you want to close.\n\n"
+    msg += trading.format_positions(positions)
+    tg.send(msg, chat_id)
+
+
+def handle_trade_input(chat_id, text):
+    """Process multi-step trade input"""
+    chat_str = str(chat_id)
+    state = _waiting_for_trade.get(chat_str)
+    if not state:
+        return False
+
+    action = state["action"]
+    step = state["step"]
+
+    if step == "market":
+        # User sent market URL/slug — resolve it
+        tg.send("🔍 Resolving market...", chat_id)
+        market = trading.resolve_market_tokens(text.strip())
+        if not market:
+            tg.send("❌ Could not find that market. Try a different link or slug.", chat_id)
+            return True
+
+        state["market"] = market
+        state["step"] = "outcome"
+
+        # Show outcomes to choose from
+        buttons = []
+        for t in market["tokens"]:
+            mid = trading.get_midpoint(t["token_id"])
+            price_str = f" (${mid:.2f})" if mid else ""
+            buttons.append([{"text": f"{t['outcome']}{price_str}", "callback_data": f"trade_outcome_{t['outcome']}"}])
+        buttons.append([{"text": "← Cancel", "callback_data": "trading_cancel_flow"}])
+
+        onboarding.send_inline(chat_id,
+            f"{'🟩 Buy' if action == 'buy' else '🟥 Sell'} — <b>Step 2/3</b>\n\n"
+            f"📊 <b>{market['question']}</b>\n\n"
+            "Select outcome:",
+            buttons)
+        return True
+
+    elif step == "amount":
+        # User sent dollar amount
+        try:
+            amount = float(text.strip().replace("$", "").replace(",", ""))
+            if amount < 1:
+                tg.send("❌ Minimum trade is $1.00", chat_id)
+                return True
+            if amount > 10000:
+                tg.send("❌ Maximum trade is $10,000", chat_id)
+                return True
+        except ValueError:
+            tg.send("❌ Enter a valid number (e.g., 25 or 100.50)", chat_id)
+            return True
+
+        market = state["market"]
+        outcome = state["outcome"]
+        token_id = state["token_id"]
+
+        _waiting_for_trade.pop(chat_str, None)
+
+        # Execute trade
+        if action == "buy":
+            tg.send(f"⏳ Executing BUY ${amount:.2f} on {outcome}...", chat_id)
+            result = trading.market_buy(
+                token_id=token_id,
+                amount=amount,
+                neg_risk=market.get("neg_risk", False),
+                tick_size=market.get("tick_size", "0.01"),
+            )
+            result["market"] = market["question"]
+            result["outcome"] = outcome
+            result["amount"] = amount
+        else:
+            tg.send(f"⏳ Executing SELL {amount} shares of {outcome}...", chat_id)
+            result = trading.market_sell(
+                token_id=token_id,
+                amount=amount,
+                neg_risk=market.get("neg_risk", False),
+                tick_size=market.get("tick_size", "0.01"),
+            )
+            result["market"] = market["question"]
+            result["outcome"] = outcome
+            result["shares"] = amount
+
+        msg = trading.format_order_result(result)
+        onboarding.send_inline(chat_id, msg,
+            [[{"text": "💰 Trade Again", "callback_data": "menu_trading"},
+              {"text": "📊 Positions", "callback_data": "trading_positions"}],
+             [{"text": "← Main Menu", "callback_data": "main_menu"}]])
+        return True
+
+    return False
+
+
+def show_trading_positions(chat_id):
+    """Show live positions from the trading wallet"""
+    tg.send("📊 Loading positions...", chat_id)
+    positions = trading.get_positions()
+    msg = trading.format_positions(positions)
+    onboarding.send_inline(chat_id, msg,
+        [[{"text": "🔄 Refresh", "callback_data": "trading_positions"},
+          {"text": "🟥 Sell", "callback_data": "trading_sell_prompt"}],
+         [{"text": "← Trading", "callback_data": "menu_trading"}]])
+
+
+def show_trading_orders(chat_id):
+    """Show open orders"""
+    orders = trading.get_open_orders()
+    msg = trading.format_open_orders(orders)
+    onboarding.send_inline(chat_id, msg,
+        [[{"text": "🔄 Refresh", "callback_data": "trading_orders"},
+          {"text": "❌ Cancel All", "callback_data": "trading_cancel_all"}],
+         [{"text": "← Trading", "callback_data": "menu_trading"}]])
+
+
+def show_trade_history(chat_id):
+    """Show recent trade history"""
+    trades = trading.get_trade_history(20)
+    if not trades:
+        msg = "📭 No recent trades."
+    else:
+        lines = ["📜 <b>Recent Trades</b>", ""]
+        for t in trades[:15]:
+            side = t.get("side", "?").upper()
+            price = float(t.get("price", 0))
+            size = float(t.get("size", 0))
+            emoji = "🟩" if side == "BUY" else "🟥"
+            title = t.get("market", t.get("title", ""))[:35]
+            lines.append(f"{emoji} {side} | ${price:.2f} × {size:.0f} | {title}")
+        msg = "\n".join(lines)
+
+    onboarding.send_inline(chat_id, msg,
+        [[{"text": "🔄 Refresh", "callback_data": "trading_history"}],
+         [{"text": "← Trading", "callback_data": "menu_trading"}]])
+
+
+# ═══════════════════════════════════════════════
+# SECTION: WALLET MANAGEMENT
+# ═══════════════════════════════════════════════
+
+def show_wallet_menu(chat_id):
+    """Wallet management hub"""
+    wallets = wm.get_wallets(str(chat_id))
+    primary = wm.get_primary_wallet(str(chat_id))
+
+    if wallets:
+        msg = wm.format_wallets(wallets)
+        if primary:
+            balance = wm.get_full_balance(primary["address"])
+            msg += "\n\n" + wm.format_balance(balance)
+    else:
+        msg = (
+            "👛 <b>Wallet Manager</b>\n\n"
+            "No wallets yet. Create one to start trading.\n\n"
+            "Your wallet holds USDC on the Polygon network\n"
+            "for trading on Polymarket."
+        )
+
+    onboarding.send_inline(chat_id, msg,
+        [[{"text": "➕ Create Wallet", "callback_data": "wallet_create"},
+          {"text": "📥 Import Wallet", "callback_data": "wallet_import_prompt"}],
+         [{"text": "💰 Balance", "callback_data": "wallet_balance"},
+          {"text": "📤 Send USDC", "callback_data": "wallet_send_prompt"}],
+         [{"text": "📥 Receive/Deposit", "callback_data": "wallet_deposit"},
+          {"text": "🔑 Export Keys", "callback_data": "wallet_export_prompt"}],
+         [{"text": "← Main Menu", "callback_data": "main_menu"}]])
+
+
+_waiting_for_wallet = {}  # chat_id -> {"action": "import"|"send"|"export", ...}
+
+def handle_wallet_input(chat_id, text):
+    """Process wallet-related text input"""
+    chat_str = str(chat_id)
+    state = _waiting_for_wallet.get(chat_str)
+    if not state:
+        return False
+
+    action = state["action"]
+
+    if action == "import" and state.get("step") == "key":
+        result = wm.import_wallet(chat_str, text.strip())
+        _waiting_for_wallet.pop(chat_str, None)
+        if result["success"]:
+            tg.send(
+                f"✅ <b>Wallet Imported!</b>\n\n"
+                f"Address: <code>{result['address']}</code>\n"
+                f"Label: {result['label']}\n\n"
+                "⚠️ Delete the message with your private key!",
+                chat_id)
+        else:
+            tg.send(f"❌ Import failed: {result['error']}", chat_id)
+        show_wallet_menu(chat_id)
+        return True
+
+    elif action == "send":
+        if state.get("step") == "address":
+            state["to_address"] = text.strip()
+            state["step"] = "amount"
+            tg.send("💰 How much USDC to send? (e.g., 50 or 100.50)", chat_id)
+            return True
+
+        elif state.get("step") == "amount":
+            try:
+                amount = float(text.strip().replace("$", "").replace(",", ""))
+            except ValueError:
+                tg.send("❌ Enter a valid number.", chat_id)
+                return True
+
+            to_addr = state["to_address"]
+            _waiting_for_wallet.pop(chat_str, None)
+
+            tg.send(f"⏳ Sending ${amount:.2f} USDC to {to_addr[:10]}...", chat_id)
+            result = wm.send_usdc(chat_str, to_addr, amount)
+            tg.send(wm.format_send_result(result), chat_id)
+            return True
+
+    _waiting_for_wallet.pop(chat_str, None)
+    return False
+
+
+# ═══════════════════════════════════════════════
+# SECTION: AUTO COPY TRADING
+# ═══════════════════════════════════════════════
+
+def show_auto_copy_menu(chat_id):
+    """Auto-copy trading settings and stats"""
+    stats = ce.get_auto_copy_stats(str(chat_id))
+    msg = ce.format_auto_copy_stats(stats) if stats.get("enabled") else ce.format_auto_copy_settings(None)
+
+    buttons = []
+    if stats.get("enabled"):
+        buttons.append([{"text": "⏹ Disable Auto-Copy", "callback_data": "auto_copy_off"}])
+        buttons.append([{"text": "⚙️ Settings", "callback_data": "auto_copy_settings_menu"},
+                        {"text": "📊 Stats", "callback_data": "auto_copy_stats"}])
+    else:
+        buttons.append([{"text": "▶️ Enable Auto-Copy ($25/trade, $200/day)", "callback_data": "auto_copy_on"}])
+    buttons.append([{"text": "🔄 Copy Trading Signals", "callback_data": "ct_signals"}])
+    buttons.append([{"text": "← Main Menu", "callback_data": "main_menu"}])
+
+    onboarding.send_inline(chat_id, msg, buttons)
+
+
+def show_auto_copy_settings_menu(chat_id):
+    """Auto-copy settings adjustment"""
+    settings = ce.get_auto_copy_settings(str(chat_id))
+    if not settings:
+        show_auto_copy_menu(chat_id)
+        return
+
+    onboarding.send_inline(chat_id,
+        f"⚙️ <b>Auto-Copy Settings</b>\n\n"
+        f"💰 Max per trade: <b>${settings.get('max_per_trade', 25):.2f}</b>\n"
+        f"📅 Daily limit: <b>${settings.get('daily_limit', 200):.2f}</b>\n"
+        f"📊 Mode: <b>{settings.get('mode', 'fixed')}</b>\n"
+        f"📉 Max slippage: <b>{settings.get('max_slippage', 0.05)*100:.0f}%</b>\n\n"
+        "Send a command to adjust:\n"
+        "/ac_max 50 — Max $50 per trade\n"
+        "/ac_daily 500 — Daily limit $500\n"
+        "/ac_mode fixed|percentage|proportional",
+        [[{"text": "🔄 Refresh", "callback_data": "auto_copy_settings_menu"}],
+         [{"text": "← Auto-Copy", "callback_data": "menu_auto_copy"}]])
+
+
 def _handle(cmd, chat_id):
     """Command handler — routes all /commands"""
     text = cmd
@@ -1576,6 +1909,219 @@ def _handle(cmd, chat_id):
             f"💎 Subscribers: {len(user_store.get_all_subscribers())}\n"
             f"📊 Predictions: {pstore.get_performance().get('total', 0)}\n"
             f"🔄 Copy Trading: {ct_stats['total_wallets']} wallets, {ct_stats['total_signals']} signals", chat_id)
+
+    # ── LIVE TRADING ──
+    elif cmd == "/buy":
+        if len(parts) >= 4:
+            # /buy <market> <outcome> <amount>
+            market_ref = parts[1]
+            outcome = parts[2]
+            try:
+                amount = float(parts[3])
+            except ValueError:
+                tg.send("Usage: /buy &lt;market-slug&gt; &lt;Yes|No&gt; &lt;amount&gt;", chat_id)
+                return
+            tg.send(f"⏳ Buying ${amount:.2f} of {outcome} on {market_ref}...", chat_id)
+            result = trading.quick_buy(market_ref, outcome, amount)
+            tg.send(trading.format_order_result(result), chat_id)
+        else:
+            show_buy_prompt(chat_id)
+
+    elif cmd == "/sell":
+        if len(parts) >= 4:
+            market_ref = parts[1]
+            outcome = parts[2]
+            try:
+                shares = float(parts[3])
+            except ValueError:
+                tg.send("Usage: /sell &lt;market-slug&gt; &lt;Yes|No&gt; &lt;shares&gt;", chat_id)
+                return
+            tg.send(f"⏳ Selling {shares} shares of {outcome} on {market_ref}...", chat_id)
+            result = trading.quick_sell(market_ref, outcome, shares)
+            tg.send(trading.format_order_result(result), chat_id)
+        else:
+            show_sell_prompt(chat_id)
+
+    elif cmd == "/positions":
+        show_trading_positions(chat_id)
+
+    elif cmd == "/orders":
+        show_trading_orders(chat_id)
+
+    elif cmd == "/cancel_order":
+        if len(parts) < 2:
+            tg.send("Usage: /cancel_order &lt;order_id&gt;", chat_id)
+            return
+        result = trading.cancel_order(parts[1])
+        tg.send("✅ Order cancelled." if result["success"] else f"❌ {result['error']}", chat_id)
+
+    elif cmd == "/cancel_all":
+        result = trading.cancel_all_orders()
+        tg.send("✅ All orders cancelled." if result["success"] else f"❌ {result['error']}", chat_id)
+
+    elif cmd == "/limit_buy":
+        if len(parts) >= 5:
+            # /limit_buy <market> <outcome> <price> <size>
+            market_ref = parts[1]
+            outcome_name = parts[2]
+            try:
+                price = float(parts[3])
+                size = float(parts[4])
+            except ValueError:
+                tg.send("Usage: /limit_buy &lt;market&gt; &lt;Yes|No&gt; &lt;price&gt; &lt;size&gt;", chat_id)
+                return
+            market = trading.resolve_market_tokens(market_ref)
+            if not market:
+                tg.send("❌ Could not resolve market.", chat_id)
+                return
+            token_id = None
+            for t in market["tokens"]:
+                if t["outcome"].lower() == outcome_name.lower():
+                    token_id = t["token_id"]
+                    break
+            if not token_id:
+                tg.send(f"❌ Outcome '{outcome_name}' not found.", chat_id)
+                return
+            tg.send(f"⏳ Placing limit BUY at ${price:.2f}...", chat_id)
+            result = trading.limit_buy(token_id, price, size, market.get("neg_risk", False))
+            tg.send(trading.format_order_result(result), chat_id)
+        else:
+            tg.send("Usage: /limit_buy &lt;market-slug&gt; &lt;Yes|No&gt; &lt;price&gt; &lt;shares&gt;", chat_id)
+
+    elif cmd == "/limit_sell":
+        if len(parts) >= 5:
+            market_ref = parts[1]
+            outcome_name = parts[2]
+            try:
+                price = float(parts[3])
+                size = float(parts[4])
+            except ValueError:
+                tg.send("Usage: /limit_sell &lt;market&gt; &lt;Yes|No&gt; &lt;price&gt; &lt;size&gt;", chat_id)
+                return
+            market = trading.resolve_market_tokens(market_ref)
+            if not market:
+                tg.send("❌ Could not resolve market.", chat_id)
+                return
+            token_id = None
+            for t in market["tokens"]:
+                if t["outcome"].lower() == outcome_name.lower():
+                    token_id = t["token_id"]
+                    break
+            if not token_id:
+                tg.send(f"❌ Outcome '{outcome_name}' not found.", chat_id)
+                return
+            tg.send(f"⏳ Placing limit SELL at ${price:.2f}...", chat_id)
+            result = trading.limit_sell(token_id, price, size, market.get("neg_risk", False))
+            tg.send(trading.format_order_result(result), chat_id)
+        else:
+            tg.send("Usage: /limit_sell &lt;market-slug&gt; &lt;Yes|No&gt; &lt;price&gt; &lt;shares&gt;", chat_id)
+
+    # ── WALLET MANAGEMENT ──
+    elif cmd == "/create_wallet":
+        result = wm.create_wallet(str(chat_id))
+        if result["success"]:
+            tg.send(
+                f"✅ <b>Wallet Created!</b>\n\n"
+                f"Address: <code>{result['address']}</code>\n\n"
+                f"🔑 Private Key (SAVE THIS — shown only once):\n"
+                f"<tg-spoiler>{result['private_key']}</tg-spoiler>\n\n"
+                f"⚠️ Fund this wallet with USDC on Polygon to trade.\n"
+                f"⛽ You also need ~0.01 MATIC for gas.",
+                chat_id)
+        else:
+            tg.send(f"❌ {result['error']}", chat_id)
+
+    elif cmd == "/wallets":
+        show_wallet_menu(chat_id)
+
+    elif cmd == "/balance":
+        primary = wm.get_primary_wallet(str(chat_id))
+        if primary:
+            balance = wm.get_full_balance(primary["address"])
+            tg.send(wm.format_balance(balance), chat_id)
+        else:
+            tg.send("No wallet found. Use /create_wallet first.", chat_id)
+
+    elif cmd == "/deposit":
+        info = wm.get_deposit_info(str(chat_id))
+        if info["success"]:
+            tg.send(info["instructions"], chat_id)
+        else:
+            tg.send(f"❌ {info['error']}", chat_id)
+
+    elif cmd == "/send":
+        if len(parts) >= 3:
+            to_addr = parts[1]
+            try:
+                amount = float(parts[2])
+            except ValueError:
+                tg.send("Usage: /send &lt;address&gt; &lt;amount&gt;", chat_id)
+                return
+            tg.send(f"⏳ Sending ${amount:.2f} USDC to {to_addr[:10]}...", chat_id)
+            result = wm.send_usdc(str(chat_id), to_addr, amount)
+            tg.send(wm.format_send_result(result), chat_id)
+        else:
+            _waiting_for_wallet[str(chat_id)] = {"action": "send", "step": "address"}
+            tg.send("📤 <b>Send USDC</b>\n\nEnter the recipient address:", chat_id)
+
+    elif cmd == "/export_keys":
+        result = wm.export_wallet(str(chat_id))
+        if result["success"]:
+            tg.send(
+                f"🔑 <b>Private Key Export</b>\n\n"
+                f"Address: <code>{result['address']}</code>\n"
+                f"Key: <tg-spoiler>{result['private_key']}</tg-spoiler>\n\n"
+                f"⚠️ Never share this with anyone!",
+                chat_id)
+        else:
+            tg.send(f"❌ {result['error']}", chat_id)
+
+    elif cmd == "/import_wallet":
+        _waiting_for_wallet[str(chat_id)] = {"action": "import", "step": "key"}
+        tg.send("🔑 <b>Import Wallet</b>\n\nSend your private key (0x...):\n\n"
+                "⚠️ Message will be processed and you should delete it after.",
+                chat_id)
+
+    # ── AUTO COPY TRADING ──
+    elif cmd == "/auto_copy_on":
+        result = ce.enable_auto_copy(str(chat_id))
+        tg.send(ce.format_auto_copy_settings(result.get("settings", {})), chat_id)
+
+    elif cmd == "/auto_copy_off":
+        ce.disable_auto_copy(str(chat_id))
+        tg.send("🤖 Auto-copy trading <b>disabled</b>.", chat_id)
+
+    elif cmd == "/auto_copy":
+        show_auto_copy_menu(chat_id)
+
+    elif cmd == "/ac_max":
+        if len(parts) >= 2:
+            try:
+                val = float(parts[1])
+                ce.update_auto_copy_settings(str(chat_id), max_per_trade=val)
+                tg.send(f"✅ Max per trade set to <b>${val:.2f}</b>", chat_id)
+            except ValueError:
+                tg.send("Usage: /ac_max &lt;amount&gt;", chat_id)
+        else:
+            tg.send("Usage: /ac_max 50", chat_id)
+
+    elif cmd == "/ac_daily":
+        if len(parts) >= 2:
+            try:
+                val = float(parts[1])
+                ce.update_auto_copy_settings(str(chat_id), daily_limit=val)
+                tg.send(f"✅ Daily limit set to <b>${val:.2f}</b>", chat_id)
+            except ValueError:
+                tg.send("Usage: /ac_daily &lt;amount&gt;", chat_id)
+        else:
+            tg.send("Usage: /ac_daily 500", chat_id)
+
+    elif cmd == "/ac_mode":
+        if len(parts) >= 2 and parts[1] in ("fixed", "percentage", "proportional"):
+            ce.update_auto_copy_settings(str(chat_id), mode=parts[1])
+            tg.send(f"✅ Mode set to <b>{parts[1]}</b>", chat_id)
+        else:
+            tg.send("Usage: /ac_mode fixed|percentage|proportional", chat_id)
 
     # ── COPY TRADING ──
     elif cmd.startswith("/ct"):
@@ -1820,12 +2366,13 @@ def _extended_handle_callback(callback_query):
 
     # ── Check subscription for all menu callbacks ──
     if data.startswith("menu_") or data.startswith("portfolio_") or data.startswith("research_") or \
-       data.startswith("trade_") or data.startswith("backtest_") or data.startswith("settings_") or \
-       data.startswith("run_") or data.startswith("strategy_") or data.startswith("ct_") or \
-       data.startswith("risk_") or data.startswith("wallet_") or data.startswith("nt_") or \
-       data.startswith("sn_") or data.startswith("sizing_") or data.startswith("notif_") or \
-       data.startswith("api_") or data.startswith("export_") or data == "main_menu" or data == "dashboard" or \
-       data == "quick_research":
+       data.startswith("trade_") or data.startswith("trading_") or data.startswith("backtest_") or \
+       data.startswith("settings_") or data.startswith("run_") or data.startswith("strategy_") or \
+       data.startswith("ct_") or data.startswith("risk_") or data.startswith("wallet_") or \
+       data.startswith("nt_") or data.startswith("sn_") or data.startswith("sizing_") or \
+       data.startswith("notif_") or data.startswith("api_") or data.startswith("export_") or \
+       data.startswith("auto_copy") or data.startswith("trade_outcome_") or \
+       data == "main_menu" or data == "dashboard" or data == "quick_research":
         if not user_store.is_admin(chat_id) and not user_store.is_subscribed(chat_id):
             _require_subscription(chat_id)
             return
@@ -2045,6 +2592,91 @@ def _extended_handle_callback(callback_query):
             except Exception as e: tg.send(f"❌ {name}: {e}", chat_id)
         tg.send("✅ <b>Briefing complete.</b>", chat_id)
 
+    # ── LIVE TRADING CALLBACKS ──
+    elif data == "menu_trading":
+        show_trading_menu(chat_id)
+    elif data == "trading_buy_prompt":
+        show_buy_prompt(chat_id)
+    elif data == "trading_sell_prompt":
+        show_sell_prompt(chat_id)
+    elif data == "trading_positions":
+        show_trading_positions(chat_id)
+    elif data == "trading_orders":
+        show_trading_orders(chat_id)
+    elif data == "trading_history":
+        show_trade_history(chat_id)
+    elif data == "trading_cancel_all":
+        result = trading.cancel_all_orders()
+        tg.send("✅ All orders cancelled." if result["success"] else f"❌ {result['error']}", chat_id)
+        show_trading_orders(chat_id)
+    elif data == "trading_cancel_flow":
+        _waiting_for_trade.pop(str(chat_id), None)
+        show_trading_menu(chat_id)
+    elif data.startswith("trade_outcome_"):
+        outcome = data.replace("trade_outcome_", "")
+        state = _waiting_for_trade.get(str(chat_id))
+        if state and state.get("step") == "outcome":
+            market = state["market"]
+            token_id = None
+            for t in market["tokens"]:
+                if t["outcome"] == outcome:
+                    token_id = t["token_id"]
+                    break
+            if token_id:
+                state["outcome"] = outcome
+                state["token_id"] = token_id
+                state["step"] = "amount"
+                action = state["action"]
+                if action == "buy":
+                    tg.send(f"{'🟩 Buy' } — <b>Step 3/3</b>\n\n"
+                            f"📊 {market['question']}\n"
+                            f"🎯 Outcome: <b>{outcome}</b>\n\n"
+                            "Enter dollar amount (e.g., 25 or 100):", chat_id)
+                else:
+                    tg.send(f"🟥 Sell — <b>Step 3/3</b>\n\n"
+                            f"📊 {market['question']}\n"
+                            f"🎯 Outcome: <b>{outcome}</b>\n\n"
+                            "Enter number of shares to sell:", chat_id)
+            else:
+                tg.send("❌ Could not find that outcome.", chat_id)
+        else:
+            tg.send("❌ No active trade. Start with /buy or /sell.", chat_id)
+
+    # ── WALLET CALLBACKS ──
+    elif data == "menu_wallet":
+        show_wallet_menu(chat_id)
+    elif data == "wallet_create":
+        _handle("/create_wallet", chat_id)
+    elif data == "wallet_import_prompt":
+        _waiting_for_wallet[str(chat_id)] = {"action": "import", "step": "key"}
+        tg.send("🔑 <b>Import Wallet</b>\n\nSend your private key (0x...):", chat_id)
+    elif data == "wallet_balance":
+        _handle("/balance", chat_id)
+    elif data == "wallet_send_prompt":
+        _waiting_for_wallet[str(chat_id)] = {"action": "send", "step": "address"}
+        tg.send("📤 <b>Send USDC</b>\n\nEnter the recipient Polygon address:", chat_id)
+    elif data == "wallet_deposit":
+        _handle("/deposit", chat_id)
+    elif data == "wallet_export_prompt":
+        _handle("/export_keys", chat_id)
+
+    # ── AUTO COPY CALLBACKS ──
+    elif data == "menu_auto_copy":
+        show_auto_copy_menu(chat_id)
+    elif data == "auto_copy_on":
+        result = ce.enable_auto_copy(str(chat_id))
+        tg.send("✅ Auto-copy trading <b>enabled</b>!\n\nDefault: $25/trade, $200/day limit.", chat_id)
+        show_auto_copy_menu(chat_id)
+    elif data == "auto_copy_off":
+        ce.disable_auto_copy(str(chat_id))
+        tg.send("⏹ Auto-copy trading <b>disabled</b>.", chat_id)
+        show_auto_copy_menu(chat_id)
+    elif data == "auto_copy_settings_menu":
+        show_auto_copy_settings_menu(chat_id)
+    elif data == "auto_copy_stats":
+        stats = ce.get_auto_copy_stats(str(chat_id))
+        tg.send(ce.format_auto_copy_stats(stats), chat_id)
+
     # ── COPY TRADING CALLBACKS ──
     elif data == "ct_leaderboard":
         _handle("/ct_leaderboard", chat_id)
@@ -2166,6 +2798,26 @@ def _polling_loop():
                         if updates:
                             user_store.update_user(cid, updates)
 
+                    # Trade flow input (multi-step buy/sell)
+                    if not text.startswith("/") and str(cid) in _waiting_for_trade:
+                        try:
+                            handle_trade_input(cid, text)
+                        except Exception as e:
+                            print(f"[BOT] trade input error: {e}")
+                            tg.send(f"❌ Trade error: {e}", cid)
+                            _waiting_for_trade.pop(str(cid), None)
+                        continue
+
+                    # Wallet flow input (multi-step send/import)
+                    if not text.startswith("/") and str(cid) in _waiting_for_wallet:
+                        try:
+                            handle_wallet_input(cid, text)
+                        except Exception as e:
+                            print(f"[BOT] wallet input error: {e}")
+                            tg.send(f"❌ Wallet error: {e}", cid)
+                            _waiting_for_wallet.pop(str(cid), None)
+                        continue
+
                     # Research link input — auto-trigger Event Research when user sends Polymarket link ANYTIME
                     if not text.startswith("/") and "polymarket.com" in text.lower():
                         try:
@@ -2225,9 +2877,9 @@ def _polling_loop():
 
 def main():
     print("=" * 50)
-    print(" POLYTRAGENT — Polymarket AI Trading Agent v11")
-    print(" 5-Section Menu: Portfolio|Research|Trade|Backtest|Settings")
-    print(" PAID-ONLY ACCESS — $79.99/mo or Access Code")
+    print(" POLYTRAGENT — Polymarket AI Trading Agent v11.5")
+    print(" LIVE TRADING + Copy Trading + Wallet Management")
+    print(" PAID-ONLY ACCESS — $99/mo or Access Code")
     print("=" * 50)
 
     _kill_other_instances()
@@ -2262,13 +2914,22 @@ def main():
     except Exception as e:
         print(f"[BOOT] Leaderboard init error: {e}")
 
+    # Initialize trading engine
+    trade_status = "🟢 LIVE" if trading.is_trading_enabled() else "⚪ Disabled (set POLY_* env vars)"
+    trade_addr = trading.get_wallet_address() or "N/A"
+    print(f"[BOOT] Trading engine: {trade_status}")
+    if trade_addr != "N/A":
+        print(f"[BOOT] Trading wallet: {trade_addr}")
+
     stats = user_store.get_stats()
     ct_stats = ct.get_copy_stats()
     tg.send(
-        f"🤖 <b>Polytragent v11 Online</b>\n"
+        f"🤖 <b>Polytragent v11.5 Online</b>\n"
         f"🔒 <b>PAID-ONLY MODE</b>\n\n"
         f"📱 Menu Architecture\n"
-        f"🔬 Event Research | 📊 Portfolio | 📈 Strategies | 🔬 Research | ⚙️ Settings\n\n"
+        f"🔬 Research | 💰 Trade | 👛 Wallet | 📊 Portfolio | 🤖 Auto-Copy | ⚙️ Settings\n\n"
+        f"💰 Trading: {trade_status}\n"
+        f"👛 Wallet: <code>{trade_addr[:10]}...</code>\n\n"
         f"👥 Users: {stats['total_users']}\n"
         f"💎 Subscribers: {stats['active_subscribers']}\n"
         f"  └ Stripe: {stats.get('stripe_subscribers', 0)}\n"
