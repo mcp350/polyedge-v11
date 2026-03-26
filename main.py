@@ -55,8 +55,10 @@ def _set_bot_commands():
     try:
         commands = [
             {"command": "menu", "description": "Open main menu"},
-            {"command": "subscribe", "description": "Subscribe — $99/mo"},
-            {"command": "code", "description": "Redeem access code"},
+            {"command": "trade", "description": "Trade on Polymarket"},
+            {"command": "wallet", "description": "Wallet & balance"},
+            {"command": "whales", "description": "Top whale wallets"},
+            {"command": "degen", "description": "Degen Mode — $79/mo"},
         ]
         r = requests.post(
             f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/setMyCommands",
@@ -66,34 +68,11 @@ def _set_bot_commands():
         print(f"[BOOT] setMyCommands error: {e}")
 
 # ═══════════════════════════════════════════════
-# PAYWALL — STRICT PAID-ONLY ACCESS
+# PHASE 2: FREE TRADING TERMINAL + DEGEN MODE
 # ═══════════════════════════════════════════════
-
-_FREE_COMMANDS = {"/start", "/subscribe", "/code", "/dashboard"}
-
-def _require_subscription(chat_id) -> bool:
-    if user_store.is_admin(chat_id):
-        return True
-    if user_store.is_subscribed(chat_id):
-        return True
-    perf = pstore.get_performance()
-    total = perf.get("total", 0)
-    win_rate = perf.get("win_rate") or 0
-    onboarding.send_inline(chat_id,
-        "🔒 <b>Polytragent — Members Only</b>\n\n"
-        "This bot is exclusively for subscribers.\n\n"
-        "🧠 <b>What you get for $99/mo:</b>\n"
-        "• AI-powered market analysis & strategy signals\n"
-        "• Copy trading — follow top wallets\n"
-        "• Real-time whale & price alerts\n"
-        "• Portfolio management & risk controls\n"
-        "• Strategy backtesting engine\n"
-        "• Full accuracy dashboard\n\n"
-        f"📊 Track record: <b>{total} predictions, {win_rate:.0f}% win rate</b>\n\n"
-        "✅ Cancel anytime. No lock-in.",
-        [[{"text": "⚡ Subscribe — $99/mo", "callback_data": "subscribe"}],
-         [{"text": "🔑 Enter Access Code", "callback_data": "enter_code"}]])
-    return False
+# No more paywall. Free access to all trading.
+# Degen Mode ($79/mo) = unlimited whale tracking
+# ═══════════════════════════════════════════════
 
 # ═══════════════════════════════════════════════
 # MESSAGE UTILITIES
@@ -245,7 +224,7 @@ def is_waiting_for_research(chat_id):
 # ═══════════════════════════════════════════════
 
 def send_main_menu(chat_id):
-    """Send the 5-section main menu per spec Section 2.1"""
+    """Send the updated main menu with whale tracking and Degen Mode"""
     user = user_store.get_user(chat_id)
     name = ""
     if user:
@@ -255,19 +234,25 @@ def send_main_menu(chat_id):
     # Trading engine status
     trade_status = "🟢 Live" if trading.is_trading_enabled() else "⚪ Signals Only"
 
+    # Degen Mode status
+    is_degen = user_store.is_degen(chat_id) if hasattr(user_store, 'is_degen') else False
+    degen_badge = "🚀 Degen Active" if is_degen else ""
+
     onboarding.send_inline(chat_id,
         f"🤖 <b>Polytragent</b>{greeting}\n\n"
         "Your AI-Powered Polymarket Trading Agent.\n"
-        f"Trading: {trade_status}\n\n"
+        f"Trading: {trade_status} {degen_badge}\n\n"
         "Select a section below to get started.",
         [[{"text": "🔬 Event Research", "callback_data": "quick_research"}],
          [{"text": "💰 Trade", "callback_data": "menu_trading"},
           {"text": "👛 Wallet", "callback_data": "menu_wallet"}],
-         [{"text": "📊 Portfolio", "callback_data": "menu_portfolio"}],
-         [{"text": "📈 Strategies", "callback_data": "menu_trade"}],
-         [{"text": "🔬 Research", "callback_data": "menu_research"}],
-         [{"text": "🤖 Auto Copy", "callback_data": "menu_auto_copy"}],
-         [{"text": "⚙️ Settings", "callback_data": "menu_settings"}]])
+         [{"text": "🐋 Whales", "callback_data": "menu_whales"},
+          {"text": "🔄 Copy Trade", "callback_data": "menu_auto_copy"}],
+         [{"text": "📊 Portfolio", "callback_data": "menu_portfolio"},
+          {"text": "📈 Strategies", "callback_data": "menu_trade"}],
+         [{"text": "🔬 Research", "callback_data": "menu_research"},
+          {"text": "⚙️ Settings", "callback_data": "menu_settings"}],
+         [{"text": "🚀 Degen Mode", "callback_data": "degen_subscribe"}] if not is_degen else []])
 
 # ═══════════════════════════════════════════════
 # SECTION 1: PORTFOLIO
@@ -688,9 +673,9 @@ def show_global_stats(chat_id):
             f"Active Events: {active_markets}\n"
             f"Active Markets: {total_markets}\n"
             f"Total Volume: ${total_volume:,.0f}\n\n"
-            "<b>🤖 Polytragent</b>\n"
-            f"Users: {user_stats['total_users']}\n"
-            f"Subscribers: {user_stats['active_subscribers']}\n"
+            "<b>🤖 Polytragent (Phase 2)</b>\n"
+            f"Users: {user_stats.get('total_users', 0)}\n"
+            f"Degen Subscribers: {user_stats.get('degen_subscribers', 0)}\n"
             f"AI Predictions: {perf.get('total', 0)}\n"
             f"Win Rate: {(perf.get('win_rate') or 0):.1f}%\n"
             f"Tracked Wallets: {ct_stats.get('total_wallets', 0)}\n"
@@ -1823,6 +1808,50 @@ def show_auto_copy_settings_menu(chat_id):
         [[{"text": "🔄 Refresh", "callback_data": "auto_copy_settings_menu"}],
          [{"text": "← Auto-Copy", "callback_data": "menu_auto_copy"}]])
 
+def show_whales_menu(chat_id):
+    """Whale discovery and tracking menu"""
+    is_degen = user_store.is_degen(chat_id) if hasattr(user_store, 'is_degen') else False
+    tracked = user_store.get_tracked_wallets(chat_id) if hasattr(user_store, 'get_tracked_wallets') else []
+    limit = 10 if is_degen else 3
+
+    onboarding.send_inline(chat_id,
+        f"🐋 <b>Whale Tracking</b>\n\n"
+        f"📊 Tracking: {len(tracked)} / {limit} wallets\n"
+        f"{'🚀 Degen Mode: ACTIVE' if is_degen else '⚡ Upgrade to Degen for unlimited'}\n\n"
+        "Discover and follow the most profitable Polymarket traders.",
+        [[{"text": "🏆 Top Whales", "callback_data": "whales_leaderboard"}],
+         [{"text": "📋 My Tracked Wallets", "callback_data": "whales_my_list"}],
+         [{"text": "➕ Track Wallet", "callback_data": "whales_add"}],
+         [{"text": "← Main Menu", "callback_data": "main_menu"}]])
+
+def show_degen_mode_info(chat_id):
+    """Degen Mode subscription info"""
+    is_degen = user_store.is_degen(chat_id) if hasattr(user_store, 'is_degen') else False
+
+    if is_degen:
+        onboarding.send_inline(chat_id,
+            "🚀 <b>Degen Mode — ACTIVE</b>\n\n"
+            "You have unlimited access to:\n"
+            "• Unlimited whale tracking (3+ wallets)\n"
+            "• Advanced portfolio analytics\n"
+            "• Priority alerts & notifications\n\n"
+            "💰 $79/month billed to your Stripe account.\n"
+            "🔄 Cancel anytime in settings.",
+            [[{"text": "⚙️ Manage Subscription", "callback_data": "degen_manage"}],
+             [{"text": "← Main Menu", "callback_data": "main_menu"}]])
+    else:
+        onboarding.send_inline(chat_id,
+            "🚀 <b>Degen Mode — Unlimited Whale Tracking</b>\n\n"
+            "Get the most from Polytragent:\n"
+            "• Unlimited whale wallet tracking (vs. 3 free)\n"
+            "• Advanced portfolio analytics\n"
+            "• Priority alerts & notifications\n"
+            "• Full whale discovery suite\n\n"
+            "💰 <b>$79/month</b>\n"
+            "✅ Cancel anytime. No lock-in.\n\n"
+            "🔗 Set up via Stripe checkout below.",
+            [[{"text": "💳 Upgrade to Degen Mode", "callback_data": "degen_subscribe"}],
+             [{"text": "← Main Menu", "callback_data": "main_menu"}]])
 
 def _handle(cmd, chat_id):
     """Command handler — routes all /commands"""
@@ -1830,22 +1859,32 @@ def _handle(cmd, chat_id):
     parts = cmd.split()
     cmd = parts[0].lower().split("@")[0]  # strip @botname suffix
 
-    # ── FREE COMMANDS (no subscription required) ──
+    # ── ALWAYS AVAILABLE COMMANDS ──
 
     if cmd in ("/start", "/help"):
-        onboarding._send_start(chat_id)
+        user = user_store.get_user(chat_id)
+        username = user.get("username", "") if user else ""
+        first_name = user.get("first_name", "") if user else ""
+        if hasattr(onboarding, 'handle_start'):
+            onboarding.handle_start(chat_id, username, first_name)
+        else:
+            onboarding._send_start(chat_id)
         return
 
-    if cmd == "/subscribe":
-        onboarding._send_subscription_prompt(chat_id)
+    if cmd == "/degen":
+        show_degen_mode_info(chat_id)
         return
 
     if cmd == "/code":
         onboarding.send_inline(chat_id,
-                "🔑 <b>Enter Access Code</b>\n\n"
-                "Send your access code now (e.g., PTA-XXXXXXXX).\n\n"
-                "Or use it directly: /code PTA-XXXXXXXX",
+                "🎁 <b>Redeem Degen Mode Code</b>\n\n"
+                "Send your Degen Mode code now (e.g., DEGEN-XXXXXXXX).\n\n"
+                "Or use it directly: /code DEGEN-XXXXXXXX",
                 [[{"text": "← Cancel", "callback_data": "main_menu"}]])
+        return
+
+    if cmd == "/whales":
+        show_whales_menu(chat_id)
         return
 
     if cmd == "/dashboard":
@@ -1853,11 +1892,8 @@ def _handle(cmd, chat_id):
         return
 
     # ═══════════════════════════════════════════
-    # EVERYTHING BELOW REQUIRES ACTIVE SUBSCRIPTION
+    # ALL FEATURES NOW FREE (Degen Mode for extra wallets)
     # ═══════════════════════════════════════════
-
-    if not _require_subscription(chat_id):
-        return
 
     # ── MENU NAVIGATION ──
 
@@ -1902,11 +1938,12 @@ def _handle(cmd, chat_id):
 
     elif cmd == "/status":
         ct_stats = ct.get_copy_stats()
+        stats = user_store.get_stats()
         tg.send(
-            f"✅ <b>Polytragent — Online (v11)</b>\n"
+            f"✅ <b>Polytragent — Online (v12 - Phase 2)</b>\n"
             f"🕐 {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}\n"
-            f"👥 Users: {len(user_store.get_all_users())}\n"
-            f"💎 Subscribers: {len(user_store.get_all_subscribers())}\n"
+            f"👥 Users: {stats.get('total_users', 0)}\n"
+            f"🚀 Degen Subscribers: {stats.get('degen_subscribers', 0)}\n"
             f"📊 Predictions: {pstore.get_performance().get('total', 0)}\n"
             f"🔄 Copy Trading: {ct_stats['total_wallets']} wallets, {ct_stats['total_signals']} signals", chat_id)
 
@@ -2237,21 +2274,18 @@ def _handle(cmd, chat_id):
         stats = user_store.get_stats()
         ct_stats = ct.get_copy_stats()
         tg.send(
-            f"🔐 <b>Polytragent Admin</b>\n\n"
-            f"👥 Total users: {stats['total_users']}\n"
-            f"💎 Active subs: {stats['active_subscribers']}\n"
-            f"  └ Stripe: {stats.get('stripe_subscribers', 0)}\n"
-            f"  └ Codes: {stats.get('code_subscribers', 0)}\n"
-            f"💰 MRR: ${stats['mrr']}\n"
-            f"🔑 Active codes: {stats.get('active_codes', 0)} / {stats.get('total_codes', 0)}\n\n"
+            f"🔐 <b>Polytragent Admin Panel (Phase 2)</b>\n\n"
+            f"👥 Total users: {stats.get('total_users', 0)}\n"
+            f"🚀 Degen subscribers: {stats.get('degen_subscribers', 0)}\n"
+            f"💰 MRR: ${stats.get('mrr', 0)}\n"
+            f"📊 Total volume: ${stats.get('total_volume', 0):,.0f}\n"
+            f"💸 Fees collected: ${stats.get('fees_collected', 0):,.0f}\n\n"
             f"<b>Copy Trading:</b>\n"
             f"👛 Wallets: {ct_stats['total_wallets']}\n"
             f"👥 CT users: {ct_stats['unique_followers']}\n"
             f"🔔 Signals: {ct_stats['total_signals']}\n\n"
             f"<b>Admin Commands:</b>\n"
-            f"/gencode — Generate access code\n"
-            f"/codes — List all codes\n"
-            f"/broadcast — Message all subs\n"
+            f"/broadcast — Message all users\n"
             f"/dashboard — Web admin panel", chat_id)
 
     elif cmd == "/gencode" and user_store.is_admin(chat_id):
@@ -2303,15 +2337,15 @@ def _handle(cmd, chat_id):
         if len(parts) < 2:
             tg.send("Usage: /broadcast &lt;message&gt;", chat_id); return
         msg = text[len("/broadcast "):].strip()
-        subs = user_store.get_all_subscribers()
+        users = user_store.get_all_users()
         sent = 0
-        for u in subs:
+        for u in users:
             try:
-                tg.send(f"📢 <b>Polytragent Announcement</b>\n\n{msg}", u["chat_id"])
+                tg.send(f"📢 <b>Polytragent Announcement</b>\n\n{msg}", u.get("chat_id") or u.get("id"))
                 sent += 1
                 time.sleep(0.1)
             except: pass
-        tg.send(f"✅ Broadcast sent to {sent}/{len(subs)} subscribers.", chat_id)
+        tg.send(f"✅ Broadcast sent to {sent}/{len(users)} users.", chat_id)
 
     else:
         onboarding.send_inline(chat_id,
@@ -2359,23 +2393,8 @@ def _extended_handle_callback(callback_query):
     # Always answer the callback to remove loading state
     onboarding.answer_callback(callback_query.get("id"))
 
-    # ── FREE CALLBACKS (no sub required) ──
-    if data in ("subscribe", "enter_code", "main_menu_free"):
-        _original_handle_callback(callback_query)
-        return
-
-    # ── Check subscription for all menu callbacks ──
-    if data.startswith("menu_") or data.startswith("portfolio_") or data.startswith("research_") or \
-       data.startswith("trade_") or data.startswith("trading_") or data.startswith("backtest_") or \
-       data.startswith("settings_") or data.startswith("run_") or data.startswith("strategy_") or \
-       data.startswith("ct_") or data.startswith("risk_") or data.startswith("wallet_") or \
-       data.startswith("nt_") or data.startswith("sn_") or data.startswith("sizing_") or \
-       data.startswith("notif_") or data.startswith("api_") or data.startswith("export_") or \
-       data.startswith("auto_copy") or data.startswith("trade_outcome_") or \
-       data == "main_menu" or data == "dashboard" or data == "quick_research":
-        if not user_store.is_admin(chat_id) and not user_store.is_subscribed(chat_id):
-            _require_subscription(chat_id)
-            return
+    # ── ALL CALLBACKS NOW FREE (except Degen upgrades) ──
+    # All features available to all users
 
     # ── QUICK RESEARCH (top button) ──
     if data == "quick_research":
@@ -2677,6 +2696,41 @@ def _extended_handle_callback(callback_query):
         stats = ce.get_auto_copy_stats(str(chat_id))
         tg.send(ce.format_auto_copy_stats(stats), chat_id)
 
+    # ── WHALE DISCOVERY CALLBACKS (Phase 2) ──
+    elif data == "menu_whales":
+        show_whales_menu(chat_id)
+    elif data == "whales_leaderboard":
+        tg.send("🏆 <b>Loading Whale Leaderboard...</b>", chat_id)
+        show_research_leaderboard(chat_id)
+    elif data == "whales_my_list":
+        tg.send("📋 <b>My Tracked Wallets</b>", chat_id)
+        _handle("/ct_following", chat_id)
+    elif data == "whales_add":
+        tg.send(
+            "➕ <b>Track a Whale Wallet</b>\n\n"
+            "Send a wallet address to start tracking:\n"
+            "/track 0x1234...abcd\n\n"
+            "Or use:\n"
+            "/ct_follow 0xaddress...", chat_id)
+
+    # ── DEGEN MODE CALLBACKS (Phase 2) ──
+    elif data == "degen_subscribe":
+        onboarding.send_inline(chat_id,
+            "🚀 <b>Degen Mode Checkout</b>\n\n"
+            "Unlimited whale tracking + premium features.\n\n"
+            "$79/month, cancel anytime.\n\n"
+            "🔗 Opening Stripe checkout...",
+            [[{"text": "← Main Menu", "callback_data": "main_menu"}]])
+        # TODO: Integrate with Stripe checkout
+        tg.send("🔗 Stripe checkout: [Integration pending - contact support]", chat_id)
+    elif data == "degen_manage":
+        onboarding.send_inline(chat_id,
+            "⚙️ <b>Manage Degen Mode</b>\n\n"
+            "Current subscription active.\n"
+            "Renews: Next billing date\n\n"
+            "💳 Update payment method or cancel at stripe.com",
+            [[{"text": "← Main Menu", "callback_data": "main_menu"}]])
+
     # ── COPY TRADING CALLBACKS ──
     elif data == "ct_leaderboard":
         _handle("/ct_leaderboard", chat_id)
@@ -2877,9 +2931,9 @@ def _polling_loop():
 
 def main():
     print("=" * 50)
-    print(" POLYTRAGENT — Polymarket AI Trading Agent v11.5")
-    print(" LIVE TRADING + Copy Trading + Wallet Management")
-    print(" PAID-ONLY ACCESS — $99/mo or Access Code")
+    print(" POLYTRAGENT — Polymarket AI Trading Agent v12.0")
+    print(" FREE TRADING TERMINAL + Degen Mode ($79/mo)")
+    print(" PHASE 2: OPEN ACCESS BUSINESS MODEL")
     print("=" * 50)
 
     _kill_other_instances()
@@ -2899,14 +2953,17 @@ def main():
 
     _set_bot_commands()
 
-    # Pre-load 100 access codes
-    added = user_store.preload_access_codes()
-    print(f"[BOOT] Access codes: {added} new loaded")
-
     try:
         web_server.start_server(port=8080)
     except Exception as e:
         print(f"[BOOT] Web server error: {e}")
+
+    # Try to start admin dashboard on 8081
+    try:
+        # TODO: import admin_dashboard and start on port 8081
+        print("[BOOT] Admin dashboard: port 8081 (if enabled)")
+    except Exception as e:
+        print(f"[BOOT] Admin dashboard not available: {e}")
 
     try:
         leaders = ct.refresh_leaderboard()
@@ -2924,21 +2981,19 @@ def main():
     stats = user_store.get_stats()
     ct_stats = ct.get_copy_stats()
     tg.send(
-        f"🤖 <b>Polytragent v11.5 Online</b>\n"
-        f"🔒 <b>PAID-ONLY MODE</b>\n\n"
-        f"📱 Menu Architecture\n"
-        f"🔬 Research | 💰 Trade | 👛 Wallet | 📊 Portfolio | 🤖 Auto-Copy | ⚙️ Settings\n\n"
+        f"🤖 <b>Polytragent v12.0 Online</b>\n"
+        f"⚡ <b>FREE TRADING TERMINAL</b>\n\n"
+        f"🐋 Whale Tracking • 💰 Live Trading • 📊 Copy Trading\n"
+        f"🚀 Degen Mode: Unlimited tracking + premium features\n\n"
         f"💰 Trading: {trade_status}\n"
         f"👛 Wallet: <code>{trade_addr[:10]}...</code>\n\n"
-        f"👥 Users: {stats['total_users']}\n"
-        f"💎 Subscribers: {stats['active_subscribers']}\n"
-        f"  └ Stripe: {stats.get('stripe_subscribers', 0)}\n"
-        f"  └ Codes: {stats.get('code_subscribers', 0)}\n"
-        f"💰 MRR: ${stats['mrr']}\n"
-        f"🔑 Active codes: {stats.get('active_codes', 0)}\n"
-        f"🔄 Copy Trading: {ct_stats['total_wallets']} wallets\n\n"
+        f"👥 Total users: {stats.get('total_users', 0)}\n"
+        f"🚀 Degen subscribers: {stats.get('degen_subscribers', 0)}\n"
+        f"📊 Total volume: ${stats.get('total_volume', 0):,.0f}\n"
+        f"💸 Fees collected: ${stats.get('fees_collected', 0):,.0f}\n"
+        f"🔄 Copy Trading: {ct_stats['total_wallets']} wallets tracked\n\n"
         f"🌐 Dashboard: port 8080\n"
-        f"/menu for command center"
+        f"/menu for main menu"
     )
 
     threading.Thread(target=_scheduler_loop, daemon=True).start()

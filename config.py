@@ -16,11 +16,21 @@ POLY_PRIVATE_KEY = os.environ.get("POLY_PRIVATE_KEY", "")
 # ── Polygon Network ──
 POLYGON_RPC_URL = os.environ.get("POLYGON_RPC_URL", "https://polygon-rpc.com")
 
-# ── Stripe ──
+# ── Stripe (Degen Mode) ──
 STRIPE_SECRET_KEY = os.environ.get("STRIPE_SECRET_KEY", "")
 STRIPE_WEBHOOK_SECRET = os.environ.get("STRIPE_WEBHOOK_SECRET", "")
-STRIPE_PRICE_ID = os.environ.get("STRIPE_PRICE_ID", "")
+STRIPE_DEGEN_PRICE_ID = os.environ.get("STRIPE_DEGEN_PRICE_ID", "")
+DEGEN_MODE_PRICE = 79  # $79/month for degen mode
 BOT_DOMAIN = os.environ.get("BOT_DOMAIN", "https://polytragent.com")
+
+# ── Trading Fees ──
+TRADE_FEE_BUY = 0.01  # 1% buy fee
+TRADE_FEE_SELL = 0.01  # 1% sell fee
+FEE_WALLET_ADDRESS = os.environ.get("FEE_WALLET_ADDRESS", "")
+
+# ── Whale Tracking Limits ──
+FREE_WALLET_TRACKING_LIMIT = 20  # Free users can track up to 20 whale wallets
+DEGEN_WALLET_TRACKING_LIMIT = 9999  # Unlimited for degen mode
 
 # ── Module 1: Market Scanner ──
 SCAN_INTERVAL_MINUTES = int(os.environ.get("SCAN_INTERVAL_MINUTES", "15"))

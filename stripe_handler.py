@@ -12,7 +12,7 @@ import user_store
 # Safely read Stripe config — won't crash if keys missing from config.py
 STRIPE_SECRET_KEY    = getattr(config, "STRIPE_SECRET_KEY", "") or os.environ.get("STRIPE_SECRET_KEY", "")
 STRIPE_WEBHOOK_SECRET = getattr(config, "STRIPE_WEBHOOK_SECRET", "") or os.environ.get("STRIPE_WEBHOOK_SECRET", "")
-STRIPE_PRICE_ID      = getattr(config, "STRIPE_PRICE_ID", "") or os.environ.get("STRIPE_PRICE_ID", "")
+STRIPE_PRICE_ID      = getattr(config, "STRIPE_DEGEN_PRICE_ID", "") or os.environ.get("STRIPE_DEGEN_PRICE_ID", "") or getattr(config, "STRIPE_PRICE_ID", "") or os.environ.get("STRIPE_PRICE_ID", "")
 BOT_DOMAIN           = getattr(config, "BOT_DOMAIN", "https://polytragent.com") or os.environ.get("BOT_DOMAIN", "https://polytragent.com")
 
 if STRIPE_SECRET_KEY:
@@ -108,6 +108,7 @@ def handle_webhook(payload: bytes, sig_header: str) -> dict:
         if chat_id:
             user_store.activate_subscription(
                 chat_id=chat_id,
+                plan="degen",
                 stripe_customer_id=customer_id,
                 stripe_subscription_id=subscription_id,
             )
@@ -121,6 +122,7 @@ def handle_webhook(payload: bytes, sig_header: str) -> dict:
         if chat_id:
             user_store.activate_subscription(
                 chat_id=chat_id,
+                plan="degen",
                 stripe_customer_id=customer_id,
                 stripe_subscription_id=sub_id,
             )

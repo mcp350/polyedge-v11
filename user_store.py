@@ -1,14 +1,20 @@
 """
-USER STORE v3 — Multi-user management with Stripe + Access Codes
+USER STORE v4 — New Polytragent Business Model
 Storage: users.json alongside main.py
 Brand: Polytragent
+
+Business Model:
+- FREE: Full access to basic features + 20 whale wallet tracking
+- DEGEN MODE ($79/mo): Unlimited whale tracking, auto-copy execution, AI trade finder
 """
 
 import json, os, time, secrets, hashlib, string, random
 from datetime import datetime, timezone, timedelta
 
 FILE = os.path.join(os.path.dirname(__file__), "users.json")
-PLAN_PRICE = 99  # $99/mo single tier
+DEGEN_PRICE = 79  # $79/mo for Degen Mode
+FREE_WHALE_LIMIT = 20
+DEGEN_WHALE_LIMIT = 9999
 
 # ═══════════════════════════════════════════════
 # STORAGE
@@ -16,18 +22,43 @@ PLAN_PRICE = 99  # $99/mo single tier
 
 def _load():
     if not os.path.exists(FILE):
-        return {"users": {}, "tokens": {}, "access_codes": {},
-                "stats": {"total_signups": 0, "total_paid": 0}}
+        return {
+            "users": {},
+            "tokens": {},
+            "access_codes": {},
+            "stats": {
+                "total_signups": 0,
+                "total_degen_subscribers": 0,
+                "total_volume": 0,
+                "total_fees_collected": 0,
+            }
+        }
     try:
         with open(FILE) as f:
             data = json.load(f)
-        # Ensure access_codes key exists (migration)
+        # Ensure required keys exist (migration)
         if "access_codes" not in data:
             data["access_codes"] = {}
+        if "stats" not in data:
+            data["stats"] = {
+                "total_signups": 0,
+                "total_degen_subscribers": 0,
+                "total_volume": 0,
+                "total_fees_collected": 0,
+            }
         return data
     except:
-        return {"users": {}, "tokens": {}, "access_codes": {},
-                "stats": {"total_signups": 0, "total_paid": 0}}
+        return {
+            "users": {},
+            "tokens": {},
+            "access_codes": {},
+            "stats": {
+                "total_signups": 0,
+                "total_degen_subscribers": 0,
+                "total_volume": 0,
+                "total_fees_collected": 0,
+            }
+        }
 
 def _save(data):
     with open(FILE, "w") as f:
@@ -36,6 +67,10 @@ def _save(data):
 # ═══════════════════════════════════════════════
 # USER MANAGEMENT
 # ═══════════════════════════════════════════════
+
+def _generate_wallet_address() -> str:
+    """Generate a unique wallet address for the user."""
+    return "0x" + secrets.token_hex(20)
 
 def get_user(chat_id: str) -> dict:
     data = _load()
@@ -46,27 +81,40 @@ def create_user(chat_id: str, username: str = "", first_name: str = "") -> dict:
     cid = str(chat_id)
     if cid in data["users"]:
         return data["users"][cid]
+
     user = {
         "chat_id": cid,
         "username": username,
         "first_name": first_name,
+        "wallet_address": _generate_wallet_address(),
         "created_at": datetime.now(timezone.utc).isoformat(),
         "subscription": {
-            "status": "inactive",       # inactive | active | cancelled | past_due
+            "plan": "",  # "" (free) or "degen"
+            "status": "active",  # All users start with free access
             "stripe_customer_id": "",
             "stripe_subscription_id": "",
-            "plan": "",                 # "" | "pro"
-            "started_at": "",
+            "started_at": datetime.now(timezone.utc).isoformat(),
             "expires_at": "",
             "cancel_at_period_end": False,
-            "access_code": "",          # which code was used
+            "access_code": "",  # For degen gifting
         },
         "onboarding": {
-            "step": "welcome",           # welcome | categories | complete
-            "categories": [],            # selected categories
+            "step": "welcome",
+            "categories": [],
             "completed_at": "",
         },
-        "dashboard_token": "",           # for web dashboard login
+        "dashboard_token": "",
+        "whale_tracking": {
+            "tracked_wallets": [],
+            "limit": FREE_WHALE_LIMIT,
+        },
+        "trading_stats": {
+            "total_buys": 0,
+            "total_sells": 0,
+            "total_volume": 0,
+            "total_fees_paid": 0,
+            "total_pnl": 0,
+        },
         "total_signals_received": 0,
         "last_active": datetime.now(timezone.utc).isoformat(),
     }
@@ -89,13 +137,27 @@ def update_user(chat_id: str, updates: dict):
     _save(data)
 
 def is_subscribed(chat_id: str) -> bool:
+    """
+    ALL users now have subscriptions (free tier is default).
+    Returns True for everyone.
+    Use is_degen() to check for premium tier.
+    """
+    user = get_user(str(chat_id))
+    return user is not None
+
+def is_degen(chat_id: str) -> bool:
+    """Check if user has active Degen Mode subscription."""
     user = get_user(str(chat_id))
     if not user:
         return False
+
     sub = user.get("subscription", {})
+    plan = sub.get("plan", "")
     status = sub.get("status", "")
-    if status not in ("active", "past_due"):
+
+    if plan != "degen" or status not in ("active", "past_due"):
         return False
+
     # Check expiry for code-based subs
     expires = sub.get("expires_at", "")
     if expires:
@@ -106,43 +168,167 @@ def is_subscribed(chat_id: str) -> bool:
                 return False
         except:
             pass
+
     return True
 
-def activate_subscription(chat_id: str, stripe_customer_id: str = "",
+def get_wallet_tracking_limit(chat_id: str) -> int:
+    """Get the whale wallet tracking limit for this user."""
+    if is_degen(chat_id):
+        return DEGEN_WHALE_LIMIT
+    return FREE_WHALE_LIMIT
+
+def activate_subscription(chat_id: str, plan: str = "degen", stripe_customer_id: str = "",
                           stripe_subscription_id: str = "", expires_at: str = "",
                           access_code: str = ""):
+    """
+    Activate a subscription. Plan can be "degen" or "" (free is default).
+    For degen: can be paid (stripe) or gifted (access_code).
+    """
     data = _load()
     cid = str(chat_id)
     if cid not in data["users"]:
         return
+
     data["users"][cid]["subscription"] = {
+        "plan": plan,
         "status": "active",
         "stripe_customer_id": stripe_customer_id,
         "stripe_subscription_id": stripe_subscription_id,
-        "plan": "pro",
         "started_at": datetime.now(timezone.utc).isoformat(),
         "expires_at": expires_at,
         "cancel_at_period_end": False,
         "access_code": access_code,
     }
-    data["stats"]["total_paid"] = data["stats"].get("total_paid", 0) + 1
+
+    # Update whale tracking limit
+    if plan == "degen":
+        data["users"][cid]["whale_tracking"]["limit"] = DEGEN_WHALE_LIMIT
+        data["stats"]["total_degen_subscribers"] = data["stats"].get("total_degen_subscribers", 0) + 1
+    else:
+        data["users"][cid]["whale_tracking"]["limit"] = FREE_WHALE_LIMIT
+
     _save(data)
 
 def deactivate_subscription(chat_id: str):
+    """Deactivate Degen Mode subscription (user reverts to free tier)."""
     data = _load()
     cid = str(chat_id)
     if cid not in data["users"]:
         return
-    data["users"][cid]["subscription"]["status"] = "cancelled"
+
+    was_degen = data["users"][cid]["subscription"].get("plan") == "degen"
+
+    data["users"][cid]["subscription"] = {
+        "plan": "",
+        "status": "cancelled",
+        "stripe_customer_id": "",
+        "stripe_subscription_id": "",
+        "started_at": "",
+        "expires_at": "",
+        "cancel_at_period_end": False,
+        "access_code": "",
+    }
+
+    # Reset whale tracking limit to free tier
+    data["users"][cid]["whale_tracking"]["limit"] = FREE_WHALE_LIMIT
+
+    # Decrement degen counter if applicable
+    if was_degen:
+        current = data["stats"].get("total_degen_subscribers", 0)
+        data["stats"]["total_degen_subscribers"] = max(0, current - 1)
+
     _save(data)
 
 # ═══════════════════════════════════════════════
-# ACCESS CODE SYSTEM
+# TRADING STATS
+# ═══════════════════════════════════════════════
+
+def record_trade(chat_id: str, amount: float, fee: float, side: str):
+    """
+    Record a trade execution.
+    side: "buy" or "sell"
+    amount: trade amount in USD
+    fee: fee paid in USD
+    """
+    data = _load()
+    cid = str(chat_id)
+    if cid not in data["users"]:
+        return
+
+    stats = data["users"][cid]["trading_stats"]
+
+    if side == "buy":
+        stats["total_buys"] += 1
+    elif side == "sell":
+        stats["total_sells"] += 1
+
+    stats["total_volume"] += amount
+    stats["total_fees_paid"] += fee
+
+    # Update platform stats
+    data["stats"]["total_volume"] = data["stats"].get("total_volume", 0) + amount
+    data["stats"]["total_fees_collected"] = data["stats"].get("total_fees_collected", 0) + fee
+
+    _save(data)
+
+def get_trading_stats(chat_id: str) -> dict:
+    """Get trading stats for a user."""
+    user = get_user(str(chat_id))
+    if not user:
+        return {}
+    return user.get("trading_stats", {})
+
+# ═══════════════════════════════════════════════
+# WHALE WALLET TRACKING
+# ═══════════════════════════════════════════════
+
+def add_tracked_wallet(chat_id: str, wallet_address: str) -> dict:
+    """Add a whale wallet to track. Returns {"status": "ok"|"error", "message": "..."}"""
+    user = get_user(str(chat_id))
+    if not user:
+        return {"status": "error", "message": "User not found."}
+
+    tracked = user["whale_tracking"]["tracked_wallets"]
+    limit = user["whale_tracking"]["limit"]
+
+    if len(tracked) >= limit:
+        return {"status": "error", "message": f"Reached wallet tracking limit ({limit}). Upgrade to Degen Mode for unlimited."}
+
+    if wallet_address in tracked:
+        return {"status": "error", "message": "Already tracking this wallet."}
+
+    tracked.append(wallet_address)
+    update_user(str(chat_id), {"whale_tracking": {"tracked_wallets": tracked}})
+    return {"status": "ok", "message": f"Now tracking {wallet_address}"}
+
+def remove_tracked_wallet(chat_id: str, wallet_address: str) -> dict:
+    """Remove a whale wallet from tracking."""
+    user = get_user(str(chat_id))
+    if not user:
+        return {"status": "error", "message": "User not found."}
+
+    tracked = user["whale_tracking"]["tracked_wallets"]
+    if wallet_address in tracked:
+        tracked.remove(wallet_address)
+        update_user(str(chat_id), {"whale_tracking": {"tracked_wallets": tracked}})
+        return {"status": "ok", "message": f"Stopped tracking {wallet_address}"}
+
+    return {"status": "error", "message": "Wallet not in tracking list."}
+
+def get_tracked_wallets(chat_id: str) -> list:
+    """Get list of tracked wallets for a user."""
+    user = get_user(str(chat_id))
+    if not user:
+        return []
+    return user.get("whale_tracking", {}).get("tracked_wallets", [])
+
+# ═══════════════════════════════════════════════
+# ACCESS CODE SYSTEM (for Degen gifting)
 # ═══════════════════════════════════════════════
 
 def generate_access_code(created_by: str = "admin", max_uses: int = 1,
                          duration_days: int = 30, note: str = "") -> str:
-    """Generate a new access code. Returns the code string."""
+    """Generate a new access code for Degen Mode gifting. Returns the code string."""
     code = "PTA-" + "".join(random.choices(string.ascii_uppercase + string.digits, k=8))
     data = _load()
     data["access_codes"][code] = {
@@ -152,7 +338,7 @@ def generate_access_code(created_by: str = "admin", max_uses: int = 1,
         "max_uses": max_uses,
         "uses": 0,
         "used_by": [],
-        "duration_days": duration_days,  # how many days of access per redemption
+        "duration_days": duration_days,
         "note": note,
         "active": True,
     }
@@ -160,7 +346,7 @@ def generate_access_code(created_by: str = "admin", max_uses: int = 1,
     return code
 
 def redeem_access_code(chat_id: str, code: str) -> dict:
-    """Redeem an access code. Returns {"status": "ok"|"error", "message": "..."}"""
+    """Redeem a Degen Mode access code. Returns {"status": "ok"|"error", "message": "..."}"""
     data = _load()
     cid = str(chat_id)
     code = code.strip().upper()
@@ -179,11 +365,10 @@ def redeem_access_code(chat_id: str, code: str) -> dict:
     if cid in ac.get("used_by", []):
         return {"status": "error", "message": "You've already used this code."}
 
-    # Check if user already has active subscription
-    if is_subscribed(cid):
-        return {"status": "error", "message": "You already have an active subscription!"}
+    if cid not in data["users"]:
+        return {"status": "error", "message": "User not found. Send /start first."}
 
-    # Activate subscription
+    # Activate Degen Mode subscription
     duration = ac.get("duration_days", 30)
     expires = (datetime.now(timezone.utc) + timedelta(days=duration)).isoformat()
 
@@ -192,26 +377,24 @@ def redeem_access_code(chat_id: str, code: str) -> dict:
     ac["used_by"].append(cid)
     data["access_codes"][code] = ac
 
-    # Activate user subscription
-    if cid not in data["users"]:
-        return {"status": "error", "message": "User not found. Send /start first."}
-
+    # Activate Degen Mode for user
     data["users"][cid]["subscription"] = {
+        "plan": "degen",
         "status": "active",
         "stripe_customer_id": "",
         "stripe_subscription_id": "",
-        "plan": "pro",
         "started_at": datetime.now(timezone.utc).isoformat(),
         "expires_at": expires,
         "cancel_at_period_end": False,
         "access_code": code,
     }
-    data["stats"]["total_paid"] = data["stats"].get("total_paid", 0) + 1
+    data["users"][cid]["whale_tracking"]["limit"] = DEGEN_WHALE_LIMIT
+    data["stats"]["total_degen_subscribers"] = data["stats"].get("total_degen_subscribers", 0) + 1
     _save(data)
 
     return {
         "status": "ok",
-        "message": f"Access granted for {duration} days!",
+        "message": f"Degen Mode activated for {duration} days!",
         "expires_at": expires,
         "duration_days": duration,
     }
@@ -234,7 +417,7 @@ def get_access_code(code: str) -> dict:
     return data.get("access_codes", {}).get(code.strip().upper())
 
 def preload_access_codes():
-    """Pre-load 100 access codes on boot if not already loaded."""
+    """Pre-load 100 Degen Mode access codes on boot if not already loaded."""
     CODES = [
         "PTA-FLP4DJAT","PTA-OPW4B8N6","PTA-UUSPYU89","PTA-MWIUAPI3","PTA-C5Q38DF4",
         "PTA-WWPOPNP4","PTA-Q7ZIK3OC","PTA-47QKKGH2","PTA-TK0PV9TN","PTA-J1NIOJCR",
@@ -269,7 +452,7 @@ def preload_access_codes():
                 "uses": 0,
                 "used_by": [],
                 "duration_days": 30,
-                "note": "Pre-loaded batch v11.2",
+                "note": "Degen Mode gift code v4.0",
                 "active": True,
             }
             added += 1
@@ -285,8 +468,13 @@ def set_onboarding_step(chat_id: str, step: str):
     update_user(str(chat_id), {"onboarding": {"step": step}})
 
 def set_categories(chat_id: str, categories: list):
-    update_user(str(chat_id), {"onboarding": {"categories": categories, "step": "complete",
-                                                "completed_at": datetime.now(timezone.utc).isoformat()}})
+    update_user(str(chat_id), {
+        "onboarding": {
+            "categories": categories,
+            "step": "complete",
+            "completed_at": datetime.now(timezone.utc).isoformat()
+        }
+    })
 
 def get_categories(chat_id: str) -> list:
     user = get_user(str(chat_id))
@@ -305,7 +493,6 @@ def generate_dashboard_token(chat_id: str) -> str:
     if cid not in data["users"]:
         return ""
     data["users"][cid]["dashboard_token"] = token
-    # Reverse lookup
     data["tokens"][token] = cid
     _save(data)
     return token
@@ -321,33 +508,49 @@ def get_user_by_token(token: str) -> dict:
 # ADMIN / STATS
 # ═══════════════════════════════════════════════
 
-def get_all_subscribers() -> list:
-    data = _load()
-    return [u for u in data["users"].values()
-            if u.get("subscription", {}).get("status") in ("active", "past_due")]
-
 def get_all_users() -> list:
+    """Get all users on the platform."""
     data = _load()
     return list(data["users"].values())
 
-def get_stats() -> dict:
+def get_platform_stats() -> dict:
+    """Get comprehensive platform statistics."""
     data = _load()
     users = list(data["users"].values())
-    active = [u for u in users if u.get("subscription", {}).get("status") == "active"]
-    code_users = [u for u in active if u.get("subscription", {}).get("access_code")]
-    stripe_users = [u for u in active if not u.get("subscription", {}).get("access_code")]
+    degen_users = [u for u in users if u.get("subscription", {}).get("plan") == "degen"]
+    free_users = [u for u in users if u.get("subscription", {}).get("plan") != "degen"]
     codes = list(data.get("access_codes", {}).values())
     active_codes = [c for c in codes if c.get("active")]
+    used_codes = [c for c in codes if c.get("uses") > 0]
+
+    # Calculate total trading volume and fees
+    total_volume = sum(u.get("trading_stats", {}).get("total_volume", 0) for u in users)
+    total_fees = sum(u.get("trading_stats", {}).get("total_fees_paid", 0) for u in users)
+    total_pnl = sum(u.get("trading_stats", {}).get("total_pnl", 0) for u in users)
+
+    # Calculate MRR (Monthly Recurring Revenue)
+    mrr = len(degen_users) * DEGEN_PRICE
+
     return {
         "total_users": len(users),
-        "active_subscribers": len(active),
-        "stripe_subscribers": len(stripe_users),
-        "code_subscribers": len(code_users),
-        "mrr": len(stripe_users) * PLAN_PRICE,
+        "free_users": len(free_users),
+        "degen_subscribers": len(degen_users),
+        "mrr": mrr,
+        "total_volume": total_volume,
+        "total_fees_collected": total_fees,
+        "total_pnl": total_pnl,
         "total_signups": data["stats"].get("total_signups", 0),
-        "total_codes": len(codes),
-        "active_codes": len(active_codes),
+        "access_codes": {
+            "total": len(codes),
+            "active": len(active_codes),
+            "used": len(used_codes),
+        },
     }
+
+def get_stats() -> dict:
+    """Get aggregated stats for dashboard display."""
+    stats = get_platform_stats()
+    return stats
 
 def is_admin(chat_id: str) -> bool:
     """Check if user is admin (your chat ID from config)."""

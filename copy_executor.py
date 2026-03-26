@@ -13,6 +13,7 @@ Storage: data/copy_executor.json
 import os, json, logging, time, threading
 from typing import Optional
 from datetime import datetime, timezone, timedelta
+import user_store
 
 log = logging.getLogger("polytragent.copy_exec")
 
@@ -58,6 +59,9 @@ def enable_auto_copy(chat_id: str, max_per_trade: float = 25.0,
         max_per_trade: Maximum USDC per auto trade
         daily_limit: Maximum total USDC per day for auto trades
     """
+    if not user_store.is_degen(str(chat_id)):
+        return {"success": False, "error": "Auto-copy requires Degen Mode ($79/mo). Use /degen to upgrade."}
+
     data = _load()
     chat_str = str(chat_id)
 
@@ -124,7 +128,7 @@ def update_auto_copy_settings(chat_id: str, **kwargs) -> dict:
 def is_auto_copy_enabled(chat_id: str) -> bool:
     """Check if auto-copy is active for a user."""
     settings = get_auto_copy_settings(chat_id)
-    return settings is not None and settings.get("enabled", False)
+    return settings is not None and settings.get("enabled", False) and user_store.is_degen(str(chat_id))
 
 
 # ═══════════════════════════════════════════════
@@ -196,6 +200,10 @@ def execute_copy_trade(chat_id: str, signal: dict) -> dict:
 
     if not settings or not settings.get("enabled"):
         return {"success": False, "error": "Auto-copy not enabled", "skipped": True}
+
+    # Degen mode check
+    if not user_store.is_degen(str(chat_id)):
+        return {"success": False, "error": "Degen Mode required for auto-copy", "skipped": True}
 
     # Reset daily counter if needed
     settings = _reset_daily_if_needed(settings)

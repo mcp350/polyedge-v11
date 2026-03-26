@@ -136,6 +136,33 @@ def create_wallet(chat_id: str) -> dict:
         return {"success": False, "error": str(e)}
 
 
+def ensure_wallet(chat_id: str) -> dict:
+    """
+    Ensure a user has a wallet. Auto-creates one if they don't.
+    Returns: {success, address, existing, private_key (if new)}
+    """
+    wallets = get_wallets(chat_id)
+    if wallets:
+        # User already has wallets, return the primary one
+        primary = get_primary_wallet(chat_id)
+        return {
+            "success": True,
+            "address": primary["address"],
+            "existing": True
+        }
+    else:
+        # No wallets, create one
+        result = create_wallet(chat_id)
+        if result.get("success"):
+            result["existing"] = False
+        return result
+
+
+def get_wallet_count(chat_id: str) -> int:
+    """Get the count of wallets for a user."""
+    return len(get_wallets(chat_id))
+
+
 def import_wallet(chat_id: str, private_key: str, label: str = None) -> dict:
     """Import an existing wallet by private key."""
     try:

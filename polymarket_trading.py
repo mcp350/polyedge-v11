@@ -11,6 +11,75 @@ from datetime import datetime, timezone
 log = logging.getLogger("polytragent.trading")
 
 # ═══════════════════════════════════════════════
+# FEE CALCULATION & TRACKING
+# ═══════════════════════════════════════════════
+
+def calculate_fee(amount: float, side: str = "BUY") -> Tuple[float, float]:
+    """
+    Calculate fee and net amount. Returns (net_amount, fee_amount).
+
+    Args:
+        amount: The gross amount (in dollars for BUY, in shares for SELL)
+        side: "BUY" or "SELL" to determine which fee rate to use
+
+    Returns:
+        Tuple of (net_amount, fee_amount)
+    """
+    fee_key = "TRADE_FEE_BUY" if side == "BUY" else "TRADE_FEE_SELL"
+    fee_rate = float(os.environ.get(fee_key, "0.01"))
+    fee = round(amount * fee_rate, 6)
+    net = round(amount - fee, 6)
+    return net, fee
+
+
+def record_fee(chat_id: str, amount: float, side: str, market: str) -> None:
+    """Record a fee collection for tracking."""
+    try:
+        os.makedirs("data", exist_ok=True)
+        fees_file = "data/fees.json"
+
+        fees_data = {}
+        if os.path.exists(fees_file):
+            with open(fees_file, "r") as f:
+                fees_data = json.load(f) if f else {}
+
+        if "total" not in fees_data:
+            fees_data["total"] = 0.0
+        if "trades" not in fees_data:
+            fees_data["trades"] = []
+
+        _, fee_amount = calculate_fee(amount, side)
+        fees_data["total"] = round(fees_data["total"] + fee_amount, 6)
+
+        fees_data["trades"].append({
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "chat_id": chat_id,
+            "side": side,
+            "amount": amount,
+            "fee": fee_amount,
+            "market": market,
+        })
+
+        with open(fees_file, "w") as f:
+            json.dump(fees_data, f, indent=2)
+    except Exception as e:
+        log.error(f"Failed to record fee: {e}")
+
+
+def get_total_fees_collected() -> float:
+    """Get total fees collected (stored in data/fees.json)."""
+    try:
+        fees_file = "data/fees.json"
+        if os.path.exists(fees_file):
+            with open(fees_file, "r") as f:
+                data = json.load(f)
+                return float(data.get("total", 0.0))
+        return 0.0
+    except Exception as e:
+        log.error(f"Failed to get total fees: {e}")
+        return 0.0
+
+# ═══════════════════════════════════════════════
 # CONFIGURATION
 # ═══════════════════════════════════════════════
 
@@ -93,6 +162,58 @@ def reset_client():
     _initialized = False
 
 
+def get_user_client(private_key: str):
+    """
+    Create a ClobClient for a specific user's wallet.
+
+    Args:
+        private_key: The user's Ethereum private key (with or without 0x prefix)
+
+    Returns:
+        ClobClient instance or None if initialization fails
+    """
+    try:
+        from py_clob_client.client import ClobClient
+        from py_clob_client.clob_types import ApiCreds
+
+        api_key = os.environ.get("POLY_API_KEY", "")
+        api_secret = os.environ.get("POLY_API_SECRET", "")
+        api_passphrase = os.environ.get("POLY_API_PASSPHRASE", "")
+
+        if not all([api_key, api_secret, api_passphrase, private_key]):
+            log.warning("Missing credentials for user client initialization")
+            return None
+
+        # Ensure private key has 0x prefix
+        if not private_key.startswith("0x"):
+            private_key = "0x" + private_key
+
+        user_client = ClobClient(
+            CLOB_HOST,
+            key=private_key,
+            chain_id=CHAIN_ID,
+            signature_type=0,  # EOA wallet
+        )
+
+        # Set API credentials
+        creds = ApiCreds(
+            api_key=api_key,
+            api_secret=api_secret,
+            api_passphrase=api_passphrase,
+        )
+        user_client.set_api_creds(creds)
+
+        log.info("User client initialized successfully")
+        return user_client
+
+    except ImportError:
+        log.error("py-clob-client not installed. Run: pip install py-clob-client")
+        return None
+    except Exception as e:
+        log.error(f"User client init failed: {e}")
+        return None
+
+
 # ═══════════════════════════════════════════════
 # MARKET DATA (via authenticated client)
 # ═══════════════════════════════════════════════
@@ -140,19 +261,22 @@ def get_best_price(token_id: str, side: str = "BUY") -> Optional[float]:
 # ═══════════════════════════════════════════════
 
 def market_buy(token_id: str, amount: float, neg_risk: bool = False,
-               tick_size: str = "0.01", worst_price: float = None) -> dict:
+               tick_size: str = "0.01", worst_price: float = None, chat_id: str = None,
+               market_question: str = "") -> dict:
     """
     Execute a market BUY order (Fill-or-Kill).
 
     Args:
         token_id: The token to buy (YES or NO outcome token)
-        amount: Dollar amount to spend (USDC)
+        amount: Dollar amount to spend (USDC) — fee taken from this amount
         neg_risk: True for multi-outcome markets
         tick_size: Price precision ("0.01" or "0.001")
         worst_price: Max price willing to pay (slippage protection)
+        chat_id: Optional chat ID for fee tracking
+        market_question: Optional market question for fee tracking
 
     Returns:
-        dict with keys: success, order_id, error, details
+        dict with keys: success, order_id, error, details, fee, net_amount
     """
     client = _get_client()
     if not client:
@@ -162,12 +286,15 @@ def market_buy(token_id: str, amount: float, neg_risk: bool = False,
         from py_clob_client.clob_types import MarketOrderArgs, OrderType
         from py_clob_client.order_builder.constants import BUY
 
+        # Calculate fee (1% of requested amount)
+        net_amount, fee_amount = calculate_fee(amount, side="BUY")
+
         options = {"tick_size": tick_size, "neg_risk": neg_risk}
 
-        # Build market order args
+        # Build market order args with net amount
         kwargs = {
             "token_id": token_id,
-            "amount": amount,
+            "amount": net_amount,
             "side": BUY,
         }
         if worst_price is not None:
@@ -181,11 +308,18 @@ def market_buy(token_id: str, amount: float, neg_risk: bool = False,
         resp = client.post_order(signed_order, OrderType.FOK)
 
         success = resp.get("success", False) if isinstance(resp, dict) else False
+
+        # Record fee if trade was successful
+        if success and chat_id:
+            record_fee(chat_id, amount, "BUY", market_question)
+
         return {
             "success": success,
             "order_id": resp.get("orderID", "") if isinstance(resp, dict) else "",
             "error": resp.get("errorMsg", "") if isinstance(resp, dict) else str(resp),
             "details": resp,
+            "fee": fee_amount,
+            "net_amount": net_amount,
         }
     except Exception as e:
         log.error(f"Market buy error: {e}")
@@ -193,7 +327,8 @@ def market_buy(token_id: str, amount: float, neg_risk: bool = False,
 
 
 def market_sell(token_id: str, amount: float, neg_risk: bool = False,
-                tick_size: str = "0.01", worst_price: float = None) -> dict:
+                tick_size: str = "0.01", worst_price: float = None, chat_id: str = None,
+                market_question: str = "") -> dict:
     """
     Execute a market SELL order (Fill-or-Kill).
 
@@ -203,9 +338,11 @@ def market_sell(token_id: str, amount: float, neg_risk: bool = False,
         neg_risk: True for multi-outcome markets
         tick_size: Price precision
         worst_price: Min price willing to accept
+        chat_id: Optional chat ID for fee tracking
+        market_question: Optional market question for fee tracking
 
     Returns:
-        dict with keys: success, order_id, error, details
+        dict with keys: success, order_id, error, details, fee, proceeds
     """
     client = _get_client()
     if not client:
@@ -233,11 +370,24 @@ def market_sell(token_id: str, amount: float, neg_risk: bool = False,
         resp = client.post_order(signed_order, OrderType.FOK)
 
         success = resp.get("success", False) if isinstance(resp, dict) else False
+
+        # For SELL, fee is calculated on the proceeds
+        # We estimate proceeds as shares * best_bid (from order book)
+        # For now, we'll calculate fee after receiving actual proceeds
+        fee_amount = 0.0
+        if success and chat_id:
+            # Fee will be ~1% of the gross sale proceeds
+            # Actual proceeds depend on execution price
+            record_fee(chat_id, amount, "SELL", market_question)
+            _, fee_amount = calculate_fee(amount, side="SELL")
+
         return {
             "success": success,
             "order_id": resp.get("orderID", "") if isinstance(resp, dict) else "",
             "error": resp.get("errorMsg", "") if isinstance(resp, dict) else str(resp),
             "details": resp,
+            "fee": fee_amount,
+            "proceeds": round(amount - fee_amount, 6),
         }
     except Exception as e:
         log.error(f"Market sell error: {e}")
@@ -624,17 +774,18 @@ def check_and_set_allowances() -> dict:
 # CONVENIENCE: ONE-SHOT TRADE
 # ═══════════════════════════════════════════════
 
-def quick_buy(market_slug_or_url: str, outcome: str, amount: float) -> dict:
+def quick_buy(market_slug_or_url: str, outcome: str, amount: float, chat_id: str = None) -> dict:
     """
     One-shot: resolve market + buy the specified outcome.
 
     Args:
         market_slug_or_url: Polymarket URL, slug, or market ID
         outcome: "Yes" or "No" (case-insensitive)
-        amount: Dollar amount to spend
+        amount: Dollar amount to spend (fee taken from this amount)
+        chat_id: Optional chat ID for fee tracking
 
     Returns:
-        dict with success, order_id, market info, error
+        dict with success, order_id, market info, error, fee, net_amount
     """
     market = resolve_market_tokens(market_slug_or_url)
     if not market:
@@ -656,6 +807,8 @@ def quick_buy(market_slug_or_url: str, outcome: str, amount: float) -> dict:
         amount=amount,
         neg_risk=market["neg_risk"],
         tick_size=market["tick_size"],
+        chat_id=chat_id,
+        market_question=market["question"],
     )
     result["market"] = market["question"]
     result["outcome"] = outcome
@@ -663,9 +816,18 @@ def quick_buy(market_slug_or_url: str, outcome: str, amount: float) -> dict:
     return result
 
 
-def quick_sell(market_slug_or_url: str, outcome: str, shares: float) -> dict:
+def quick_sell(market_slug_or_url: str, outcome: str, shares: float, chat_id: str = None) -> dict:
     """
     One-shot: resolve market + sell the specified outcome shares.
+
+    Args:
+        market_slug_or_url: Polymarket URL, slug, or market ID
+        outcome: "Yes" or "No" (case-insensitive)
+        shares: Number of shares to sell
+        chat_id: Optional chat ID for fee tracking
+
+    Returns:
+        dict with success, order_id, market info, error, fee, proceeds
     """
     market = resolve_market_tokens(market_slug_or_url)
     if not market:
@@ -687,6 +849,8 @@ def quick_sell(market_slug_or_url: str, outcome: str, shares: float) -> dict:
         amount=shares,
         neg_risk=market["neg_risk"],
         tick_size=market["tick_size"],
+        chat_id=chat_id,
+        market_question=market["question"],
     )
     result["market"] = market["question"]
     result["outcome"] = outcome
@@ -711,8 +875,14 @@ def format_order_result(result: dict) -> str:
             lines.append(f"🎯 Outcome: <b>{result['outcome']}</b>")
         if result.get("amount"):
             lines.append(f"💰 Amount: <b>${result['amount']:.2f}</b>")
+        if result.get("fee") is not None:
+            lines.append(f"💸 Fee (1%): <b>${result['fee']:.2f}</b>")
+        if result.get("net_amount") is not None:
+            lines.append(f"📦 Executed: <b>${result['net_amount']:.2f}</b>")
         if result.get("shares"):
             lines.append(f"📦 Shares: <b>{result['shares']:.2f}</b>")
+        if result.get("proceeds") is not None:
+            lines.append(f"💵 Proceeds (after fee): <b>${result['proceeds']:.2f}</b>")
         if result.get("order_id"):
             lines.append(f"🆔 Order: <code>{result['order_id'][:16]}...</code>")
         return "\n".join(lines)

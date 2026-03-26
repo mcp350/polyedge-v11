@@ -15,6 +15,7 @@ Polymarket API: https://gamma-api.polymarket.com + CLOB API
 
 import json, os, time, requests, hashlib
 from datetime import datetime, timezone, timedelta
+import user_store
 
 FILE = os.path.join(os.path.dirname(__file__), "copy_trading.json")
 
@@ -308,6 +309,12 @@ def follow_wallet(chat_id: str, address: str) -> dict:
     if wid in data["followers"][cid]:
         return {"status": "exists", "message": "Already following this wallet"}
 
+    # Check wallet tracking limit
+    limit = user_store.get_wallet_tracking_limit(cid)
+    current_count = get_following_count(cid)
+    if current_count >= limit:
+        return {"status": "error", "message": f"You've reached your limit of {limit} tracked wallets. Upgrade to Degen Mode for unlimited tracking."}
+
     data["followers"][cid].append(wid)
     data["wallets"][wid]["followers_count"] = data["wallets"][wid].get("followers_count", 0) + 1
     _save(data)
@@ -342,6 +349,12 @@ def get_following(chat_id: str) -> list:
         if w:
             wallets.append(w)
     return wallets
+
+def get_following_count(chat_id: str) -> int:
+    """Get the number of wallets a user is following."""
+    data = _load()
+    cid = str(chat_id)
+    return len(data.get("followers", {}).get(cid, []))
 
 def get_followers_of(address: str) -> list:
     """Get chat_ids of users following a specific wallet."""
@@ -607,6 +620,8 @@ def format_leaderboard(leaderboard: list = None) -> str:
 def format_following(chat_id: str) -> str:
     """Format user's followed wallets."""
     wallets = get_following(chat_id)
+    limit = user_store.get_wallet_tracking_limit(str(chat_id))
+    current_count = len(wallets)
 
     if not wallets:
         return (
@@ -617,7 +632,7 @@ def format_following(chat_id: str) -> str:
         )
 
     lines = ["📋 <b>Your Copy Trading Portfolio</b>\n"]
-    lines.append(f"Following <b>{len(wallets)}</b> trader{'s' if len(wallets) != 1 else ''}:\n")
+    lines.append(f"Following <b>{current_count} / {limit}</b> trader{'s' if len(wallets) != 1 else ''}:\n")
 
     for i, w in enumerate(wallets):
         alias = w.get("alias", "Unknown")[:18]
@@ -632,6 +647,8 @@ def format_following(chat_id: str) -> str:
         )
 
     lines.append("\nUse /ct_unfollow &lt;number&gt; to stop following")
+    if current_count >= limit:
+        lines.append("⚠️ You've reached your wallet tracking limit. Upgrade to Degen Mode for unlimited tracking.")
     return "\n".join(lines)
 
 def format_wallet_detail(address: str) -> str:
