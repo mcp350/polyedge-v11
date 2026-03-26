@@ -82,7 +82,7 @@ def handle_access_code_input(chat_id: str, text: str):
     set_waiting_for_code(chat_id, False)
     code = text.strip().upper()
 
-    result = user_store.redeem_degen_access_code(chat_id, code)
+    result = user_store.redeem_access_code(chat_id, code)
 
     if result["status"] == "ok":
         notify_activated(chat_id)
@@ -224,26 +224,35 @@ def handle_start(chat_id, username="", first_name=""):
     wallet_address = user.get("wallet_address")
     if not wallet_address:
         try:
-            # Import wallet_manager from main or config
-            from wallet_manager import create_wallet
-            wallet_address = create_wallet()
-            user_store.update_user(chat_id, {"wallet_address": wallet_address})
+            from wallet_manager import ensure_wallet
+            result = ensure_wallet(str(chat_id))
+            if result.get("success"):
+                wallet_address = result["address"]
+                user_store.update_user(chat_id, {"wallet_address": wallet_address})
+            else:
+                wallet_address = None
         except Exception as e:
             print(f"[ONBOARD] Wallet creation error: {e}")
-            wallet_address = "Error creating wallet"
+            wallet_address = None
 
     name = first_name or username or "trader"
+
+    # Wallet line
+    if wallet_address:
+        wallet_line = f"💰 <b>Your Wallet</b>\n<code>{wallet_address}</code>\n\nDeposit USDC (Polygon) to start trading.\n\n"
+    else:
+        wallet_line = "💰 Wallet will be created when you start trading.\n\n"
 
     # Welcome screen with wallet info
     send_inline(chat_id,
         f"👋 <b>Hey {name}!</b>\n\n"
-        "Welcome to <b>PolyEdge</b> — your AI-powered prediction market trading agent.\n\n"
+        "Welcome to <b>Polytragent</b> — your AI-powered Polymarket trading terminal.\n\n"
         "🧠 <b>What I do:</b>\n"
-        "I use AI to research every market, score them, and deliver actionable trading signals.\n\n"
-        "💰 <b>Your Wallet</b>\n"
-        f"<code>{wallet_address}</code>\n\n"
-        "<b>Free Access Enabled</b> ✅\n"
-        "Everyone gets free access to core features. Upgrade to Degen Mode ($79/mo) for advanced tools.\n\n"
+        "AI-powered market research, whale tracking, copy trading, and instant trade execution.\n\n"
+        f"{wallet_line}"
+        "✅ <b>Free Access Enabled</b>\n"
+        "Trade any Polymarket event. We take just 1% per trade.\n"
+        "Upgrade to Degen Mode ($79/mo) for unlimited whale tracking + auto-copy.\n\n"
         "Let's personalize your experience:",
         [[{"text": "🚀 Quick Setup", "callback_data": "onboard_risk"}],
          [{"text": "⏩ Skip to Menu", "callback_data": "go_main_menu"}]])
@@ -283,7 +292,7 @@ def handle_callback(callback_query):
 
     # Cancel Degen subscription
     elif data == "cancel_degen":
-        user_store.cancel_degen_subscription(chat_id)
+        user_store.deactivate_subscription(chat_id)
         notify_cancelled(chat_id)
         send_inline(chat_id,
             "😔 <b>Degen Mode Cancelled</b>\n\n"
@@ -316,7 +325,7 @@ def handle_callback(callback_query):
 
 def _start_subscribe_degen(chat_id, username, message_id=None):
     """Initiate Degen Mode subscription ($79/mo)."""
-    url = stripe_handler.create_checkout_session(chat_id, username, price="degen_monthly")
+    url = stripe_handler.create_checkout_session(chat_id, username)
     if not url:
         send_inline(chat_id,
             "❌ Payment system not configured.\n\n"
@@ -351,8 +360,7 @@ def _start_subscribe_degen(chat_id, username, message_id=None):
 
 def _manage_degen_subscription(chat_id):
     """Show Degen Mode subscription management UI."""
-    user = user_store.get_user(chat_id)
-    has_degen = user.get("degen_subscription", False) if user else False
+    has_degen = user_store.is_degen(chat_id)
 
     if has_degen:
         # User has active Degen subscription
