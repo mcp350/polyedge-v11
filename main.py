@@ -688,44 +688,12 @@ def show_global_stats(chat_id):
         tg.send(f"❌ Error: {e}", chat_id)
 
 def show_whale_alerts(chat_id):
-    """Whale Alerts — track wallets, get notifications when whales from My Follows buy"""
-    following_count = len(ct.get_following(chat_id))
-    onboarding.send_inline(chat_id,
-        "🐋 <b>Polytragent — Whale Alerts</b>\n\n"
-        "Track top Polymarket wallets and get push notifications\n"
-        "when whales from your Follows list make trades.\n\n"
-        f"👤 Following: {following_count} wallets\n"
-        f"🔔 Notifications: {'Active' if following_count > 0 else 'Add wallets to activate'}",
-        [[{"text": "🏆 Monthly Leaderboard", "callback_data": "research_leaderboard"}],
-         [{"text": "➕ Add Whale Wallet", "callback_data": "ct_follow_prompt"}],
-         [{"text": "👤 My Follows", "callback_data": "ct_following"}],
-         [{"text": "← Research", "callback_data": "menu_research"}]])
+    """Whale Alerts — redirects to the whale directory"""
+    show_whales_menu(chat_id)
 
 def show_research_leaderboard(chat_id):
-    """Monthly Leaderboard — top Polymarket wallets by P&L (30 days)"""
-    tg.send("🏆 <b>Loading Monthly Leaderboard...</b>", chat_id)
-    try:
-        leaders = ct.refresh_leaderboard()
-        if leaders:
-            msg = "🏆 <b>Polytragent — Monthly Leaderboard</b>\n"
-            msg += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-            msg += "<i>Top wallets by profit &amp; loss (30 days)</i>\n\n"
-            for i, w in enumerate(leaders[:10], 1):
-                addr = w.get("address", "")
-                short = addr[:6] + "..." + addr[-4:] if len(addr) > 10 else addr
-                pnl = w.get("pnl", 0)
-                vol = w.get("volume", 0)
-                pnl_sign = "+" if pnl >= 0 else ""
-                msg += (f"{i}. <code>{short}</code>\n"
-                        f"   P&L: {pnl_sign}${pnl:,.0f} | Vol: ${vol:,.0f}\n\n")
-            msg += "<i>Use ➕ Add Whale Wallet to follow any address</i>"
-        else:
-            msg = "🏆 <b>Monthly Leaderboard</b>\n\nLoading leaderboard data..."
-        onboarding.send_inline(chat_id, msg,
-            [[{"text": "➕ Follow Wallet", "callback_data": "ct_follow_prompt"}],
-             [{"text": "← Whale Alerts", "callback_data": "research_whale"}]])
-    except Exception as e:
-        tg.send(f"❌ Leaderboard error: {e}", chat_id)
+    """Leaderboard — redirects to whale directory"""
+    show_whales_menu(chat_id)
 
 def show_breaking_news(chat_id):
     """Breaking News — pulls latest from Polymarket breaking news"""
@@ -1809,20 +1777,21 @@ def show_auto_copy_settings_menu(chat_id):
          [{"text": "← Auto-Copy", "callback_data": "menu_auto_copy"}]])
 
 def show_whales_menu(chat_id):
-    """Whale discovery and tracking menu"""
-    is_degen = user_store.is_degen(chat_id) if hasattr(user_store, 'is_degen') else False
-    tracked = user_store.get_tracked_wallets(chat_id) if hasattr(user_store, 'get_tracked_wallets') else []
-    limit = 10 if is_degen else 3
+    """Show the whale directory — curated list with follow buttons."""
+    import whale_discovery as wd_mod
+    text, buttons = wd_mod.format_directory_page(page=0, per_page=5)
 
-    onboarding.send_inline(chat_id,
-        f"🐋 <b>Whale Tracking</b>\n\n"
-        f"📊 Tracking: {len(tracked)} / {limit} wallets\n"
-        f"{'🚀 Degen Mode: ACTIVE' if is_degen else '⚡ Upgrade to Degen for unlimited'}\n\n"
-        "Discover and follow the most profitable Polymarket traders.",
-        [[{"text": "🏆 Top Whales", "callback_data": "whales_leaderboard"}],
-         [{"text": "📋 My Tracked Wallets", "callback_data": "whales_my_list"}],
-         [{"text": "➕ Track Wallet", "callback_data": "whales_add"}],
-         [{"text": "← Main Menu", "callback_data": "main_menu"}]])
+    # Add following count header
+    following = ct.get_following_count(str(chat_id))
+    limit = user_store.get_wallet_tracking_limit(str(chat_id))
+    is_degen = user_store.is_degen(str(chat_id))
+
+    header = (
+        f"📊 Following: <b>{following} / {limit}</b> wallets"
+        f"{' 🚀 Degen Mode' if is_degen else ''}\n"
+        f"🔔 You'll get <b>real-time alerts</b> when followed whales trade.\n\n"
+    )
+    onboarding.send_inline(chat_id, header + text, buttons)
 
 def show_degen_mode_info(chat_id):
     """Degen Mode subscription info"""
@@ -2373,12 +2342,40 @@ def _handle_copy_trading(cmd, parts, chat_id):
     return True
 
 def _scheduler_loop():
-    """Background scheduler for periodic tasks"""
+    """Background scheduler — scans followed whale wallets every 5 min and sends alerts."""
+    import copy_signals
+
+    # Seed curated wallets on first run
+    try:
+        ct.seed_curated_wallets()
+        ct.refresh_leaderboard()
+        print("[SCHEDULER] Curated wallets seeded, leaderboard built")
+    except Exception as e:
+        print(f"[SCHEDULER] Seed error: {e}")
+
+    scan_count = 0
     while True:
         try:
-            time.sleep(60)
+            time.sleep(300)  # 5 minutes between scans
+            scan_count += 1
+            print(f"[SCHEDULER] Scan #{scan_count} starting...")
+
+            # Scan all tracked wallets for position changes
+            signals = ct.scan_all_wallets()
+            if signals:
+                sent = copy_signals.dispatch_signals(signals)
+                print(f"[SCHEDULER] Scan #{scan_count}: {len(signals)} signals → {sent} notifications")
+            else:
+                print(f"[SCHEDULER] Scan #{scan_count}: no new signals")
+
+            # Refresh leaderboard every 30 min (every 6 scans)
+            if scan_count % 6 == 0:
+                ct.refresh_leaderboard()
+                print("[SCHEDULER] Leaderboard refreshed")
+
         except Exception as e:
             print(f"[SCHEDULER] Error: {e}")
+            time.sleep(60)  # back off on error
 
 # ═══════════════════════════════════════════════
 # CALLBACK HANDLER — Routes all inline keyboard taps
@@ -2696,22 +2693,50 @@ def _extended_handle_callback(callback_query):
         stats = ce.get_auto_copy_stats(str(chat_id))
         tg.send(ce.format_auto_copy_stats(stats), chat_id)
 
-    # ── WHALE DISCOVERY CALLBACKS (Phase 2) ──
+    # ── WHALE DIRECTORY CALLBACKS (Phase 2) ──
     elif data == "menu_whales":
         show_whales_menu(chat_id)
-    elif data == "whales_leaderboard":
-        tg.send("🏆 <b>Loading Whale Leaderboard...</b>", chat_id)
-        show_research_leaderboard(chat_id)
+    elif data.startswith("whale_page_"):
+        # Pagination: whale_page_0, whale_page_1, etc.
+        import whale_discovery as wd_mod
+        page = int(data.replace("whale_page_", ""))
+        text, buttons = wd_mod.format_directory_page(page=page, per_page=5)
+        following = ct.get_following_count(str(chat_id))
+        limit = user_store.get_wallet_tracking_limit(str(chat_id))
+        is_degen = user_store.is_degen(str(chat_id))
+        header = (
+            f"📊 Following: <b>{following} / {limit}</b> wallets"
+            f"{' 🚀 Degen Mode' if is_degen else ''}\n"
+            f"🔔 Real-time alerts when followed whales trade.\n\n"
+        )
+        onboarding.send_inline(chat_id, header + text, buttons)
+    elif data.startswith("whale_follow_"):
+        # Follow a whale by directory index: whale_follow_1, whale_follow_2, etc.
+        import whale_discovery as wd_mod
+        idx = int(data.replace("whale_follow_", ""))
+        whale = wd_mod.get_whale_by_index(idx)
+        if whale:
+            # Ensure it's in tracking system
+            ct.add_wallet(whale["address"], alias=whale["name"])
+            result = ct.follow_wallet(str(chat_id), whale["address"])
+            msg = result.get("message", "Done")
+            if result["status"] == "followed":
+                tg.send(f"✅ <b>Now following {whale['name']}</b>\n\n{msg}\n\n🔔 You'll get notified when they make trades.", chat_id)
+            elif result["status"] == "exists":
+                tg.send(f"ℹ️ Already following <b>{whale['name']}</b>.", chat_id)
+            else:
+                tg.send(f"⚠️ {msg}", chat_id)
+        else:
+            tg.send("❌ Whale not found.", chat_id)
+    elif data.startswith("whale_detail_"):
+        # Show whale detail: whale_detail_1
+        import whale_discovery as wd_mod
+        idx = int(data.replace("whale_detail_", ""))
+        whale = wd_mod.get_whale_by_index(idx)
+        text, buttons = wd_mod.format_whale_detail(whale)
+        onboarding.send_inline(chat_id, text, buttons)
     elif data == "whales_my_list":
-        tg.send("📋 <b>My Tracked Wallets</b>", chat_id)
         _handle("/ct_following", chat_id)
-    elif data == "whales_add":
-        tg.send(
-            "➕ <b>Track a Whale Wallet</b>\n\n"
-            "Send a wallet address to start tracking:\n"
-            "/track 0x1234...abcd\n\n"
-            "Or use:\n"
-            "/ct_follow 0xaddress...", chat_id)
 
     # ── DEGEN MODE CALLBACKS (Phase 2) ──
     elif data == "degen_subscribe":

@@ -26,10 +26,9 @@ FILE = os.path.join(os.path.dirname(__file__), "copy_trading.json")
 GAMMA_BASE = "https://gamma-api.polymarket.com"
 CLOB_BASE = "https://clob.polymarket.com"
 
-# Known top wallets to seed the leaderboard (public profiles)
-DEFAULT_WALLETS = [
-    # These will be discovered dynamically, but we seed a few known whales
-]
+# Curated wallets are loaded from whale_discovery.py
+# They auto-seed into the tracking system on boot
+import whale_discovery as wd
 
 HEADERS = {
     "User-Agent": "Polytragent/1.0",
@@ -142,54 +141,64 @@ def fetch_wallet_trades(address: str, limit: int = 50) -> list:
     trades.sort(key=lambda t: t.get("timestamp", t.get("created_at", "")), reverse=True)
     return trades[:limit]
 
-def discover_top_wallets(limit: int = 20) -> list:
-    """Discover top-performing wallets from Polymarket leaderboard."""
+def seed_curated_wallets():
+    """
+    Auto-seed all curated whale wallets from the directory into tracking.
+    Called on boot. Only adds wallets that aren't already tracked.
+    """
+    directory = wd.get_directory()
+    data = _load()
+    added = 0
+    for w in directory:
+        wid = w["address"].lower()
+        if wid not in data["wallets"]:
+            data["wallets"][wid] = {
+                "address": w["address"],
+                "alias": w["name"],
+                "username": w["name"],
+                "added_at": datetime.now(timezone.utc).isoformat(),
+                "pnl": w.get("pnl", 0),
+                "volume": w.get("volume", 0),
+                "win_rate": w.get("win_rate", 0),
+                "markets_traded": 0,
+                "followers_count": 0,
+                "last_positions": {},
+                "last_checked": "",
+                "total_signals": 0,
+                "active": True,
+                "category": w.get("category", ""),
+                "bio": w.get("bio", ""),
+            }
+            added += 1
+        else:
+            # Update name/category/bio from directory if missing
+            existing = data["wallets"][wid]
+            if not existing.get("alias") or existing["alias"].startswith("Whale-"):
+                existing["alias"] = w["name"]
+            if not existing.get("category"):
+                existing["category"] = w.get("category", "")
+            if not existing.get("bio"):
+                existing["bio"] = w.get("bio", "")
+    if added:
+        _save(data)
+        print(f"[COPY] Seeded {added} curated whale wallets")
+    return added
+
+
+def discover_top_wallets(limit: int = 25) -> list:
+    """Get top wallets from curated directory (primary) + optional API enrichment."""
+    directory = wd.get_directory()
     wallets = []
-    try:
-        # Polymarket leaderboard API
-        r = requests.get(f"{GAMMA_BASE}/leaderboard",
-            params={"limit": str(limit), "window": "all"},
-            headers=HEADERS, timeout=15)
-        if r.ok:
-            data = r.json()
-            leaders = data if isinstance(data, list) else data.get("leaders", data.get("results", []))
-            for entry in leaders:
-                addr = entry.get("address", entry.get("proxyWallet", entry.get("user", "")))
-                if addr:
-                    wallets.append({
-                        "address": addr,
-                        "username": entry.get("username", entry.get("name", "")),
-                        "pnl": float(entry.get("pnl", entry.get("profit", 0))),
-                        "volume": float(entry.get("volume", entry.get("totalVolume", 0))),
-                        "markets_traded": int(entry.get("marketsTraded", entry.get("numMarkets", 0))),
-                        "rank": entry.get("rank", 0),
-                    })
-    except Exception as e:
-        print(f"[COPY] Leaderboard fetch error: {e}")
-
-    # Fallback: try profiles endpoint
-    if not wallets:
-        try:
-            r = requests.get(f"{GAMMA_BASE}/profiles",
-                params={"limit": str(limit), "sortBy": "pnl", "order": "desc"},
-                headers=HEADERS, timeout=15)
-            if r.ok:
-                data = r.json()
-                profiles = data if isinstance(data, list) else data.get("profiles", [])
-                for p in profiles:
-                    addr = p.get("address", p.get("proxyWallet", ""))
-                    if addr:
-                        wallets.append({
-                            "address": addr,
-                            "username": p.get("username", p.get("name", "")),
-                            "pnl": float(p.get("pnl", p.get("profit", 0))),
-                            "volume": float(p.get("volume", 0)),
-                            "markets_traded": int(p.get("marketsTraded", 0)),
-                            "rank": 0,
-                        })
-        except:
-            pass
-
+    for w in directory[:limit]:
+        wallets.append({
+            "address": w["address"],
+            "username": w["name"],
+            "pnl": w.get("pnl", 0),
+            "volume": w.get("volume", 0),
+            "markets_traded": 0,
+            "rank": 0,
+            "category": w.get("category", ""),
+        })
     return wallets
 
 def fetch_market_info(condition_id: str) -> dict:
@@ -476,50 +485,31 @@ def scan_all_wallets() -> list:
 # ═══════════════════════════════════════════════
 
 def refresh_leaderboard() -> list:
-    """Refresh the trader leaderboard with fresh data."""
+    """Refresh the trader leaderboard — uses curated directory as base."""
     data = _load()
 
-    # First try to discover from Polymarket
-    discovered = discover_top_wallets(20)
+    # Seed curated wallets if not yet done
+    seed_curated_wallets()
 
-    # Merge with existing tracked wallets
+    # Build leaderboard from tracked wallets (which includes all curated)
     leaderboard = []
-    seen = set()
-
-    # Add discovered wallets
-    for w in discovered:
-        addr = w["address"].lower()
-        if addr not in seen:
-            seen.add(addr)
-            leaderboard.append({
-                "address": w["address"],
-                "alias": w.get("username") or f"Trader-{addr[:6]}",
-                "pnl": w["pnl"],
-                "volume": w["volume"],
-                "markets_traded": w["markets_traded"],
-                "rank": w.get("rank", 0),
-                "tracked": addr in data["wallets"],
-                "followers": data["wallets"].get(addr, {}).get("followers_count", 0),
-            })
-
-    # Add tracked wallets not in leaderboard
     for wid, wallet in data["wallets"].items():
-        if wid not in seen:
-            leaderboard.append({
-                "address": wallet["address"],
-                "alias": wallet.get("alias", ""),
-                "pnl": wallet.get("pnl", 0),
-                "volume": wallet.get("volume", 0),
-                "markets_traded": wallet.get("markets_traded", 0),
-                "rank": 0,
-                "tracked": True,
-                "followers": wallet.get("followers_count", 0),
-            })
+        leaderboard.append({
+            "address": wallet["address"],
+            "alias": wallet.get("alias", wallet.get("username", "")),
+            "pnl": wallet.get("pnl", 0),
+            "volume": wallet.get("volume", 0),
+            "markets_traded": wallet.get("markets_traded", 0),
+            "rank": 0,
+            "tracked": True,
+            "followers": wallet.get("followers_count", 0),
+            "category": wallet.get("category", ""),
+        })
 
     # Sort by PnL
     leaderboard.sort(key=lambda x: x["pnl"], reverse=True)
 
-    data["leaderboard"] = leaderboard[:50]  # Keep top 50
+    data["leaderboard"] = leaderboard[:50]
     _save(data)
 
     return leaderboard[:50]
