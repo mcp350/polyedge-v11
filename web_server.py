@@ -1,14 +1,13 @@
 """
-WEB SERVER v9 — Polytragent Dashboard + Admin Console + Stripe webhooks + API
+WEB SERVER v12 — Polytragent Admin Console + Stripe Webhooks + API
 Runs alongside the Telegram bot on port 8080.
 Admin console at /admin with password protection.
-Requires: pip install flask
 """
 
 import os, json, threading
 from datetime import datetime, timezone, timedelta
 from functools import wraps
-from flask import Flask, request, jsonify, send_from_directory, redirect, render_template_string, Response
+from flask import Flask, request, jsonify, Response
 import user_store
 import stripe_handler
 import prediction_store as pstore
@@ -16,16 +15,15 @@ import onboarding
 import telegram_client as tg
 import copy_trading as ct
 
-app = Flask(__name__, static_folder="dashboard")
+app = Flask(__name__)
 
 # ═══════════════════════════════════════════════
-# ADMIN CONSOLE — Password Protected
+# ADMIN AUTH
 # ═══════════════════════════════════════════════
 
 ADMIN_PASSWORD = os.environ.get("ADMIN_DASHBOARD_PASSWORD", "jofc~kqsgz-yL8tq?C#*")
 
 def _check_admin_auth():
-    """Check admin auth via Basic Auth or ?token= param."""
     token = request.args.get("token", "")
     if token == ADMIN_PASSWORD:
         return True
@@ -44,7 +42,6 @@ def require_admin_auth(f):
         return f(*args, **kwargs)
     return decorated
 
-
 def _load_fees() -> dict:
     fp = os.path.join(os.path.dirname(__file__), "data", "fees.json")
     if not os.path.exists(fp):
@@ -54,7 +51,6 @@ def _load_fees() -> dict:
             return json.load(f)
     except:
         return {"total_collected": 0, "fees": []}
-
 
 def _load_copy_executor() -> dict:
     fp = os.path.join(os.path.dirname(__file__), "data", "copy_executor.json")
@@ -97,23 +93,7 @@ def stripe_webhook():
     return jsonify({"status": "ok"}), 200
 
 # ═══════════════════════════════════════════════
-# DASHBOARD PAGE
-# ═══════════════════════════════════════════════
-
-@app.route("/dashboard")
-def dashboard():
-    return send_from_directory("dashboard", "index.html")
-
-@app.route("/dashboard/admin")
-def dashboard_admin():
-    return send_from_directory("dashboard", "admin.html")
-
-@app.route("/dashboard/<path:filename>")
-def dashboard_static(filename):
-    return send_from_directory("dashboard", filename)
-
-# ═══════════════════════════════════════════════
-# ADMIN API ENDPOINTS
+# OLD ADMIN API (token-based, for legacy compat)
 # ═══════════════════════════════════════════════
 
 def _require_admin(request):
@@ -187,8 +167,6 @@ def api_admin_logs():
         lines = ["Log file not found"]
     return jsonify({"logs": lines})
 
-# ── ACCESS CODE API ──
-
 @app.route("/api/admin/codes", methods=["GET"])
 def api_admin_codes():
     if not _require_admin(request):
@@ -222,7 +200,7 @@ def api_admin_deactivate_code():
     return jsonify({"error": "Code not found"}), 404
 
 # ═══════════════════════════════════════════════
-# API ENDPOINTS (for dashboard)
+# PUBLIC API ENDPOINTS
 # ═══════════════════════════════════════════════
 
 @app.route("/api/user", methods=["GET"])
@@ -401,117 +379,324 @@ def api_stats():
 # ADMIN CONSOLE — /admin (password protected)
 # ═══════════════════════════════════════════════
 
-ADMIN_HTML = """
-<!DOCTYPE html>
-<html>
+ADMIN_HTML = """<!DOCTYPE html>
+<html lang="en">
 <head>
 <title>Polytragent Admin</title>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
-body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0a0a0a; color: #e0e0e0; }
-.header { background: linear-gradient(135deg, #1a1a2e, #16213e); padding: 24px 32px; border-bottom: 1px solid #333; }
-.header h1 { font-size: 24px; color: #00d4aa; }
-.header p { color: #888; font-size: 14px; margin-top: 4px; }
-.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; padding: 24px 32px; }
-.card { background: #1a1a2e; border: 1px solid #333; border-radius: 12px; padding: 20px; }
-.card .label { color: #888; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; }
-.card .value { font-size: 28px; font-weight: 700; color: #00d4aa; margin-top: 8px; }
-.card .value.red { color: #ff4757; }
-.card .sub { color: #666; font-size: 12px; margin-top: 4px; }
-.section { padding: 16px 32px; }
-.section h2 { font-size: 18px; color: #fff; margin-bottom: 12px; }
-table { width: 100%; border-collapse: collapse; background: #1a1a2e; border-radius: 8px; overflow: hidden; }
-th { background: #16213e; color: #00d4aa; text-align: left; padding: 12px; font-size: 12px; text-transform: uppercase; }
-td { padding: 10px 12px; border-top: 1px solid #222; font-size: 13px; }
-tr:hover { background: #1e1e3a; }
-.badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 600; }
-.badge.degen { background: #ff47571a; color: #ff4757; }
-.badge.free { background: #00d4aa1a; color: #00d4aa; }
-.refresh { color: #00d4aa; cursor: pointer; font-size: 13px; }
-.fee-section { padding: 16px 32px; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0a0a0f; color: #e0e0e0; min-height: 100vh; }
+.header { background: linear-gradient(135deg, #0f1128, #1a1a3e); padding: 20px 28px; border-bottom: 1px solid #2a2a4a; display: flex; justify-content: space-between; align-items: center; }
+.header h1 { font-size: 22px; color: #00d4aa; letter-spacing: -0.5px; }
+.header .meta { color: #666; font-size: 13px; }
+.header .meta span { color: #00d4aa; cursor: pointer; }
+.tabs { display: flex; gap: 0; background: #0f0f1a; border-bottom: 1px solid #1a1a2e; padding: 0 28px; }
+.tab { padding: 12px 20px; cursor: pointer; color: #888; font-size: 13px; font-weight: 500; border-bottom: 2px solid transparent; transition: all 0.2s; }
+.tab:hover { color: #ccc; }
+.tab.active { color: #00d4aa; border-bottom-color: #00d4aa; }
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; padding: 20px 28px; }
+.card { background: #12122a; border: 1px solid #1e1e3a; border-radius: 10px; padding: 16px; }
+.card .label { color: #666; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; }
+.card .value { font-size: 26px; font-weight: 700; color: #00d4aa; margin-top: 6px; }
+.card .value.warn { color: #f59e0b; }
+.card .sub { color: #555; font-size: 11px; margin-top: 4px; }
+.section { padding: 14px 28px; }
+.section h2 { font-size: 16px; color: #fff; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+table { width: 100%; border-collapse: collapse; background: #12122a; border-radius: 8px; overflow: hidden; }
+th { background: #0f1128; color: #00d4aa; text-align: left; padding: 10px 12px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; }
+td { padding: 9px 12px; border-top: 1px solid #1a1a2e; font-size: 13px; }
+tr:hover { background: #1a1a3a; }
+.badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 10px; font-weight: 600; }
+.badge.degen { background: #ff475720; color: #ff4757; }
+.badge.free { background: #00d4aa20; color: #00d4aa; }
+.badge.active { background: #3b82f620; color: #3b82f6; }
+.mono { font-family: 'SF Mono', Monaco, monospace; font-size: 11px; color: #888; }
+.green { color: #00d4aa; }
+.red { color: #ff4757; }
+.panel { display: none; }
+.panel.active { display: block; }
+.action-btn { background: #00d4aa20; color: #00d4aa; border: 1px solid #00d4aa40; padding: 4px 10px; border-radius: 6px; font-size: 11px; cursor: pointer; }
+.action-btn:hover { background: #00d4aa30; }
+.action-btn.danger { background: #ff475720; color: #ff4757; border-color: #ff475740; }
+.search { background: #0f0f1a; border: 1px solid #1e1e3a; color: #e0e0e0; padding: 8px 14px; border-radius: 6px; font-size: 13px; width: 280px; }
+.search::placeholder { color: #444; }
+.empty { text-align: center; padding: 40px; color: #444; font-size: 14px; }
+.controls { display: flex; gap: 10px; align-items: center; margin-bottom: 12px; }
 </style>
 </head>
 <body>
 <div class="header">
   <h1>Polytragent Admin Console</h1>
-  <p>v12.0 — Free Trading Terminal | <span class="refresh" onclick="loadData()">Refresh</span> | Auto-refresh: 30s</p>
+  <div class="meta">v12.0 Free Trading Terminal | <span onclick="loadAll()">Refresh</span> | Auto-refresh 30s</div>
 </div>
-<div class="grid" id="stats-grid"></div>
-<div class="section">
-  <h2>Users</h2>
-  <table id="users-table">
-    <thead><tr><th>#</th><th>User</th><th>Plan</th><th>Wallet</th><th>Volume</th><th>Fees Paid</th><th>Trades</th><th>Last Active</th></tr></thead>
-    <tbody id="users-body"></tbody>
-  </table>
+<div class="tabs">
+  <div class="tab active" onclick="showTab('overview')">Overview</div>
+  <div class="tab" onclick="showTab('users')">Users</div>
+  <div class="tab" onclick="showTab('fees')">Fees & Revenue</div>
+  <div class="tab" onclick="showTab('whales')">Whale Tracking</div>
+  <div class="tab" onclick="showTab('actions')">Actions</div>
 </div>
-<div class="fee-section">
-  <h2>Recent Fees</h2>
-  <table id="fees-table">
-    <thead><tr><th>Time</th><th>User</th><th>Side</th><th>Trade Amount</th><th>Fee</th></tr></thead>
-    <tbody id="fees-body"></tbody>
-  </table>
+
+<!-- OVERVIEW TAB -->
+<div id="tab-overview" class="panel active">
+  <div class="grid" id="stats-grid"></div>
+  <div class="section">
+    <h2>Recent Activity</h2>
+    <table id="activity-table">
+      <thead><tr><th>Time</th><th>User</th><th>Action</th><th>Details</th></tr></thead>
+      <tbody id="activity-body"><tr><td colspan="4" class="empty">Loading...</td></tr></tbody>
+    </table>
+  </div>
 </div>
+
+<!-- USERS TAB -->
+<div id="tab-users" class="panel">
+  <div class="section">
+    <div class="controls">
+      <input class="search" id="user-search" placeholder="Search by username or chat ID..." oninput="filterUsers()">
+    </div>
+    <table id="users-table">
+      <thead><tr><th>#</th><th>User</th><th>Chat ID</th><th>Plan</th><th>Wallet</th><th>Volume</th><th>Fees Paid</th><th>Trades</th><th>Joined</th><th>Last Active</th><th>Actions</th></tr></thead>
+      <tbody id="users-body"><tr><td colspan="11" class="empty">Loading...</td></tr></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- FEES TAB -->
+<div id="tab-fees" class="panel">
+  <div class="grid" id="fees-grid"></div>
+  <div class="section">
+    <h2>Fee Transactions</h2>
+    <table id="fees-table">
+      <thead><tr><th>Time</th><th>User</th><th>Side</th><th>Trade Amount</th><th>Fee Collected</th></tr></thead>
+      <tbody id="fees-body"><tr><td colspan="5" class="empty">Loading...</td></tr></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- WHALES TAB -->
+<div id="tab-whales" class="panel">
+  <div class="section">
+    <h2>Whale Tracking System</h2>
+    <div id="whale-stats"></div>
+    <table id="whales-table">
+      <thead><tr><th>#</th><th>Whale</th><th>Address</th><th>PnL</th><th>Volume</th><th>Followers</th><th>Signals</th><th>Last Checked</th></tr></thead>
+      <tbody id="whales-body"><tr><td colspan="8" class="empty">Loading...</td></tr></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ACTIONS TAB -->
+<div id="tab-actions" class="panel">
+  <div class="section">
+    <h2>Admin Actions</h2>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:12px">
+      <div class="card">
+        <div class="label">Grant Degen Mode</div>
+        <div style="margin-top:10px">
+          <input class="search" id="grant-chat-id" placeholder="Enter Chat ID" style="width:100%;margin-bottom:8px">
+          <button class="action-btn" onclick="grantDegen()">Grant Degen Mode</button>
+        </div>
+        <div id="grant-result" style="margin-top:8px;font-size:12px;color:#00d4aa"></div>
+      </div>
+      <div class="card">
+        <div class="label">Revoke Degen Mode</div>
+        <div style="margin-top:10px">
+          <input class="search" id="revoke-chat-id" placeholder="Enter Chat ID" style="width:100%;margin-bottom:8px">
+          <button class="action-btn danger" onclick="revokeDegen()">Revoke Access</button>
+        </div>
+        <div id="revoke-result" style="margin-top:8px;font-size:12px;color:#ff4757"></div>
+      </div>
+      <div class="card">
+        <div class="label">Generate Degen Access Code</div>
+        <div style="margin-top:10px">
+          <input class="search" id="code-uses" placeholder="Max uses (default: 1)" style="width:100%;margin-bottom:8px">
+          <input class="search" id="code-days" placeholder="Duration days (default: 30)" style="width:100%;margin-bottom:8px">
+          <button class="action-btn" onclick="genCode()">Generate Code</button>
+        </div>
+        <div id="code-result" style="margin-top:8px;font-size:12px;color:#00d4aa;font-family:monospace"></div>
+      </div>
+      <div class="card">
+        <div class="label">Send Broadcast Message</div>
+        <div style="margin-top:10px">
+          <input class="search" id="broadcast-msg" placeholder="Message (HTML supported)" style="width:100%;margin-bottom:8px">
+          <button class="action-btn" onclick="sendBroadcast()">Send to All Users</button>
+        </div>
+        <div id="broadcast-result" style="margin-top:8px;font-size:12px;color:#00d4aa"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
-const AUTH = btoa(':' + (new URLSearchParams(window.location.search).get('token') || ''));
-async function api(path) {
-  const headers = {};
-  const token = new URLSearchParams(window.location.search).get('token');
-  if (token) path += (path.includes('?') ? '&' : '?') + 'token=' + token;
-  const r = await fetch(path);
-  return r.json();
+let allUsers = [];
+function fmt(n) { n=parseFloat(n)||0; return n>=1e6?'$'+(n/1e6).toFixed(1)+'M':n>=1000?'$'+(n/1000).toFixed(1)+'k':'$'+n.toFixed(2); }
+function ts(s) { return s ? s.slice(0,16).replace('T',' ') : '-'; }
+
+function showTab(name) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+  event.target.classList.add('active');
 }
-function fmt(n) { return n >= 1e6 ? '$'+(n/1e6).toFixed(1)+'M' : n >= 1000 ? '$'+(n/1000).toFixed(1)+'k' : '$'+n.toFixed(2); }
-async function loadData() {
+
+async function api(path, opts) {
   try {
-    const stats = await api('/admin/api/stats');
-    document.getElementById('stats-grid').innerHTML = `
-      <div class="card"><div class="label">Total Users</div><div class="value">${stats.total_users}</div></div>
-      <div class="card"><div class="label">Active Traders</div><div class="value">${stats.active_traders}</div></div>
-      <div class="card"><div class="label">Degen Subscribers</div><div class="value">${stats.degen_subscribers}</div><div class="sub">MRR: $${stats.mrr}</div></div>
-      <div class="card"><div class="label">Total Volume</div><div class="value">${fmt(stats.total_volume)}</div></div>
-      <div class="card"><div class="label">Total Fees</div><div class="value">${fmt(stats.total_fees_collected)}</div></div>
-      <div class="card"><div class="label">24h Fees</div><div class="value">${fmt(stats.daily_fees)}</div></div>
-      <div class="card"><div class="label">7d Fees</div><div class="value">${fmt(stats.weekly_fees)}</div></div>
-      <div class="card"><div class="label">30d Fees</div><div class="value">${fmt(stats.monthly_fees)}</div></div>
-    `;
-    const users = await api('/admin/api/users');
-    document.getElementById('users-body').innerHTML = users.users.slice(0, 50).map((u, i) => `
-      <tr>
-        <td>${i+1}</td>
-        <td><b>${u.first_name || u.username || u.chat_id}</b><br><span style="color:#666;font-size:11px">@${u.username}</span></td>
-        <td><span class="badge ${u.plan === 'degen' ? 'degen' : 'free'}">${u.plan === 'degen' ? 'DEGEN' : 'FREE'}</span></td>
-        <td style="font-family:monospace;font-size:11px">${u.wallet ? u.wallet.slice(0,8) + '...' : '-'}</td>
-        <td>${fmt(u.total_volume)}</td>
-        <td>${fmt(u.total_fees_paid)}</td>
-        <td>${u.total_buys + u.total_sells}</td>
-        <td style="font-size:11px">${u.last_active ? u.last_active.slice(0,16).replace('T',' ') : '-'}</td>
-      </tr>
-    `).join('');
-    const fees = await api('/admin/api/fees');
-    document.getElementById('fees-body').innerHTML = (fees.recent_fees || []).slice(-20).reverse().map(f => `
-      <tr>
-        <td style="font-size:11px">${(f.timestamp || '').slice(0,19).replace('T',' ')}</td>
-        <td>${f.chat_id || '-'}</td>
-        <td>${(f.side || '').toUpperCase()}</td>
-        <td>${fmt(f.trade_amount || 0)}</td>
-        <td style="color:#00d4aa">${fmt(f.amount || 0)}</td>
-      </tr>
-    `).join('');
-  } catch(e) { console.error('Load error:', e); }
+    const r = await fetch(path, opts);
+    return await r.json();
+  } catch(e) { console.error('API error:', e); return {}; }
 }
-loadData();
-setInterval(loadData, 30000);
+
+async function loadAll() {
+  // Stats
+  const stats = await api('/admin/api/stats');
+  if (stats.total_users !== undefined) {
+    document.getElementById('stats-grid').innerHTML = `
+      <div class="card"><div class="label">Total Users</div><div class="value">${stats.total_users}</div><div class="sub">All registered</div></div>
+      <div class="card"><div class="label">Active Traders</div><div class="value">${stats.active_traders}</div><div class="sub">Made at least 1 trade</div></div>
+      <div class="card"><div class="label">Degen Subs</div><div class="value warn">${stats.degen_subscribers}</div><div class="sub">MRR: $${stats.mrr}</div></div>
+      <div class="card"><div class="label">Total Volume</div><div class="value">${fmt(stats.total_volume)}</div></div>
+      <div class="card"><div class="label">Total Fees</div><div class="value">${fmt(stats.total_fees_collected)}</div><div class="sub">1% per trade</div></div>
+      <div class="card"><div class="label">24h Fees</div><div class="value green">${fmt(stats.daily_fees)}</div></div>
+      <div class="card"><div class="label">7d Fees</div><div class="value green">${fmt(stats.weekly_fees)}</div></div>
+      <div class="card"><div class="label">30d Fees</div><div class="value green">${fmt(stats.monthly_fees)}</div></div>
+    `;
+    document.getElementById('fees-grid').innerHTML = `
+      <div class="card"><div class="label">Total Collected</div><div class="value">${fmt(stats.total_fees_collected)}</div></div>
+      <div class="card"><div class="label">24h</div><div class="value green">${fmt(stats.daily_fees)}</div></div>
+      <div class="card"><div class="label">7d</div><div class="value green">${fmt(stats.weekly_fees)}</div></div>
+      <div class="card"><div class="label">30d</div><div class="value green">${fmt(stats.monthly_fees)}</div></div>
+      <div class="card"><div class="label">24h Volume</div><div class="value">${fmt(stats.daily_volume)}</div></div>
+    `;
+  }
+
+  // Users
+  const ud = await api('/admin/api/users');
+  allUsers = (ud.users || []);
+  renderUsers(allUsers);
+
+  // Fees
+  const fd = await api('/admin/api/fees');
+  const fees = (fd.recent_fees || []).slice(-30).reverse();
+  document.getElementById('fees-body').innerHTML = fees.length ? fees.map(f => `
+    <tr>
+      <td class="mono">${ts(f.timestamp)}</td>
+      <td>${f.chat_id || '-'}</td>
+      <td><span class="badge ${f.side==='buy'?'active':'degen'}">${(f.side||'').toUpperCase()}</span></td>
+      <td>${fmt(f.trade_amount||0)}</td>
+      <td class="green">${fmt(f.amount||0)}</td>
+    </tr>
+  `).join('') : '<tr><td colspan="5" class="empty">No fee transactions yet</td></tr>';
+
+  // Activity (from fees as proxy)
+  document.getElementById('activity-body').innerHTML = fees.length ? fees.slice(0,15).map(f => `
+    <tr>
+      <td class="mono">${ts(f.timestamp)}</td>
+      <td>${f.chat_id || '-'}</td>
+      <td><span class="badge ${f.side==='buy'?'active':'degen'}">${(f.side||'BUY').toUpperCase()}</span></td>
+      <td>Trade ${fmt(f.trade_amount||0)} → Fee ${fmt(f.amount||0)}</td>
+    </tr>
+  `).join('') : '<tr><td colspan="4" class="empty">No activity yet. Trades will appear here.</td></tr>';
+
+  // Whales
+  const wd = await api('/admin/api/whales');
+  const whales = wd.wallets || [];
+  document.getElementById('whale-stats').innerHTML = `
+    <div class="grid" style="margin-bottom:12px">
+      <div class="card"><div class="label">Tracked Wallets</div><div class="value">${wd.total||0}</div></div>
+      <div class="card"><div class="label">Total Followers</div><div class="value">${wd.total_followers||0}</div></div>
+      <div class="card"><div class="label">Signals Sent</div><div class="value">${wd.total_signals||0}</div></div>
+      <div class="card"><div class="label">Last Scan</div><div class="value" style="font-size:14px">${ts(wd.last_scan)||'never'}</div></div>
+    </div>
+  `;
+  document.getElementById('whales-body').innerHTML = whales.length ? whales.map((w,i) => `
+    <tr>
+      <td>${i+1}</td>
+      <td><b>${w.alias||'Unknown'}</b><br><span style="color:#666;font-size:10px">${w.category||''}</span></td>
+      <td class="mono">${(w.address||'').slice(0,10)}...</td>
+      <td class="${w.pnl>=0?'green':'red'}">${w.pnl>=0?'+':''}${fmt(w.pnl||0)}</td>
+      <td>${fmt(w.volume||0)}</td>
+      <td>${w.followers_count||0}</td>
+      <td>${w.total_signals||0}</td>
+      <td class="mono">${ts(w.last_checked)}</td>
+    </tr>
+  `).join('') : '<tr><td colspan="8" class="empty">No whales tracked yet</td></tr>';
+}
+
+function renderUsers(users) {
+  document.getElementById('users-body').innerHTML = users.length ? users.slice(0,100).map((u,i) => `
+    <tr>
+      <td>${i+1}</td>
+      <td><b>${u.first_name||u.username||'-'}</b><br><span style="color:#666;font-size:10px">@${u.username||'-'}</span></td>
+      <td class="mono">${u.chat_id}</td>
+      <td><span class="badge ${u.plan==='degen'?'degen':'free'}">${u.plan==='degen'?'DEGEN':'FREE'}</span></td>
+      <td class="mono">${u.wallet?(u.wallet.slice(0,8)+'...'):'-'}</td>
+      <td>${fmt(u.total_volume)}</td>
+      <td class="green">${fmt(u.total_fees_paid)}</td>
+      <td>${(u.total_buys||0)+(u.total_sells||0)}</td>
+      <td class="mono">${ts(u.created_at)}</td>
+      <td class="mono">${ts(u.last_active)}</td>
+      <td>
+        ${u.plan!=='degen'?'<button class="action-btn" onclick="grantUser(\\''+u.chat_id+'\\')">Grant</button>':'<button class="action-btn danger" onclick="revokeUser(\\''+u.chat_id+'\\')">Revoke</button>'}
+      </td>
+    </tr>
+  `).join('') : '<tr><td colspan="11" class="empty">No users yet</td></tr>';
+}
+
+function filterUsers() {
+  const q = document.getElementById('user-search').value.toLowerCase();
+  const filtered = allUsers.filter(u =>
+    (u.username||'').toLowerCase().includes(q) ||
+    (u.first_name||'').toLowerCase().includes(q) ||
+    (u.chat_id||'').includes(q)
+  );
+  renderUsers(filtered);
+}
+
+async function grantDegen() {
+  const cid = document.getElementById('grant-chat-id').value.trim();
+  if (!cid) return;
+  const r = await api('/admin/api/grant_degen', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({chat_id: cid})});
+  document.getElementById('grant-result').textContent = r.status === 'ok' ? 'Degen Mode granted to ' + cid : (r.error || 'Error');
+  loadAll();
+}
+function grantUser(cid) { document.getElementById('grant-chat-id').value=cid; grantDegen(); }
+
+async function revokeDegen() {
+  const cid = document.getElementById('revoke-chat-id').value.trim();
+  if (!cid) return;
+  const r = await api('/admin/api/revoke_degen', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({chat_id: cid})});
+  document.getElementById('revoke-result').textContent = r.status === 'ok' ? 'Access revoked for ' + cid : (r.error || 'Error');
+  loadAll();
+}
+function revokeUser(cid) { document.getElementById('revoke-chat-id').value=cid; revokeDegen(); }
+
+async function genCode() {
+  const uses = parseInt(document.getElementById('code-uses').value) || 1;
+  const days = parseInt(document.getElementById('code-days').value) || 30;
+  const r = await api('/admin/api/gen_code', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({max_uses: uses, duration_days: days})});
+  document.getElementById('code-result').textContent = r.code ? 'Code: ' + r.code : (r.error || 'Error');
+}
+
+async function sendBroadcast() {
+  const msg = document.getElementById('broadcast-msg').value.trim();
+  if (!msg) return;
+  const r = await api('/admin/api/broadcast', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({message: msg})});
+  document.getElementById('broadcast-result').textContent = r.status === 'ok' ? 'Sent to ' + r.sent + ' users' : (r.error || 'Error');
+}
+
+loadAll();
+setInterval(loadAll, 30000);
 </script>
 </body>
-</html>
-"""
+</html>"""
 
 @app.route("/admin")
 @require_admin_auth
 def admin_console():
-    return render_template_string(ADMIN_HTML)
+    return Response(ADMIN_HTML, content_type="text/html")
 
 @app.route("/admin/api/stats")
 @require_admin_auth
@@ -592,8 +777,82 @@ def admin_api_trades():
     trades = ce_data.get("executed_trades", [])[-limit:]
     return jsonify({"trades": trades, "count": len(trades)})
 
+@app.route("/admin/api/whales")
+@require_admin_auth
+def admin_api_whales():
+    data = ct._load()
+    wallets = list(data.get("wallets", {}).values())
+    wallets.sort(key=lambda w: w.get("pnl", 0), reverse=True)
+    total_followers = sum(len(f) for f in data.get("followers", {}).values())
+    total_signals = len(data.get("signals", []))
+    return jsonify({
+        "wallets": wallets[:50],
+        "total": len(wallets),
+        "total_followers": total_followers,
+        "total_signals": total_signals,
+        "last_scan": data.get("last_scan", ""),
+    })
+
+@app.route("/admin/api/grant_degen", methods=["POST"])
+@require_admin_auth
+def admin_grant_degen():
+    body = request.get_json(silent=True) or {}
+    chat_id = str(body.get("chat_id", "")).strip()
+    if not chat_id:
+        return jsonify({"error": "chat_id required"}), 400
+    user = user_store.get_user(chat_id)
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+    user_store.activate_subscription(chat_id, plan="degen",
+        stripe_customer_id="admin_grant", stripe_subscription_id="admin_grant")
+    try:
+        tg.send("🚀 <b>Degen Mode activated!</b>\nYou now have unlimited whale tracking and premium features.", chat_id)
+    except: pass
+    return jsonify({"status": "ok", "chat_id": chat_id})
+
+@app.route("/admin/api/revoke_degen", methods=["POST"])
+@require_admin_auth
+def admin_revoke_degen():
+    body = request.get_json(silent=True) or {}
+    chat_id = str(body.get("chat_id", "")).strip()
+    if not chat_id:
+        return jsonify({"error": "chat_id required"}), 400
+    user = user_store.get_user(chat_id)
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+    user_store.deactivate_subscription(chat_id)
+    try:
+        tg.send("ℹ️ Your Degen Mode has been deactivated. You still have free access.", chat_id)
+    except: pass
+    return jsonify({"status": "ok", "chat_id": chat_id})
+
+@app.route("/admin/api/gen_code", methods=["POST"])
+@require_admin_auth
+def admin_gen_code():
+    body = request.get_json(silent=True) or {}
+    max_uses = body.get("max_uses", 1)
+    duration = body.get("duration_days", 30)
+    code = user_store.generate_access_code(created_by="admin_console", max_uses=max_uses, duration_days=duration)
+    return jsonify({"status": "ok", "code": code})
+
+@app.route("/admin/api/broadcast", methods=["POST"])
+@require_admin_auth
+def admin_broadcast():
+    body = request.get_json(silent=True) or {}
+    msg = body.get("message", "").strip()
+    if not msg:
+        return jsonify({"error": "message required"}), 400
+    users = user_store.get_all_users()
+    sent = 0
+    for u in users:
+        try:
+            tg.send(msg, str(u.get("chat_id", "")))
+            sent += 1
+        except: pass
+    return jsonify({"status": "ok", "sent": sent, "total": len(users)})
+
 # ═══════════════════════════════════════════════
-# HEALTH CHECK
+# HOME & HEALTH
 # ═══════════════════════════════════════════════
 
 @app.route("/")
@@ -602,9 +861,8 @@ def home():
         "service": "Polytragent",
         "version": "v12.0",
         "status": "running",
-        "model": "FREE Trading Terminal + Degen Mode ($79/mo)",
+        "model": "FREE Trading Terminal + Degen Mode",
         "admin": "/admin",
-        "health": "/health",
     })
 
 @app.route("/health")
@@ -620,5 +878,5 @@ def start_server(port=8080):
         app.run(host="0.0.0.0", port=port, debug=False)
     t = threading.Thread(target=run, daemon=True)
     t.start()
-    print(f"[WEB] Polytragent Dashboard + API server started on port {port}")
+    print(f"[WEB] Polytragent Admin + API server started on port {port}")
     return t
