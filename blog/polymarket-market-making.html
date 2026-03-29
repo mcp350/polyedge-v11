@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><link rel="icon" type="image/x-icon" href="/favicon.ico"><link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png"><link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Complete guide to Polymarket market making. Learn bid-ask spreads, liquidity provision, risk management, and automated market-making strategies.">
+<link rel="canonical" href="https://polytragent.com/blog/polymarket-market-making">
+  <meta name="keywords" content="polymarket market making, bid-ask spread, liquidity provision, AMM, prediction markets">
+  <meta name="author" content="Polytragent">
+
+  <!-- OG Tags -->
+  <meta property="og:title" content="Polymarket Market Making: How to Provide Liquidity and Profit">
+  <meta property="og:description" content="Master market making on Polymarket. Strategies for bid-ask spreads, liquidity provision, and automated MM for consistent profits.">
+  <meta property="og:type" content="article">
+  <meta property="og:url" content="https://polytragent.com/blog/polymarket-market-making">
+  <meta property="og:image" content="https://polytragent.com/og-image.jpg">
+
+  <!-- Schema Markup -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "BlogPosting",
+    "headline": "Polymarket Market Making: How to Provide Liquidity and Profit",
+    "description": "Complete guide to market making on Polymarket. Learn spreads, liquidity provision, risk management, and automation strategies.",
+    "image": "https://polytragent.com/og-image.jpg",
+    "datePublished": "2026-03-14",
+    "dateModified": "2026-03-14",
+    "author": {
+      "@type": "Organization",
+      "name": "Polytragent",
+      "url": "https://polytragent.com"
+    }
+  }
+  </script>
+
+  <title>Polymarket Market Making: How to Provide Liquidity and Profit</title>
+  <!-- Twitter Card -->
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Polymarket Market Making: How to Provide Liquidity and Profit">
+<meta name="twitter:description" content="Complete guide to Polymarket market making. Learn bid-ask spreads, liquidity provision, risk management, and automated market-making strategies.">
+<meta name="twitter:image" content="https://polytragent.com/og-image.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+  
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Home","item":"https://polytragent.com/"},{"@type":"ListItem","position":2,"name":"Blog","item":"https://polytragent.com/blog"},{"@type":"ListItem","position":3,"name":"Polymarket Market Making"}]}
+</script>
+
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"Article","headline":"Polymarket Market Making: How to Provide Liquidity and Profit","description":"Complete guide to Polymarket market making. Learn bid-ask spreads, liquidity provision, risk management, and automated market-making strategies.","url":"https://polytragent.com/blog/polymarket-market-making","datePublished":"2026-03-16","dateModified":"2026-03-23","author":{"@type":"Organization","name":"Polytragent","url":"https://polytragent.com"},"publisher":{"@type":"Organization","name":"Polytragent","logo":{"@type":"ImageObject","url":"https://polytragent.com/favicon-512x512.png"}}}
+</script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{
+  --black:#000;--white:#fff;--gray:#888;--gray2:#444;--gray3:#222;
+  --border:#1a1a1a;--font-sans:'Inter',sans-serif;--font-mono:'JetBrains Mono',monospace;
+  --green:#6ee7b7;--red:#fca5a5;--blue:#93c5fd;--yellow:#fde68a;
+  --code-bg:#080808;--code-border:#141414;
+}
+html{scroll-behavior:smooth;}
+body{background:var(--black);color:var(--white);font-family:var(--font-sans);font-size:16px;line-height:1.6;overflow-x:hidden;}
+a{color:inherit;text-decoration:none;}
+
+nav{position:fixed;top:0;left:0;right:0;z-index:200;display:flex;align-items:center;justify-content:space-between;padding:0 48px;height:64px;border-bottom:1px solid var(--border);background:rgba(0,0,0,0.92);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);}
+.nav-links{display:flex;gap:32px;list-style:none;}
+.nav-links a{font-size:14px;color:var(--gray);transition:color .15s;}
+.nav-links a:hover{color:var(--white);}
+.nav-links li{position:relative;}
+.nav-dropdown{display:none;position:absolute;top:100%;left:-16px;padding-top:12px;z-index:300;}
+.nav-links li:hover .nav-dropdown{display:block;}
+.nav-dropdown-inner{background:rgba(0,0,0,0.96);border:1px solid var(--border);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);padding:12px 0;min-width:260px;}
+.nav-dropdown a{display:block;padding:8px 20px;font-size:13px;color:var(--gray);transition:color .15s,background .15s;white-space:nowrap;}
+.nav-dropdown a:hover{color:var(--white);background:rgba(255,255,255,.04);}
+.ndrop-label{padding:6px 20px 4px;font-family:var(--font-mono);font-size:9px;color:var(--gray2);letter-spacing:2px;text-transform:uppercase;}
+.ndrop-label:not(:first-child){margin-top:8px;border-top:1px solid var(--border);padding-top:10px;}
+.nav-ctas{display:flex;gap:12px;align-items:center;}
+.btn-solid{display:inline-flex;align-items:center;gap:6px;padding:9px 20px;background:var(--white);color:var(--black);font-size:13px;font-weight:500;font-family:var(--font-sans);border:none;cursor:pointer;transition:opacity .15s;}
+.btn-solid:hover{opacity:.85;}
+.btn-outline{display:inline-flex;align-items:center;gap:6px;padding:8px 20px;background:transparent;color:var(--white);font-size:13px;border:1px dashed var(--gray2);cursor:pointer;transition:border-color .15s;}
+.btn-outline:hover{border-color:var(--white);}
+
+footer{border-top:1px solid var(--border);padding:28px 48px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:20px;position:relative;z-index:1;}
+.fcopy{font-family:var(--font-mono);font-size:10px;color:var(--gray2);}
+.flinks{display:flex;gap:28px;list-style:none;}
+.flinks a{font-size:13px;color:var(--gray2);transition:color .15s;}.flinks a:hover{color:var(--white);}
+.disc{border-top:1px solid var(--border);padding:18px 48px;position:relative;z-index:1;}
+.disc p{font-size:10px;color:#2a2a2a;font-family:var(--font-mono);line-height:1.6;}
+
+.rev2{opacity:0;transform:translateY(16px);transition:opacity .55s,transform .55s;}
+.rev2.in{opacity:1;transform:none;}
+
+.breadcrumb{font-family:var(--font-mono);font-size:11px;color:var(--gray2);margin-bottom:24px;}
+.breadcrumb a{color:var(--gray);transition:color .15s;}
+.breadcrumb a:hover{color:var(--white);}
+.article-wrap{max-width:720px;margin:0 auto;padding:120px 48px 80px;}
+.article-meta{font-family:var(--font-mono);font-size:11px;color:var(--gray2);margin-bottom:32px;display:flex;gap:20px;}
+.article-wrap h1{font-size:clamp(32px,4vw,48px);font-weight:600;line-height:1.1;letter-spacing:-1.5px;margin-bottom:16px;}
+.article-wrap h2{font-size:24px;font-weight:600;letter-spacing:-0.5px;margin:48px 0 16px;padding-top:32px;border-top:1px solid var(--border);}
+.article-wrap h3{font-size:18px;font-weight:500;margin:32px 0 12px;}
+.article-wrap p{font-size:16px;color:var(--gray);line-height:1.8;margin-bottom:20px;font-weight:300;}
+.article-wrap ul,.article-wrap ol{margin:0 0 20px 24px;color:var(--gray);}
+.article-wrap li{font-size:15px;line-height:1.8;margin-bottom:8px;font-weight:300;}
+.article-wrap strong{color:var(--white);font-weight:500;}
+.article-wrap a{color:var(--white);border-bottom:1px dashed var(--gray2);transition:border-color .15s;}
+.article-wrap a:hover{border-color:var(--white);}
+.article-cta{margin:48px 0;padding:32px;border:1px solid var(--border);background:var(--code-bg);}
+.article-cta h3{margin:0 0 8px;font-size:16px;}
+.article-cta p{font-size:14px;margin-bottom:16px;}
+.code-block{background:var(--code-bg);border:1px solid var(--code-border);padding:20px;margin:20px 0;font-family:var(--font-mono);font-size:12px;color:var(--gray);line-height:1.7;overflow-x:auto;}
+.takeaway{border-left:2px solid var(--green);padding:16px 20px;margin:24px 0;background:rgba(110,231,183,.03);}
+.takeaway p{font-size:14px;margin:0;}
+
+@media(max-width:900px){
+  nav{padding:0 20px;}
+  .nav-links{display:none;}
+  footer,.disc{padding:24px;}
+  .article-wrap{padding:80px 24px 60px;}
+}
+  </style>
+</head>
+<body>
+
+<nav>
+  <a href="/"><svg height="22" viewBox="0 0 340 40" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 33 L20 5 L36 33" stroke="white" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/><text x="52" y="29" font-family="Inter,sans-serif" font-size="19" font-weight="600" letter-spacing="4" fill="white">POLYTRAGENT</text></svg></a>
+  <ul class="nav-links">
+    <li><a href="/#features">Features</a></li>
+    <li><a href="/#how-it-works">How it works</a></li>
+    <li><a href="/#pricing">Pricing</a></li>
+    <li>
+      <a href="/resources">Resources ▾</a>
+      <div class="nav-dropdown"><div class="nav-dropdown-inner">
+        <div class="ndrop-label">Compare</div>
+        <a href="/compare">All Comparisons</a>
+        <a href="/compare/polytragent-vs-polycop">Polytragent vs PolyCop</a>
+        <a href="/compare/polytragent-vs-polysight">Polytragent vs Polysight</a>
+        <a href="/compare/copy-trading-bots">Copy Trading Bots</a>
+        <a href="/compare/polycop-alternative">PolyCop Alternative</a>
+        <a href="/compare/polysight-alternative">Polysight Alternative</a>
+        <div class="ndrop-label">Landing Pages</div>
+        <a href="/resources/polymarket-strategies">Polymarket Strategies 2026</a>
+        <a href="/resources/how-to-make-money-polymarket">How to Make Money</a>
+        <a href="/resources/prediction-market-strategies">Prediction Market Strategies</a>
+        <a href="/resources/polymarket-telegram-bots">Telegram Bots</a>
+        <a href="/resources/polymarket-automated-trading">Automated Trading</a>
+        <a href="/resources/polymarket-whale-tracking">Whale Tracking</a>
+        <a href="/resources/polymarket-market-making">Market Making</a>
+        <a href="/resources/polymarket-poly-token">POLY Token Airdrop</a>
+        <div class="ndrop-label">Blog</div>
+        <a href="/blog">All Articles</a>
+        <a href="/blog/polymarket-prediction-bot">Polymarket Prediction Bot</a>
+        <a href="/blog/polymarket-tools-guide">Polymarket Tools Guide</a>
+        <a href="/blog/best-polymarket-bots-2026">Best Polymarket Bots 2026</a>
+        <a href="/blog/polymarket-trading-bot">Polymarket Trading Bot</a>
+        <a href="/blog/copy-trade-bot">Copy Trade Bot Guide</a>
+        <a href="/blog/copy-trading-guide">Copy Trading Guide</a>
+        <a href="/blog/polymarket-strategies-2026">Polymarket Strategies 2026</a>
+        <a href="/blog/how-to-make-money-polymarket">How to Make Money on Polymarket</a>
+        <a href="/blog/prediction-market-strategies">Prediction Market Strategies</a>
+        <a href="/blog/polymarket-telegram-bots">Polymarket Telegram Bots</a>
+        <a href="/blog/polymarket-automated-trading">Automated Trading Guide</a>
+        <a href="/blog/polymarket-whale-tracking">Whale Tracking Guide</a>
+        <a href="/blog/polymarket-market-making">Market Making Guide</a>
+        <a href="/blog/polymarket-poly-token">POLY Token Airdrop Guide</a>
+      </div></div>
+    </li>
+    <li><a href="/#faq">FAQ</a></li>
+  </ul>
+  <div class="nav-ctas"><a href="/#pricing" class="btn-outline">See plans</a><a href="https://t.me/bmpolybot" target="_blank" class="btn-solid">Get started →</a></div>
+</nav>
+
+<div class="article-wrap">
+  <div class="breadcrumb"><a href="/">Home</a> / <a href="/blog">Blog</a> / Polymarket Market Making</div>
+  <div class="article-meta">
+    <span>Published Mar 14, 2026</span>
+    <span>7 min read</span>
+  </div>
+
+  <h1>Polymarket Market Making: How to Provide Liquidity and Profit</h1>
+
+  <p>Market making is one of the oldest and most reliable trading strategies. Instead of betting on price moves, market makers earn spread—the difference between what they buy for and sell for. On Polymarket, where many markets are illiquid and spreads are wide, market makers play a critical role: they improve the ecosystem while capturing consistent profits.</p>
+
+  <p>This guide covers the mechanics of market making, spread optimization, risk management, and how to scale. Whether you're a small-scale operator or building an automated MM strategy, you'll learn how to provide liquidity and profit from it.</p>
+
+  <h2>What Is Market Making and How It Works</h2>
+
+  <p>A market maker simultaneously quotes a <strong>bid price</strong> (what they'll pay for an outcome) and an <strong>ask price</strong> (what they'll sell it for). The spread is the difference:</p>
+
+  <p><strong>Spread = Ask Price - Bid Price</strong></p>
+
+  <p>Example: If you bid 45 cents for Yes shares and ask 47 cents, your spread is 2 cents. For every share that transacts across your spread (someone buys your ask or sells at your bid), you earn 2 cents.</p>
+
+  <p>Scale this across thousands of shares and hundreds of markets, and spreads compound into real revenue.</p>
+
+  <h3>Why This Works on Polymarket</h3>
+
+  <ul>
+    <li><strong>High Spreads:</strong> Many Polymarket markets have 1-5% spreads, especially in less-liquid prediction markets. Traditional stock or futures markets might have 0.1% spreads. Polymarket's illiquidity creates wide arb windows.</li>
+    <li><strong>Consistent Flow:</strong> Traders need liquidity. If you're the best bid or ask in a market, you'll get filled regularly.</li>
+    <li><strong>Low Competition:</strong> Market making attracts fewer competitors than speculation. Fewer MMs = wider spreads.</li>
+    <li><strong>No Directional Risk:</strong> You profit regardless of whether an outcome wins or loses. Your edge is speed and tight pricing, not prediction.</li>
+  </ul>
+
+  <div class="takeaway">
+    <p><strong>Takeaway:</strong> Market making on Polymarket isn't about predicting outcomes. It's about providing liquidity more efficiently than competitors and capturing the spread.</p>
+  </div>
+
+  <h2>Bid-Ask Spread Optimization</h2>
+
+  <p>Choosing the right spread size is a balancing act:</p>
+
+  <h3>Wider Spreads = Higher Profit Per Trade</h3>
+
+  <p>A 5% spread earns you more per share sold. But wider spreads deter traders. You might get fewer fills, reducing total volume-based profits.</p>
+
+  <h3>Tighter Spreads = Higher Fill Rate</h3>
+
+  <p>A 0.5% spread makes you the most attractive counterparty. You'll get filled constantly. But each fill earns less.</p>
+
+  <h3>Finding the Sweet Spot</h3>
+
+  <p>The optimal spread depends on:</p>
+
+  <ul>
+    <li><strong>Market Volatility:</strong> Volatile markets require wider spreads to compensate for adverse moves. In a tight political race, quote wider.</li>
+    <li><strong>Your Position:</strong> If you're balanced (equal Yes and No positions), tighter spreads are safe. If you're one-sided, widen spreads to reduce fill rate until balanced.</li>
+    <li><strong>Inventory Risk:</strong> If you've accumulated heavy inventory in an outcome, widen your quote on that side to discourage more buys and incentivize sells.</li>
+    <li><strong>Competition:</strong> If other MMs are quoting tight, match them or slightly undercut. If the market has no MMs, you can quote wider.</li>
+    <li><strong>Time to Resolution:</strong> As a market approaches resolution, volatility often increases. Widen spreads in the final hours.</li>
+  </ul>
+
+  <h2>Providing Liquidity at Scale</h2>
+
+  <h3>Single-Market vs. Multi-Market Strategies</h3>
+
+  <p><strong>Single-Market Focus:</strong> Quote aggressively in one or two markets you understand deeply. Build reputation, earn tight quotes from retail traders. This works if you have capital concentration and strong views on those specific markets.</p>
+
+  <p><strong>Multi-Market Spread:</strong> Quote simultaneously across 50-100+ markets with tighter spreads in each. Diversifies inventory risk. Requires automated systems to manage. This is what professional MMs do.</p>
+
+  <h3>Inventory Management</h3>
+
+  <p>Every trade you make moves your inventory:</p>
+
+  <ul>
+    <li>Buy 100 Yes shares → You now own 100 Yes.</li>
+    <li>Sell 100 No shares → You're now short 100 No (equivalent to long 100 Yes).</li>
+  </ul>
+
+  <p>Imbalanced inventory exposes you to directional risk. If you own 10,000 Yes shares and that outcome loses, you take a $10k loss. To manage this:</p>
+
+  <ul>
+    <li><strong>Rebalance Continuously:</strong> As you accumulate inventory, adjust spreads to incentivize sells (if long) or buys (if short).</li>
+    <li><strong>Use Offset Markets:</strong> If you're long Yes on "Candidate A Wins," go short No on "Candidate B Wins" to hedge.</li>
+    <li><strong>Set Position Limits:</strong> Never allow your long or short inventory to exceed a threshold (e.g., $50k net). If you hit the limit, step back from quotes until rebalanced.</li>
+  </ul>
+
+  <h2>Automated Market Making Systems</h2>
+
+  <p>Manual market making doesn't scale. Professional MMs use algorithms to:</p>
+
+  <h3>Continuous Repricing</h3>
+
+  <p>As prices move, adjust your quotes automatically. If the fair price ticks up 1 cent, your bid and ask should both move up 1 cent.</p>
+
+  <div class="code-block">
+# Pseudocode for dynamic repricing
+fair_price = estimate_fair_value(market)
+spread = calculate_spread_width(inventory, volatility)
+bid = fair_price - spread/2
+ask = fair_price + spread/2
+update_orders(bid, ask)
+  </div>
+
+  <h3>Real-Time Inventory Adjustment</h3>
+
+  <p>Scale your spreads based on how far you've drifted from zero inventory:</p>
+
+  <ul>
+    <li>Inventory = 0 → Quote tight (standard spread)</li>
+    <li>Inventory = +500 shares → Widen asks to push people to sell</li>
+    <li>Inventory = -500 shares → Widen bids to push people to buy</li>
+  </ul>
+
+  <h3>Order Cancellation and Refresh</h3>
+
+  <p>Cancel stale orders quickly. If the fair price moves and your orders don't get filled within 5 seconds, cancel and reprice. This prevents being hit on both sides of a move.</p>
+
+  <h2>Risk Management for Market Makers</h2>
+
+  <h3>Inventory Limits</h3>
+
+  <p>Set maximum long and short positions. If you hit limits, pause quotes. Don't let inventory run uncontrolled.</p>
+
+  <h3>Volatility Halts</h3>
+
+  <p>When a market's price moves >5% in 1 minute, pause and reassess. Your fair-value estimates might be stale, and you could get picked off by informed traders.</p>
+
+  <h3>Correlation Tracking</h3>
+
+  <p>Track correlations across related markets. If you're long Yes in "Candidate A Wins" and short No in a related market, a move in one affects the other. Manage position risk across clusters, not individual markets.</p>
+
+  <div class="article-cta">
+    <h3>Optimize Your Pricing with Research</h3>
+    <p>Polytragent identifies fair prices and volatility regimes, helping MMs set spreads that attract volume while protecting inventory. Better research = better quotes = more volume.</p>
+    <a href="https://t.me/bmpolybot" target="_blank" class="btn-solid">Get Started →</a>
+  </div>
+
+  <h2>Common Market-Making Mistakes</h2>
+
+  <h3>Quoting Too Tight Too Early</h3>
+
+  <p>A 0.1% spread sounds great, but if you get hit 1000 times and end up with a massive imbalanced inventory, you'll lose money on adverse moves. Tighter spreads are only sustainable with balanced flow and tight rebalancing.</p>
+
+  <h3>Ignoring Inventory Drift</h3>
+
+  <p>Letting your position drift from zero without widening spreads is dangerous. Inventory risk compounds. Check inventory constantly.</p>
+
+  <h3>Not Monitoring Fair Value</h3>
+
+  <p>If your fair-value estimate lags the true probability, you'll get picked off. Smart traders will buy at your loose asks (when true price is higher) and sell at your loose bids (when true price is lower). Use research and real-time signals to keep fair-value estimates current.</p>
+
+  <h3>Under-Capitalizing</h3>
+
+  <p>You need capital to absorb drawdowns from adverse inventory moves. A MM with only $10k capital can't sustainably manage a multi-market operation. Under-capitalization forces you to quote wide and miss volume.</p>
+
+  <h2>Scaling Your Market-Making Operation</h2>
+
+  <h3>Stage 1: Single Market (Manual)</h3>
+
+  <p>Pick one market with good liquidity. Quote spreads manually. Track inventory in a spreadsheet. Get comfortable with the workflow and risk management. Once you're profitable and confident, expand.</p>
+
+  <h3>Stage 2: Multiple Markets (Semi-Automated)</h3>
+
+  <p>Build scripts that update quotes based on fair-price inputs. Still monitor manually, but reduce the overhead. Quote 10-20 markets simultaneously.</p>
+
+  <h3>Stage 3: Full Automation (Many Markets)</h3>
+
+  <p>Fully automated repricing, inventory management, and halting logic. Quote 100+ markets. Use machine learning to optimize spread widths. This is where professionals operate.</p>
+
+  <h2>FAQ</h2>
+
+  <div style="margin-top:40px;">
+    <h3>How much capital do I need to start market making?</h3>
+    <p>Realistically, $10k-$50k minimum. With less, you can't absorb adverse inventory moves and will be forced to quote wide. With more, you can spread risk across more markets and tighten spreads aggressively. Professional MMs often allocate $500k-$5M+ to prediction market MM.</p>
+
+    <h3>Can I market make and also place directional bets?</h3>
+    <p>Yes, but be careful. MM is spread-based profit. Directional bets are conviction bets. Don't confuse the two. Keep them in separate mental accounts and risk budgets. If a directional bet goes wrong, don't average down and blow your MM capital.</p>
+
+    <h3>What's the typical profit margin for market makers?</h3>
+    <p>On Polymarket, good MMs might capture 20-50% of the spreads they provide, after accounting for losses on adverse moves. If markets have 2% spreads and you capture 0.4-1% of the volume you provide, that's solid. Varies by market liquidity and competition.</p>
+
+    <h3>Do I need API access to market make on Polymarket?</h3>
+    <p>For any serious operation, yes. Manual quoting won't keep up with market moves. Use the Polymarket API to post orders programmatically and update them in real time.</p>
+  </div>
+
+  <div class="article-cta" style="margin-top:60px;">
+    <h3>Use AI-Driven Fair Pricing to Outquote Competition</h3>
+    <p>Polytragent's market intelligence helps MMs identify true fair value and volatility regimes—so you quote better and capture more volume.</p>
+    <a href="https://t.me/bmpolybot" target="_blank" class="btn-solid">Join the Program →</a>
+  </div>
+
+</div>
+
+<footer>
+  <div>
+    <svg height="20" viewBox="0 0 340 40" fill="none" xmlns="http://www.w3.org/2000/svg" style="opacity:.35;"><path d="M4 33 L20 5 L36 33" stroke="white" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/><text x="52" y="29" font-family="Inter,sans-serif" font-size="19" font-weight="600" letter-spacing="4" fill="white">POLYTRAGENT</text></svg>
+    <div class="fcopy" style="margin-top:8px;">© 2026 Polytragent. AI Research for Polymarket.</div>
+  </div>
+  <ul class="flinks">
+    <li><a href="/features">Features</a></li>
+    <li><a href="/#pricing">Pricing</a></li>
+    <li><a href="/resources">Resources</a></li>
+    <li><a href="/blog">Blog</a></li>
+    <li><a href="/#faq">FAQ</a></li>
+    <li><a href="https://x.com/polytragent" target="_blank">X / Twitter</a></li>
+    <li><a href="https://polytragent.gitbook.io/polytragent-docs/polytragent-documentation" target="_blank">Docs</a></li>
+  </ul>
+</footer>
+<div class="disc">
+  <p>Risk Disclaimer: Prediction market trading involves significant financial risk. AI-powered research does not guarantee profits. Past performance is not indicative of future results. Polytragent is a research tool, not a financial advisor. Only trade capital you can afford to lose.</p>
+</div>
+
+</body>
+</html>

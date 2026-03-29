@@ -1,0 +1,1349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><link rel="icon" type="image/x-icon" href="/favicon.ico"><link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png"><link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Polytragent — AI Research Agent for Polymarket</title>
+<meta name="description" content="Polytragent is an AI-powered research agent for Polymarket. Millions of data points analyzed instantly — spot edge, find mispriced markets, and profit from prediction markets with AI-driven insights.">
+<link rel="canonical" href="https://polytragent.com/">
+<!-- Open Graph -->
+<meta property="og:type" content="website">
+<meta property="og:title" content="Polytragent — AI Research Agent for Polymarket">
+<meta property="og:description" content="Send a Polymarket link. Get instant AI research — edge scores, cross-platform comparison, and BUY/HOLD recommendations in seconds. 78% win rate.">
+<meta property="og:url" content="https://polytragent.com/">
+<meta property="og:site_name" content="Polytragent">
+<meta property="og:image" content="https://polytragent.com/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<!-- Twitter Card -->
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Polytragent — AI Research Agent for Polymarket">
+<meta name="twitter:description" content="AI-powered edge detection for Polymarket. 78% win rate. Analyze every sub-market in seconds.">
+<meta name="twitter:image" content="https://polytragent.com/og-image.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<!-- Schema: SoftwareApplication -->
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Polytragent","applicationCategory":"FinanceApplication","description":"AI-powered research agent for Polymarket prediction markets. Analyzes millions of data points to find edge and mispriced markets.","url":"https://polytragent.com","operatingSystem":"Web, Telegram","offers":{"@type":"Offer","price":"79.99","priceCurrency":"USD","billingIncrement":"P1M","description":"Monthly subscription — full access"}}
+</script>
+<!-- Schema: Organization -->
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"Organization","name":"Polytragent","url":"https://polytragent.com","logo":"https://polytragent.com/favicon-512x512.png","description":"AI-powered research agent for Polymarket prediction markets.","sameAs":["https://t.me/bmpolybot","https://polytragent.gitbook.io/polytragent-docs/polytragent-documentation"]}
+</script>
+<!-- Schema: BreadcrumbList -->
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Home","item":"https://polytragent.com/"}]}
+</script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{
+  --black:#000;--white:#fff;--gray:#888;--gray2:#444;--gray3:#222;
+  --border:#1a1a1a;--font-sans:'Inter',sans-serif;--font-mono:'JetBrains Mono',monospace;
+  --green:#6ee7b7;--red:#fca5a5;--blue:#93c5fd;--yellow:#fde68a;
+  --code-bg:#080808;--code-border:#141414;
+}
+html{scroll-behavior:smooth;}
+body{background:var(--black);color:var(--white);font-family:var(--font-sans);font-size:16px;line-height:1.6;overflow-x:hidden;}
+a{color:inherit;text-decoration:none;}
+
+.grid-bg{position:fixed;top:0;left:0;right:0;bottom:0;z-index:0;pointer-events:none;opacity:.35;}
+
+nav{position:fixed;top:0;left:0;right:0;z-index:200;display:flex;align-items:center;justify-content:space-between;padding:0 48px;height:64px;border-bottom:1px solid var(--border);background:rgba(0,0,0,0.92);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);}
+.nav-links{display:flex;gap:32px;list-style:none;}
+.nav-links a{font-size:14px;color:var(--gray);transition:color .15s;}
+.nav-links a:hover{color:var(--white);}
+.nav-links li{position:relative;}
+.nav-dropdown{display:none;position:absolute;top:100%;left:-16px;padding-top:12px;z-index:300;}
+.nav-links li:hover .nav-dropdown{display:block;}
+.nav-dropdown-inner{background:rgba(0,0,0,0.96);border:1px solid var(--border);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);padding:12px 0;min-width:260px;}
+.nav-dropdown a{display:block;padding:8px 20px;font-size:13px;color:var(--gray);transition:color .15s,background .15s;white-space:nowrap;}
+.nav-dropdown a:hover{color:var(--white);background:rgba(255,255,255,.04);}
+.ndrop-label{padding:6px 20px 4px;font-family:var(--font-mono);font-size:9px;color:var(--gray2);letter-spacing:2px;text-transform:uppercase;}
+.ndrop-label:not(:first-child){margin-top:8px;border-top:1px solid var(--border);padding-top:10px;}
+.nav-ctas{display:flex;gap:12px;align-items:center;}
+.btn-solid{display:inline-flex;align-items:center;gap:6px;padding:9px 20px;background:var(--white);color:var(--black);font-size:13px;font-weight:500;font-family:var(--font-sans);border:none;cursor:pointer;transition:opacity .15s;}
+.btn-solid:hover{opacity:.85;}
+.btn-outline{display:inline-flex;align-items:center;gap:6px;padding:8px 20px;background:transparent;color:var(--white);font-size:13px;border:1px dashed var(--gray2);cursor:pointer;transition:border-color .15s;}
+.btn-outline:hover{border-color:var(--white);}
+
+.ticker-wrap{border-bottom:1px solid var(--border);overflow:hidden;padding:10px 0;background:#000;margin-top:64px;position:relative;z-index:1;}
+.ticker-track{display:flex;width:max-content;animation:scroll-ticker 40s linear infinite;}
+@keyframes scroll-ticker{from{transform:translateX(0);}to{transform:translateX(-50%);}}
+.tick-item{font-family:var(--font-mono);font-size:11px;padding:0 40px;white-space:nowrap;color:#555;display:flex;align-items:center;gap:10px;}
+.tick-item .up{color:#4a7c59;}.tick-item .dn{color:#7c4a4a;}
+
+.hero{display:grid;grid-template-columns:44% 56%;min-height:calc(100vh - 88px);position:relative;z-index:1;}
+.hero-left{padding:80px 48px;display:flex;flex-direction:column;justify-content:center;border-right:1px solid var(--border);}
+.hero-tag{font-family:var(--font-mono);font-size:11px;color:var(--gray);letter-spacing:2px;text-transform:uppercase;margin-bottom:40px;display:flex;align-items:center;gap:10px;}
+.hero-tag::before{content:'';display:inline-block;width:24px;height:1px;background:var(--gray);}
+.hero-tag .pulse-dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:#6ee7b7;animation:pulse-glow 2s ease-in-out infinite;}
+@keyframes pulse-glow{0%,100%{opacity:1;box-shadow:0 0 4px #6ee7b7;}50%{opacity:.4;box-shadow:0 0 8px #6ee7b7;}}
+h1{font-size:clamp(40px,5vw,72px);font-weight:600;line-height:1.05;letter-spacing:-2px;margin-bottom:32px;}
+.hero-sub{font-size:17px;color:var(--gray);line-height:1.7;max-width:420px;margin-bottom:48px;font-weight:300;}
+.hero-ctas{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:60px;}
+.btn-sl{padding:14px 28px;font-size:14px;font-weight:500;background:var(--white);color:var(--black);border:none;cursor:pointer;font-family:var(--font-sans);display:inline-flex;align-items:center;gap:8px;transition:opacity .15s;}
+.btn-sl:hover{opacity:.85;}
+.btn-ol{padding:13px 28px;font-size:14px;font-weight:400;background:transparent;color:var(--white);border:1px dashed var(--gray2);cursor:pointer;font-family:var(--font-sans);display:inline-flex;align-items:center;gap:8px;transition:border-color .15s;}
+.btn-ol:hover{border-color:var(--white);}
+.hero-stats{display:flex;gap:48px;padding-top:40px;border-top:1px solid var(--border);}
+.stat-n{font-size:26px;font-weight:600;letter-spacing:-1px;}
+.stat-l{font-size:12px;color:var(--gray);margin-top:2px;font-weight:300;}
+
+.hero-right{position:relative;overflow:hidden;background:#000;}
+.fade-l{position:absolute;left:0;top:0;bottom:0;width:60px;z-index:10;background:linear-gradient(to right,#000,transparent);pointer-events:none;}
+.fade-t{position:absolute;left:0;right:0;top:0;height:80px;z-index:10;background:linear-gradient(to bottom,#000,transparent);pointer-events:none;}
+.fade-b{position:absolute;left:0;right:0;bottom:0;height:120px;z-index:10;background:linear-gradient(to top,#000,transparent);pointer-events:none;}
+#stream{position:absolute;top:0;left:0;right:0;bottom:0;overflow:hidden;padding:20px 20px 20px 24px;}
+.scol{position:absolute;top:0;left:0;right:0;bottom:0;display:flex;flex-direction:column;padding:20px 20px 20px 24px;animation:sup 80s linear infinite;will-change:transform;}
+@keyframes sup{from{transform:translateY(0);}to{transform:translateY(-50%);}}
+.cl{font-family:var(--font-mono);font-size:10px;line-height:1.6;white-space:nowrap;display:flex;gap:10px;color:#2a2a2a;}
+.cl.hi{color:#555;}.cl.lo{color:#1a1a1a;}
+.cg{color:#333;}.cw{color:#555;}.cbr{color:#888;}.cgr{color:#4a7c59;}.crd{color:#7c4a4a;}.cbl{color:#4a5f7c;}.cyl{color:#7c6a3a;}
+
+.split{display:grid;grid-template-columns:44% 56%;border-top:1px solid var(--border);position:relative;z-index:1;}
+.split.rev{grid-template-columns:56% 44%;}
+.st{padding:100px 48px;display:flex;flex-direction:column;justify-content:center;border-right:1px solid var(--border);}
+.split.rev .st{border-right:none;border-left:1px solid var(--border);}
+.sv{padding:80px 48px;display:flex;flex-direction:column;justify-content:center;background:#000;position:relative;overflow:hidden;}
+.snum{font-family:var(--font-mono);font-size:11px;color:var(--gray2);letter-spacing:2px;margin-bottom:20px;}
+h2{font-size:clamp(30px,3.8vw,50px);font-weight:600;line-height:1.1;letter-spacing:-1.5px;margin-bottom:24px;}
+.sb{font-size:15px;color:var(--gray);line-height:1.75;max-width:440px;font-weight:300;margin-bottom:36px;}
+h3{font-size:15px;font-weight:500;letter-spacing:-.3px;margin-bottom:6px;}
+
+.fl{display:flex;flex-direction:column;}
+.fi{display:flex;gap:20px;align-items:flex-start;padding:22px 0;border-bottom:1px solid var(--border);}
+.fi:first-child{border-top:1px solid var(--border);}
+.fn{font-family:var(--font-mono);font-size:11px;color:var(--gray2);padding-top:2px;flex-shrink:0;width:20px;}
+.fc h3{font-size:14px;font-weight:500;margin-bottom:4px;}
+.fc p{font-size:13px;color:var(--gray);font-weight:300;line-height:1.65;}
+
+/* RUNNING TERMINAL */
+.run-term{background:#000;border:1px solid var(--border);font-family:var(--font-mono);font-size:10px;overflow:hidden;position:relative;}
+.run-term::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(110,231,183,.15),transparent);animation:term-scan 4s ease-in-out infinite;z-index:2;}
+@keyframes term-scan{0%,100%{opacity:0;}50%{opacity:1;}}
+.rt-header{padding:10px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;color:var(--gray2);font-size:9px;letter-spacing:1px;text-transform:uppercase;}
+.rt-dots{display:flex;gap:5px;}
+.rt-dot{width:7px;height:7px;border-radius:50%;border:1px solid #333;}
+.rt-dot.active{background:#333;}
+.rt-body{padding:0;min-height:340px;max-height:440px;overflow:hidden;position:relative;}
+.rt-line{display:flex;gap:10px;padding:3px 16px;opacity:0;transform:translateY(2px);animation:rt-in .15s forwards;font-size:10px;line-height:1.65;}
+@keyframes rt-in{to{opacity:1;transform:none;}}
+.rt-ts{color:#333;flex-shrink:0;font-size:9px;padding-top:1px;width:52px;}
+.rt-tag{flex-shrink:0;font-size:9.5px;width:60px;font-weight:500;}
+.rt-msg{color:#555;font-size:10px;line-height:1.55;}
+.rt-cursor{display:inline-block;width:6px;height:12px;background:#4a7c59;animation:rt-blink 1s step-end infinite;margin-left:2px;vertical-align:middle;}
+@keyframes rt-blink{50%{opacity:0;}}
+
+.mg{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--border);}
+.mc{background:#000;padding:32px 28px;position:relative;overflow:hidden;}
+.mc::after{content:'';position:absolute;top:0;right:0;width:40%;height:100%;background:linear-gradient(180deg,rgba(110,231,183,.02),transparent);pointer-events:none;opacity:0;transition:opacity .5s;}
+.mc:hover::after{opacity:1;}
+.mn{font-size:40px;font-weight:600;letter-spacing:-2px;line-height:1;margin-bottom:6px;}
+.ml{font-size:12px;color:var(--gray);font-weight:300;line-height:1.4;}
+
+.data-monitor{background:var(--code-bg);border:1px solid var(--code-border);font-family:var(--font-mono);overflow:hidden;}
+.dm-header{padding:10px 16px;border-bottom:1px solid var(--code-border);display:flex;align-items:center;justify-content:space-between;}
+.dm-header-left{display:flex;align-items:center;gap:8px;font-size:9px;color:var(--gray2);letter-spacing:1px;text-transform:uppercase;}
+.dm-live{display:flex;align-items:center;gap:5px;font-size:9px;color:#4a7c59;}
+.dm-live-dot{width:5px;height:5px;border-radius:50%;background:#4a7c59;animation:dm-pulse 2s infinite;}
+@keyframes dm-pulse{0%,100%{opacity:1;}50%{opacity:.3;}}
+.dm-row{display:grid;grid-template-columns:1fr 80px 80px 60px;padding:10px 16px;border-bottom:1px solid var(--code-border);font-size:10px;color:#555;transition:background .2s;align-items:center;}
+.dm-row:hover{background:rgba(255,255,255,.02);}
+.dm-row.header{color:var(--gray2);font-size:9px;letter-spacing:1px;text-transform:uppercase;border-bottom:1px solid var(--code-border);}
+.dm-market{color:#888;font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.dm-pos{color:#4a7c59;font-size:10px;font-weight:500;}
+.dm-neg{color:#7c4a4a;font-size:10px;font-weight:500;}
+.dm-neutral{color:#555;font-size:10px;}
+
+.pipeline{display:flex;align-items:center;gap:0;padding:24px 0;overflow:hidden;}
+.pipe-node{flex-shrink:0;padding:10px 16px;border:1px solid var(--code-border);font-family:var(--font-mono);font-size:9px;color:#555;letter-spacing:1px;text-transform:uppercase;position:relative;transition:all .3s;}
+.pipe-node.active{border-color:#333;color:#888;background:rgba(255,255,255,.02);}
+.pipe-node.active::before{content:'';position:absolute;top:-1px;left:0;right:0;height:1px;background:#4a7c59;}
+.pipe-connector{width:32px;height:1px;background:var(--code-border);flex-shrink:0;position:relative;}
+.pipe-connector::after{content:'›';position:absolute;right:-3px;top:-8px;color:#333;font-size:14px;}
+.pipe-data{font-family:var(--font-mono);font-size:9px;color:#333;margin-top:4px;}
+
+.arch-grid{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--code-border);}
+.arch-module{background:#000;padding:20px;position:relative;overflow:hidden;transition:background .3s;}
+.arch-module:hover{background:#050505;}
+.arch-module-name{font-family:var(--font-mono);font-size:10px;color:#666;margin-bottom:4px;display:flex;align-items:center;gap:6px;}
+.arch-module-name::before{content:'◈';color:#333;font-size:8px;}
+.arch-module-desc{font-size:11px;color:#444;font-weight:300;}
+.arch-module-file{font-family:var(--font-mono);font-size:9px;color:#2a2a2a;margin-top:8px;}
+
+.sl2{display:flex;flex-direction:column;}
+.si{display:grid;grid-template-columns:44px 1fr;gap:16px;padding:24px 0;border-bottom:1px solid var(--border);align-items:start;}
+.si:first-child{border-top:1px solid var(--border);}
+.sn{font-family:var(--font-mono);font-size:20px;font-weight:300;color:var(--gray2);line-height:1;}
+.sb2 h3{font-size:14px;font-weight:500;margin-bottom:5px;}
+.sb2 p{font-size:13px;color:var(--gray);font-weight:300;line-height:1.65;}
+
+.pricing-section{border-top:1px solid var(--border);padding:100px 48px;position:relative;z-index:1;}
+.ph{max-width:460px;margin:0 auto 80px;text-align:center;}
+.ph h2{margin-bottom:16px;}
+.ph p{font-size:15px;color:var(--gray);font-weight:300;}
+.pg{display:flex;justify-content:center;max-width:720px;margin:0 auto;}
+.pc{background:transparent;padding:0;position:relative;overflow:hidden;width:100%;}
+.pc.feat{background:transparent;}
+.pc.feat::before{display:none;}
+.pc-hz{display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--border);max-width:720px;margin:0 auto;}
+.pc-hz-left{padding:56px 48px;display:flex;flex-direction:column;justify-content:center;border-right:1px solid var(--border);}
+.pc-hz-right{padding:56px 48px;display:flex;flex-direction:column;justify-content:center;}
+.pbadge{font-family:var(--font-mono);font-size:9px;color:#000;background:#fff;display:inline-block;padding:3px 10px;letter-spacing:1px;text-transform:uppercase;margin-bottom:16px;width:fit-content;}
+.pname{font-family:var(--font-mono);font-size:10px;color:var(--gray);letter-spacing:2px;text-transform:uppercase;margin-bottom:14px;}
+.pprice{font-size:56px;font-weight:600;letter-spacing:-2px;line-height:1;margin-bottom:6px;}
+.pper{font-size:13px;color:var(--gray);margin-bottom:8px;font-weight:300;}
+.panc{font-family:var(--font-mono);font-size:10px;color:var(--gray);margin-bottom:32px;display:block;text-decoration:none;}
+.pf{list-style:none;margin-bottom:0;}
+.pf li{font-size:13px;color:var(--gray);padding:7px 0;display:flex;align-items:center;gap:10px;font-weight:300;}
+.pck{font-family:var(--font-mono);font-size:10px;color:#fff;}
+.pc-main{width:100%;padding:14px;background:#fff;color:#000;font-size:14px;font-weight:500;font-family:var(--font-sans);border:none;cursor:pointer;transition:opacity .15s;text-align:center;display:block;margin-top:32px;}
+.pc-main:hover{opacity:.85;}
+.pc-main:disabled{opacity:.5;cursor:not-allowed;}
+.pc-free{width:100%;padding:14px;background:transparent;color:#fff;font-size:14px;font-weight:500;font-family:var(--font-sans);border:1px solid var(--border);cursor:pointer;transition:border-color .15s;text-align:center;display:block;margin-top:32px;text-decoration:none;}
+.pc-free:hover{border-color:#fff;}
+.pc-sec{width:100%;padding:12px;background:transparent;color:#fff;font-size:13px;font-family:var(--font-sans);border:1px dashed var(--gray2);cursor:pointer;transition:border-color .15s;text-align:center;display:block;}
+.pc-sec:hover{border-color:#fff;}
+/* Two-column pricing cards */
+.pc-two-col{display:grid;grid-template-columns:1fr 1fr;gap:24px;max-width:860px;margin:0 auto;}
+.pc-card{border:1px solid var(--border);padding:48px 40px;display:flex;flex-direction:column;}
+.pc-card-featured{border-color:rgba(255,255,255,.35);position:relative;}
+.pc-card-featured::before{content:'MOST POPULAR';font-family:var(--font-mono);font-size:9px;letter-spacing:1.5px;color:#000;background:#fff;padding:3px 10px;position:absolute;top:-1px;right:24px;}
+
+.faq-section{border-top:1px solid var(--border);display:grid;grid-template-columns:44% 56%;position:relative;z-index:1;}
+.fl2{padding:100px 48px;border-right:1px solid var(--border);display:flex;flex-direction:column;justify-content:flex-start;}
+.fr{padding:100px 48px;}
+.fqi{border-top:1px solid var(--border);padding:22px 0;}
+.fqi:last-child{border-bottom:1px solid var(--border);}
+.fqq{font-size:14px;font-weight:400;margin-bottom:8px;color:var(--white);}
+.fqa{font-size:13px;color:var(--gray);line-height:1.7;font-weight:300;}
+
+.ctas{border-top:1px solid var(--border);display:grid;grid-template-columns:44% 56%;min-height:55vh;position:relative;z-index:1;}
+.ctl{padding:100px 48px;border-right:1px solid var(--border);display:flex;flex-direction:column;justify-content:center;}
+.ctr{padding:80px 48px;display:flex;flex-direction:column;justify-content:center;overflow:hidden;position:relative;}
+.trnote{font-family:var(--font-mono);font-size:11px;color:var(--gray2);margin-top:20px;display:flex;gap:24px;flex-wrap:wrap;}
+.trnote span::before{content:'// ';}
+
+.intel-section{border-top:1px solid var(--border);position:relative;z-index:1;}
+.intel-header{padding:60px 48px 0;display:flex;align-items:flex-end;justify-content:space-between;gap:32px;}
+.intel-header-left{max-width:480px;}
+.intel-count{font-family:var(--font-mono);font-size:9px;color:var(--gray2);letter-spacing:1px;}
+.intel-grid{padding:48px;display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--code-border);}
+.intel-card{background:#000;padding:24px;transition:background .3s;position:relative;}
+.intel-card:hover{background:#050505;}
+.intel-card-icon{font-family:var(--font-mono);font-size:10px;color:#333;margin-bottom:12px;}
+.intel-card-name{font-size:13px;font-weight:500;margin-bottom:4px;}
+.intel-card-desc{font-size:11px;color:var(--gray);font-weight:300;line-height:1.55;}
+
+footer{border-top:1px solid var(--border);padding:28px 48px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:20px;position:relative;z-index:1;}
+.fcopy{font-family:var(--font-mono);font-size:10px;color:var(--gray2);}
+.flinks{display:flex;gap:28px;list-style:none;}
+.flinks a{font-size:13px;color:var(--gray2);transition:color .15s;}.flinks a:hover{color:var(--white);}
+.disc{border-top:1px solid var(--border);padding:18px 48px;position:relative;z-index:1;}
+.disc p{font-size:10px;color:#2a2a2a;font-family:var(--font-mono);line-height:1.6;}
+
+.glow-sep{height:1px;background:linear-gradient(90deg,transparent 0%,rgba(110,231,183,.06) 20%,rgba(110,231,183,.1) 50%,rgba(110,231,183,.06) 80%,transparent 100%);position:relative;z-index:1;}
+
+.rev2{opacity:0;transform:translateY(16px);transition:opacity .55s,transform .55s;}
+.rev2.in{opacity:1;transform:none;}
+
+@media(max-width:900px){
+  .hero,.split,.split.rev,.faq-section,.ctas{grid-template-columns:1fr;}
+  .st{border-right:none;border-bottom:1px solid var(--border);}
+  .split.rev .st{border-left:none;border-bottom:1px solid var(--border);}
+  nav{padding:0 20px;}
+  .hero-left,.st,.sv,.fl2,.fr,.ctl,.ctr,.pricing-section{padding:60px 24px;}
+  .pg{grid-template-columns:1fr;}
+  .pc-hz{grid-template-columns:1fr;}
+  .pc-hz-left{border-right:none;border-bottom:1px solid var(--border);padding:40px 24px;}
+  .pc-hz-right{padding:40px 24px;}
+  .pc-two-col{grid-template-columns:1fr;}
+  .pc-card{padding:36px 24px;}
+  .mg{grid-template-columns:1fr;}
+  .hero-right{height:260px;}
+  .nav-links{display:none;}
+  footer,.disc{padding:24px;}
+  .faq-section,.ctas{grid-template-columns:1fr;}
+  .fl2{border-right:none;border-bottom:1px solid var(--border);}
+  .intel-grid{grid-template-columns:1fr 1fr;}
+  .intel-header{padding:40px 24px 0;flex-direction:column;align-items:flex-start;}
+  .intel-grid{padding:24px;}
+  .pipeline{flex-wrap:wrap;gap:8px;}
+  .pipe-connector{width:16px;}
+  .arch-grid{grid-template-columns:1fr;}
+}
+/* PROFIT CALCULATOR */
+.calc-section{border-top:1px solid var(--border);position:relative;z-index:1;}
+.calc-header{padding:80px 48px 0;text-align:center;}
+.calc-header .snum{text-align:center;margin-bottom:12px;}
+.calc-header p{font-size:15px;color:var(--gray);font-weight:300;max-width:520px;margin:0 auto;}
+.calc-grid{display:grid;grid-template-columns:1fr 1fr;padding:48px;gap:0;margin:0 auto;max-width:1200px;}
+.calc-inputs-panel{padding:40px;border:1px solid var(--border);border-right:none;}
+.calc-results-panel{padding:40px;border:1px solid var(--border);}
+.calc-sect-label{font-family:var(--font-mono);font-size:9px;color:var(--gray2);letter-spacing:2px;text-transform:uppercase;margin-bottom:24px;display:flex;align-items:center;gap:8px;}
+.calc-sect-label::before{content:'//';color:var(--gray2);}
+.cinput{margin-bottom:28px;}
+.cinput:last-child{margin-bottom:0;}
+.cinput-top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;}
+.cinput-top span{font-size:13px;color:var(--gray);font-weight:300;}
+.cinput-val{font-family:var(--font-mono);font-size:13px;color:var(--white);background:var(--code-bg);border:1px solid var(--code-border);padding:3px 10px;}
+input[type="range"]{-webkit-appearance:none;width:100%;height:2px;background:var(--border);outline:none;cursor:pointer;}
+input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;background:var(--white);border:none;cursor:grab;}
+input[type="range"]::-moz-range-thumb{width:14px;height:14px;background:var(--white);border:none;cursor:grab;}
+input[type="range"]:active::-webkit-slider-thumb{background:var(--green);cursor:grabbing;}
+.slider-ticks{display:flex;justify-content:space-between;margin-top:5px;font-family:var(--font-mono);font-size:9px;color:var(--gray2);}
+.pos-toggle{display:flex;border:1px solid var(--border);}
+.pos-btn{flex:1;padding:9px 14px;font-size:12px;font-family:var(--font-sans);font-weight:500;color:var(--gray);background:transparent;border:none;cursor:pointer;text-align:center;transition:all .15s;}
+.pos-btn.active{background:var(--white);color:var(--black);}
+.pos-btn:not(.active):hover{color:var(--white);background:rgba(255,255,255,.04);}
+.res-hero{text-align:center;padding:32px 20px;border:1px solid var(--code-border);background:var(--code-bg);margin-bottom:20px;position:relative;overflow:hidden;}
+.res-hero::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--green),transparent);}
+.res-label{font-family:var(--font-mono);font-size:9px;color:var(--gray2);letter-spacing:2px;text-transform:uppercase;margin-bottom:6px;}
+.res-big{font-size:clamp(36px,4vw,56px);font-weight:700;letter-spacing:-2px;line-height:1;}
+.res-big.pos{color:var(--green);}.res-big.neg{color:var(--red);}
+.res-sub{font-family:var(--font-mono);font-size:11px;color:var(--gray);margin-top:6px;}
+.res-grid{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--code-border);margin-bottom:20px;}
+.res-card{background:var(--black);padding:16px;}
+.res-card-label{font-family:var(--font-mono);font-size:9px;color:var(--gray2);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px;}
+.res-card-val{font-size:20px;font-weight:600;letter-spacing:-1px;}
+.res-card-note{font-size:10px;color:var(--gray);margin-top:2px;font-weight:300;}
+.comp-box{border:1px solid var(--code-border);background:var(--code-bg);overflow:hidden;}
+.comp-box-header{padding:10px 16px;border-bottom:1px solid var(--code-border);display:flex;align-items:center;gap:8px;font-family:var(--font-mono);font-size:9px;color:var(--gray2);letter-spacing:1px;text-transform:uppercase;}
+.comp-box-dot{width:5px;height:5px;border-radius:50%;background:var(--green);animation:pulse-glow 2s infinite;}
+.comp-r{display:grid;grid-template-columns:1fr 90px 90px;padding:10px 16px;border-bottom:1px solid var(--code-border);font-size:12px;align-items:center;}
+.comp-r:last-child{border-bottom:none;}
+.comp-r.hdr{font-family:var(--font-mono);font-size:9px;color:var(--gray2);letter-spacing:1px;text-transform:uppercase;}
+.comp-r:not(.hdr):hover{background:rgba(255,255,255,.02);}
+.comp-met{color:var(--gray);font-weight:300;}
+.comp-v{font-family:var(--font-mono);font-size:12px;text-align:right;font-weight:500;}
+.comp-v.grn{color:var(--green);}.comp-v.rd{color:var(--red);}.comp-v.neu{color:var(--gray);}
+.calc-cta-strip{padding:48px;text-align:center;border-top:1px solid var(--border);}
+.calc-cta-strip p{font-size:14px;color:var(--gray);margin-bottom:20px;font-weight:300;}
+@media(max-width:900px){
+  .calc-grid{grid-template-columns:1fr;padding:24px;}
+  .calc-inputs-panel{border-right:1px solid var(--border);border-bottom:none;}
+  .calc-header{padding:60px 24px 0;}
+  .res-grid{grid-template-columns:1fr;}
+  .comp-r{grid-template-columns:1fr 70px 70px;}
+}
+@media(max-width:600px){
+  .intel-grid{grid-template-columns:1fr;}
+  .hero-stats{flex-direction:column;gap:20px;}
+}
+/* TESTIMONIALS */
+.testi-section{border-top:1px solid var(--border);position:relative;z-index:1;overflow:hidden;padding-bottom:80px;}
+.testi-header{padding:80px 48px 56px;text-align:center;}
+.testi-header .snum{text-align:center;margin-bottom:12px;}
+.testi-header h2{margin-bottom:0;}
+.testi-track-wrap{overflow:hidden;position:relative;}
+.testi-track-wrap::before{content:'';position:absolute;left:0;top:0;bottom:0;width:120px;z-index:2;background:linear-gradient(to right,#000,transparent);pointer-events:none;}
+.testi-track-wrap::after{content:'';position:absolute;right:0;top:0;bottom:0;width:120px;z-index:2;background:linear-gradient(to left,#000,transparent);pointer-events:none;}
+.testi-track{display:flex;gap:1px;width:max-content;padding:1px 0;}
+.testi-track.row1{animation:testi-scroll-l 60s linear infinite;}
+.testi-track.row2{animation:testi-scroll-r 65s linear infinite;margin-top:1px;}
+@keyframes testi-scroll-l{from{transform:translateX(0);}to{transform:translateX(-50%);}}
+@keyframes testi-scroll-r{from{transform:translateX(-50%);}to{transform:translateX(0);}}
+.testi-track-wrap:hover .testi-track{animation-play-state:paused;}
+.tc{background:#000;border:1px solid var(--border);padding:28px 32px;width:360px;flex-shrink:0;position:relative;transition:border-color .2s,background .2s;}
+.tc:hover{background:#040404;border-color:#2a2a2a;}
+.tc-stars{display:flex;gap:3px;margin-bottom:16px;}
+.tc-star{color:#fde68a;font-size:12px;line-height:1;}
+.tc-quote{font-size:13px;color:#888;line-height:1.75;font-weight:300;margin-bottom:20px;font-style:italic;}
+.tc-quote::before{content:'\201C';color:#333;font-size:32px;line-height:0;vertical-align:-12px;margin-right:4px;font-family:Georgia,serif;font-style:normal;}
+.tc-attr{border-top:1px solid var(--border);padding-top:16px;display:flex;flex-direction:column;gap:3px;}
+.tc-name{font-family:var(--font-mono);font-size:10px;color:var(--white);font-weight:500;letter-spacing:.5px;}
+.tc-role{font-family:var(--font-mono);font-size:9px;color:#444;letter-spacing:.5px;}
+@media(max-width:900px){
+  .testi-header{padding:60px 24px 40px;}
+  .tc{width:300px;padding:22px 24px;}
+}
+</style>
+<script src="https://js.stripe.com/v3/"></script>
+</head>
+<body>
+
+<canvas class="grid-bg" id="gridCanvas"></canvas>
+
+<nav>
+  <a href="/">
+    <svg height="22" viewBox="0 0 340 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M4 33 L20 5 L36 33" stroke="white" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+      <text x="52" y="29" font-family="Inter,sans-serif" font-size="19" font-weight="600" letter-spacing="4" fill="white">POLYTRAGENT</text>
+    </svg>
+  </a>
+  <ul class="nav-links">
+    <li><a href="#features">Features</a></li>
+    <li><a href="#how-it-works">How it works</a></li>
+    <li><a href="#pricing">Pricing</a></li>
+    <li>
+      <a href="/resources">Resources ▾</a>
+      <div class="nav-dropdown"><div class="nav-dropdown-inner">
+        <div class="ndrop-label">Tools</div>
+        <a href="/resources/profit-calculator">Profit Calculator</a>
+        <div class="ndrop-label">Compare</div>
+        <a href="/compare">All Comparisons</a>
+        <a href="/compare/polytragent-vs-polycop">Polytragent vs PolyCop</a>
+        <a href="/compare/polytragent-vs-polysight">Polytragent vs Polysight</a>
+        <a href="/compare/copy-trading-bots">Copy Trading Bots</a>
+        <a href="/compare/polycop-alternative">PolyCop Alternative</a>
+        <a href="/compare/polysight-alternative">Polysight Alternative</a>
+        <div class="ndrop-label">Landing Pages</div>
+        <a href="/resources/polymarket-strategies">Polymarket Strategies 2026</a>
+        <a href="/resources/how-to-make-money-polymarket">How to Make Money</a>
+        <a href="/resources/prediction-market-strategies">Prediction Market Strategies</a>
+        <a href="/resources/polymarket-telegram-bots">Telegram Bots</a>
+        <a href="/resources/polymarket-automated-trading">Automated Trading</a>
+        <a href="/resources/polymarket-whale-tracking">Whale Tracking</a>
+        <a href="/resources/polymarket-market-making">Market Making</a>
+        <a href="/resources/polymarket-poly-token">POLY Token Airdrop</a>
+        <div class="ndrop-label">Blog</div>
+        <a href="/blog">All Articles</a>
+        <a href="/blog/polymarket-prediction-bot">Polymarket Prediction Bot</a>
+        <a href="/blog/polymarket-tools-guide">Polymarket Tools Guide</a>
+        <a href="/blog/best-polymarket-bots-2026">Best Polymarket Bots 2026</a>
+        <a href="/blog/polymarket-trading-bot">Polymarket Trading Bot</a>
+        <a href="/blog/copy-trade-bot">Copy Trade Bot Guide</a>
+        <a href="/blog/copy-trading-guide">Copy Trading Guide</a>
+        <a href="/blog/polymarket-strategies-2026">Polymarket Strategies 2026</a>
+        <a href="/blog/how-to-make-money-polymarket">How to Make Money on Polymarket</a>
+        <a href="/blog/prediction-market-strategies">Prediction Market Strategies</a>
+        <a href="/blog/polymarket-telegram-bots">Polymarket Telegram Bots</a>
+        <a href="/blog/polymarket-automated-trading">Automated Trading Guide</a>
+        <a href="/blog/polymarket-whale-tracking">Whale Tracking Guide</a>
+        <a href="/blog/polymarket-market-making">Market Making Guide</a>
+        <a href="/blog/polymarket-poly-token">POLY Token Airdrop Guide</a>
+      </div></div>
+    </li>
+    <li><a href="#faq">FAQ</a></li>
+    <li><a href="https://polytragent.gitbook.io/polytragent-docs/polytragent-documentation" target="_blank">Docs</a></li>
+  </ul>
+  <div class="nav-ctas">
+    <a href="#pricing" class="btn-outline">See pricing</a>
+    <a href="https://t.me/bmpolybot" target="_blank" class="btn-solid">Get started →</a>
+  </div>
+</nav>
+
+<div class="ticker-wrap">
+  <div class="ticker-track">
+    <span class="tick-item"><span class="up">▲</span> RESEARCH — "Trump 2026 midterms" — Edge: +28% — BUY YES @ $0.41</span>
+    <span class="tick-item"><span class="up">▲</span> EDGE — "Fed cuts June" — Poly: $0.67 / Manifold: $0.74 — BUY YES</span>
+    <span class="tick-item"><span class="dn">▼</span> HOLD — "BTC $100k EOY" — No edge detected — current price fair</span>
+    <span class="tick-item"><span class="up">▲</span> RESEARCH — "Ukraine ceasefire Q2" — Past accuracy: 71% on geo — BUY NO</span>
+    <span class="tick-item"><span class="up">▲</span> RESOLVED — "ECB holds March" — Correct ✓ — +$14.20 profit</span>
+    <span class="tick-item"><span class="up">▲</span> TRACK — Win rate: 78% — 18/23 predictions correct — calibration improving</span>
+    <span class="tick-item"><span class="up">▲</span> RESEARCH — "Trump 2026 midterms" — Edge: +28% — BUY YES @ $0.41</span>
+    <span class="tick-item"><span class="up">▲</span> EDGE — "Fed cuts June" — Poly: $0.67 / Manifold: $0.74 — BUY YES</span>
+    <span class="tick-item"><span class="dn">▼</span> HOLD — "BTC $100k EOY" — No edge detected — current price fair</span>
+    <span class="tick-item"><span class="up">▲</span> RESEARCH — "Ukraine ceasefire Q2" — Past accuracy: 71% on geo — BUY NO</span>
+    <span class="tick-item"><span class="up">▲</span> RESOLVED — "ECB holds March" — Correct ✓ — +$14.20 profit</span>
+    <span class="tick-item"><span class="up">▲</span> TRACK — Win rate: 78% — 18/23 predictions correct — calibration improving</span>
+  </div>
+</div>
+
+<section class="hero">
+  <div class="hero-left">
+    <div class="hero-tag"><span class="pulse-dot"></span> Polymarket AI Research Agent — Now Live</div>
+    <h1>Start Trading on Polymarket with AI. For free.</h1>
+    <p class="hero-sub">Send a Polymarket link. Get instant AI research — every sub-market analyzed, cross-referenced with forecasters, scored against millions of data points. Spot the edge. Enter the trade. Profit.</p>
+    <div class="hero-ctas">
+      <a href="https://t.me/bmpolybot" target="_blank" class="btn-sl">Start Trading Free →</a>
+      <a href="#how-it-works" class="btn-ol">See how it works</a>
+    </div>
+    <div style="font-family:var(--font-mono);font-size:11px;color:var(--gray);letter-spacing:.5px;margin-bottom:40px;">78% Win Rate &nbsp;•&nbsp; &lt;10s Analysis &nbsp;•&nbsp; 20 Free Wallets &nbsp;•&nbsp; $0 Forever</div>
+    <div class="hero-stats">
+      <div><div class="stat-n">78%</div><div class="stat-l">Prediction win rate</div></div>
+      <div><div class="stat-n">M+</div><div class="stat-l">Data points analyzed</div></div>
+      <div><div class="stat-n">&lt;10s</div><div class="stat-l">Full research delivered</div></div>
+    </div>
+  </div>
+  <div class="hero-right" aria-hidden="true">
+    <div class="fade-l"></div>
+    <div class="fade-t"></div>
+    <div class="fade-b"></div>
+    <div id="stream"></div>
+  </div>
+</section>
+
+<!-- SECTION 06.8 — TESTIMONIALS -->
+<section class="testi-section" id="testimonials">
+  <div class="testi-header rev2">
+    <div class="snum">Traders who use it</div>
+    <h2>Real results.<br>Real traders.</h2>
+  </div>
+  <!-- Row 1: testimonials 1–6 (duplicated for infinite scroll) -->
+  <div class="testi-track-wrap">
+    <div class="testi-track row1">
+      <div class="tc"><div class="tc-stars"><span class="tc-star">★</span><span class="tc-star">★</span><span class="tc-star">★</span><span class="tc-star">★</span><span class="tc-star">★</span></div><p class="tc-quote">I thought AI prediction tools were all hype. Then Polytragent called 4 out of 5 markets correctly in my first week.</p><div class="tc-attr"><span class="tc-name">Marcus T.</span><span class="tc-role">Crypto Trader — Austin TX</span></div></div>
+      <div class="tc"><div class="tc-stars"><span class="tc-star">★</span><span class="tc-star">★</span><span class="tc-star">★</span><span class="tc-star">★</span><span class="tc-star">★</span></div><p class="tc-quote">Wait, this is actually free? I was paying $39/mo for Polysight and getting less. 20 free wallets plus AI research — I switched in 5 minutes.</p><div class="tc-attr"><span class="tc-name">Jordan K.</span><span class="tc-role">DeFi Analyst — Miami FL</span></div></div>
+      <div class="tc"><div class="tc-stars"><span class="tc-star">★</span><span class="tc-star">★</span><span class="tc-star">★</span><span class="tc-star">★</span><span class="tc-star">★</span></div><p class="tc-quote">I send a Polymarket link in Telegram, and 8 seconds later I have a full breakdown with edge scores. Used to spend 30 minutes researching each market manually.</p><div class="tc-attr"><span class="tc-name">Elena V.</span><span class="tc-role">Part-time Trader — London UK</span></div></div>
+      <div class="tc"><div class="tc-stars"><span class="tc-star">★</span><span class="tc-star">★</span><span class="tc-star">★</span><span class="tc-star">★</span><span class="tc-star">★</span></div><p class="tc-quote">Polytragent spotted a 12% price divergence between Polymarket and Manifold that I never would have found on my own. Took the trade, banked $340.</p><div class="tc-attr"><span class="tc-name">Dev P.</span><span class="tc-role">Software Engineer — San Francisco CA</span></div></div>
+      <div class="tc"><div class="tc-stars"><span class="tc-star">★</span><span class="tc-star">★</span><span class="tc-star">★</span><span class="tc-star">★</span><span class="tc-star">★</span></div><p class="tc-quote">Started free with 20 wallets. Hit my limit in 3 days. Upgraded to Degen Mode because at this point the $79 pays for itself in one good trade.</p><div class="tc-attr"><span class="tc-name">Ryan M.</span><span class="tc-role">Full-time Polymarket Trader — NYC</span></div></div>
+      <div class="tc"><div class="tc-stars"><span class="tc-star">★</span><span class="tc-star">★</span><span class="tc-star">★</span><span class="tc-star">★</span><span class="tc-star">★</span></div><p class="tc-quote">No website to log into. No app to download. I just message a bot and get institutional-grade research. This is how every crypto tool should work.</p><div class="tc-attr"><span class="tc-name">Aisha N.</span><span class="tc-role">Crypto Content Creator — Dubai UAE</span></div></div>
+      <!-- duplicate for seamless loop -->
+      <div class="tc"><div class="tc-stars"><span class="tc-star">★</span><span class="tc-star">★</span><span class="tc-star">★</span><span class="tc-star">★</span><span class="tc-star">★</span></div><p class="tc-quote">I thought AI prediction tools were all hype. Then Polytragent called 4 out of 5 markets correctly in my first week.</p><div class="tc-attr"><span class="tc-name">Marcus T.</span><span class="tc-role">Crypto Trader — Austin TX</span></div></div>
+      <div class="tc"><div class="tc-stars"><span class="tc-star">★</span><span class="tc-star">★</span><span class="tc-star">★</span><span class="tc-star">★</span><span class="tc-star">★</span></div><p class="tc-quote">Wait, this is actually free? I was paying $39/mo for Polysight and getting less. 20 free wallets plus AI research — I switched in 5 minutes.</p><div class="tc-attr"><span class="tc-name">Jordan K.</span><span class="tc-role">DeFi Analyst — Miami FL</span></div></div>
+      <div class="tc"><div class="tc-stars"><span class="tc-star">★</span><span class="tc-star">★</span><span class="tc-star">★</span><span class="tc-star">★</span><span class="tc-star">★</span></div><p class="tc-quote">I send a Polymarket link in Telegram, and 8 seconds later I have a full breakdown with edge scores. Used to spend 30 minutes researching each market manually.</p><div class="tc-attr"><span class="tc-name">Elena V.</span><span class="tc-role">Part-time Trader — London UK</span></div></div>
+      <div class="tc"><div class="tc-stars"><span class="tc-star">★</span><span class="tc-star">★</span><span class="tc-star">★</span><span class="tc-star">★</span><span class="tc-star">★</span></div><p class="tc-quote">Polytragent spotted a 12% price divergence between Polymarket and Manifold that I never would have found on my own. Took the trade, banked $340.</p><div class="tc-attr"><span class="tc-name">Dev P.</span><span class="tc-role">Software Engineer — San Francisco CA</span></div></div>
+      <div class="tc"><div class="tc-stars"><span class="tc-star">★</span><span class="tc-star">★</span><span class="tc-star">★</span><span class="tc-star">★</span><span class="tc-star">★</span></div><p class="tc-quote">Started free with 20 wallets. Hit my limit in 3 days. Upgraded to Degen Mode because at this point the $79 pays for itself in one good trade.</p><div class="tc-attr"><span class="tc-name">Ryan M.</span><span class="tc-role">Full-time Polymarket Trader — NYC</span></div></div>
+      <div class="tc"><div class="tc-stars"><span class="tc-star">★</span><span class="tc-star">★</span><span class="tc-star">★</span><span class="tc-star">★</span><span class="tc-star">★</span></div><p class="tc-quote">No website to log into. No app to download. I just message a bot and get institutional-grade research. This is how every crypto tool should work.</p><div class="tc-attr"><span class="tc-name">Aisha N.</span><span class="tc-role">Crypto Content Creator — Dubai UAE</span></div></div>
+    </div>
+  </div>
+  <!-- Row 2: testimonials 7–10 (duplicated for infinite scroll) -->
+  <div class="testi-track-wrap" style="margin-top:1px;">
+    <div class="testi-track row2">
+      <div class="tc"><div class="tc-stars"><span class="tc-star">★</span><span class="tc-star">★</span><span class="tc-star">★</span><span class="tc-star">★</span><span class="tc-star">★</span></div><p class="tc-quote">I've been tracking Polytragent's calls for 2 months. 78% hit rate is real — I've verified it against my own P&L. No other tool I've used comes close to being this transparent about accuracy.</p><div class="tc-attr"><span class="tc-name">Chris L.</span><span class="tc-role">Quantitative Analyst — Chicago IL</span></div></div>
+      <div class="tc"><div class="tc-stars"><span class="tc-star">★</span><span class="tc-star">★</span><span class="tc-star">★</span><span class="tc-star">★</span><span class="tc-star">★</span></div><p class="tc-quote">I'm new to prediction markets and honestly had no idea where to start. Polytragent made it dead simple — just paste a link and it tells you what to do. My first month I'm up $180.</p><div class="tc-attr"><span class="tc-name">Sarah W.</span><span class="tc-role">College Student — Toronto CA</span></div></div>
+      <div class="tc"><div class="tc-stars"><span class="tc-star">★</span><span class="tc-star">★</span><span class="tc-star">★</span><span class="tc-star">★</span><span class="tc-star">★</span></div><p class="tc-quote">Most people only look at the main market. Polytragent analyzes every single sub-market in an event — it found a mispriced sub-market on the Fed rate decision that nobody was talking about.</p><div class="tc-attr"><span class="tc-name">Alex K.</span><span class="tc-role">Macro Trader — Singapore</span></div></div>
+      <div class="tc"><div class="tc-stars"><span class="tc-star">★</span><span class="tc-star">★</span><span class="tc-star">★</span><span class="tc-star">★</span><span class="tc-star">★</span></div><p class="tc-quote">What sold me is that it actually learns from its mistakes. I watched its crypto market accuracy go from 71% to 83% over 6 weeks as the calibration system kicked in. It literally gets smarter the more you use it.</p><div class="tc-attr"><span class="tc-name">Tom H.</span><span class="tc-role">AI Researcher &amp; Trader — Berlin DE</span></div></div>
+      <div class="tc"><div class="tc-stars"><span class="tc-star">★</span><span class="tc-star">★</span><span class="tc-star">★</span><span class="tc-star">★</span><span class="tc-star">★</span></div><p class="tc-quote">I thought AI prediction tools were all hype. Then Polytragent called 4 out of 5 markets correctly in my first week.</p><div class="tc-attr"><span class="tc-name">Marcus T.</span><span class="tc-role">Crypto Trader — Austin TX</span></div></div>
+      <div class="tc"><div class="tc-stars"><span class="tc-star">★</span><span class="tc-star">★</span><span class="tc-star">★</span><span class="tc-star">★</span><span class="tc-star">★</span></div><p class="tc-quote">No website to log into. No app to download. I just message a bot and get institutional-grade research. This is how every crypto tool should work.</p><div class="tc-attr"><span class="tc-name">Aisha N.</span><span class="tc-role">Crypto Content Creator — Dubai UAE</span></div></div>
+      <!-- duplicate for seamless loop -->
+      <div class="tc"><div class="tc-stars"><span class="tc-star">★</span><span class="tc-star">★</span><span class="tc-star">★</span><span class="tc-star">★</span><span class="tc-star">★</span></div><p class="tc-quote">I've been tracking Polytragent's calls for 2 months. 78% hit rate is real — I've verified it against my own P&L. No other tool I've used comes close to being this transparent about accuracy.</p><div class="tc-attr"><span class="tc-name">Chris L.</span><span class="tc-role">Quantitative Analyst — Chicago IL</span></div></div>
+      <div class="tc"><div class="tc-stars"><span class="tc-star">★</span><span class="tc-star">★</span><span class="tc-star">★</span><span class="tc-star">★</span><span class="tc-star">★</span></div><p class="tc-quote">I'm new to prediction markets and honestly had no idea where to start. Polytragent made it dead simple — just paste a link and it tells you what to do. My first month I'm up $180.</p><div class="tc-attr"><span class="tc-name">Sarah W.</span><span class="tc-role">College Student — Toronto CA</span></div></div>
+      <div class="tc"><div class="tc-stars"><span class="tc-star">★</span><span class="tc-star">★</span><span class="tc-star">★</span><span class="tc-star">★</span><span class="tc-star">★</span></div><p class="tc-quote">Most people only look at the main market. Polytragent analyzes every single sub-market in an event — it found a mispriced sub-market on the Fed rate decision that nobody was talking about.</p><div class="tc-attr"><span class="tc-name">Alex K.</span><span class="tc-role">Macro Trader — Singapore</span></div></div>
+      <div class="tc"><div class="tc-stars"><span class="tc-star">★</span><span class="tc-star">★</span><span class="tc-star">★</span><span class="tc-star">★</span><span class="tc-star">★</span></div><p class="tc-quote">What sold me is that it actually learns from its mistakes. I watched its crypto market accuracy go from 71% to 83% over 6 weeks as the calibration system kicked in. It literally gets smarter the more you use it.</p><div class="tc-attr"><span class="tc-name">Tom H.</span><span class="tc-role">AI Researcher &amp; Trader — Berlin DE</span></div></div>
+      <div class="tc"><div class="tc-stars"><span class="tc-star">★</span><span class="tc-star">★</span><span class="tc-star">★</span><span class="tc-star">★</span><span class="tc-star">★</span></div><p class="tc-quote">I thought AI prediction tools were all hype. Then Polytragent called 4 out of 5 markets correctly in my first week.</p><div class="tc-attr"><span class="tc-name">Marcus T.</span><span class="tc-role">Crypto Trader — Austin TX</span></div></div>
+      <div class="tc"><div class="tc-stars"><span class="tc-star">★</span><span class="tc-star">★</span><span class="tc-star">★</span><span class="tc-star">★</span><span class="tc-star">★</span></div><p class="tc-quote">No website to log into. No app to download. I just message a bot and get institutional-grade research. This is how every crypto tool should work.</p><div class="tc-attr"><span class="tc-name">Aisha N.</span><span class="tc-role">Crypto Content Creator — Dubai UAE</span></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- SECTION 01 — THE PROBLEM -->
+<section class="split" id="features">
+  <div class="st rev2">
+    <div class="snum">01 — The problem</div>
+    <h2>You're researching<br>with Google<br>in a market run<br>by algorithms.</h2>
+    <p class="sb">Polymarket moves fast. Events spawn dozens of sub-markets. Prices shift on news you haven't read yet. By the time you finish your research, the edge is gone. You need an AI that does the work in seconds — not hours.</p>
+    <div class="fl">
+      <div class="fi"><div class="fn">—</div><div class="fc"><h3>Events have 10–50 sub-markets you'll never manually check</h3><p>Each event on Polymarket can have dozens of date-specific or outcome-specific sub-markets. Most traders only look at the top one and miss the real edge buried in expired contracts and price divergences.</p></div></div>
+      <div class="fi"><div class="fn">—</div><div class="fc"><h3>No cross-platform comparison means you're trading blind</h3><p>Manifold Markets, Metaculus, and other forecasters often price the same events differently. Without cross-referencing, you can't tell if Polymarket's price is the opportunity — or the trap.</p></div></div>
+      <div class="fi"><div class="fn">—</div><div class="fc"><h3>You don't track your own accuracy — so you repeat mistakes</h3><p>Professional forecasters obsessively track calibration. Most Polymarket traders have no idea if they're actually good at predicting politics, crypto, or geopolitics. They keep losing on the same topics.</p></div></div>
+    </div>
+  </div>
+  <div class="sv">
+    <div class="run-term" data-term="boot">
+      <div class="rt-header">
+        <div class="rt-dots"><span class="rt-dot"></span><span class="rt-dot"></span><span class="rt-dot active"></span></div>
+        <span style="margin-left:10px;">polytragent — research.log</span>
+      </div>
+      <div class="rt-body"></div>
+    </div>
+  </div>
+</section>
+
+<div class="glow-sep"></div>
+
+<!-- SECTION 02 — THE SOLUTION -->
+<section class="split rev" id="solution">
+  <div class="sv" style="border-right:1px solid var(--border);">
+    <div class="mg">
+      <div class="mc rev2"><div class="mn">78%</div><div class="ml">Prediction<br>win rate</div></div>
+      <div class="mc rev2"><div class="mn">M+</div><div class="ml">Data points per<br>research query</div></div>
+      <div class="mc rev2"><div class="mn">&lt;10s</div><div class="ml">Full analysis<br>delivered</div></div>
+      <div class="mc rev2"><div class="mn">24/7</div><div class="ml">Background<br>resolution tracking</div></div>
+    </div>
+    <div class="run-term" data-term="trading" style="margin-top:1px;">
+      <div class="rt-header">
+        <div class="rt-dots"><span class="rt-dot"></span><span class="rt-dot"></span><span class="rt-dot active"></span></div>
+        <span style="margin-left:10px;">polytragent — analysis.log</span>
+      </div>
+      <div class="rt-body"></div>
+    </div>
+  </div>
+  <div class="st rev2">
+    <div class="snum">02 — The solution</div>
+    <h2>One command.<br>Full research.<br>Edge found.</h2>
+    <p class="sb">Type /research with any Polymarket event URL. Polytragent parses every sub-market, cross-references forecasters, checks its own track record, and delivers an AI-powered edge analysis — with BUY YES, BUY NO, or HOLD for every market. In seconds.</p>
+    <div class="fl">
+      <div class="fi"><div class="fn">01</div><div class="fc"><h3>Full Event Parsing</h3><p>Extracts every sub-market from the event — active, expired, and resolved. Expired markets give context. Active markets get priced. Nothing gets missed.</p></div></div>
+      <div class="fi"><div class="fn">02</div><div class="fc"><h3>Cross-Platform Intelligence</h3><p>Searches Manifold Markets for matching predictions. Compares prices across platforms. When Polymarket says 40% and Manifold says 68%, that's your edge.</p></div></div>
+      <div class="fi"><div class="fn">03</div><div class="fc"><h3>Self-Improving AI Analysis</h3><p>Claude AI synthesizes everything — sub-markets, forecasters, and your full prediction history. It knows where it's been wrong before and corrects calibration biases automatically.</p></div></div>
+      <div class="fi"><div class="fn">04</div><div class="fc"><h3>Prediction Logging & Resolution</h3><p>Every prediction is logged with market price, forecast %, confidence, and reasoning. A background resolver checks outcomes every 6 hours. The system gets smarter with every trade.</p></div></div>
+    </div>
+  </div>
+</section>
+
+<div class="glow-sep"></div>
+
+<!-- SECTION 03 — INTELLIGENCE -->
+<section class="intel-section" id="intel">
+  <div class="intel-header">
+    <div class="intel-header-left rev2">
+      <div class="snum">03 — Intelligence</div>
+      <h2>Millions of data points.<br>One research engine.</h2>
+      <p class="sb" style="margin-bottom:0;">Every Polymarket sub-market, every Manifold forecast, every past prediction you've made, every news signal — aggregated, cross-referenced, and scored by AI in under 10 seconds.</p>
+    </div>
+    <div class="intel-count rev2" style="padding-bottom:8px;">8-STEP PIPELINE · MILLIONS OF DATA POINTS · SELF-IMPROVING AI</div>
+  </div>
+  <div style="padding:32px 48px;overflow-x:auto;" class="rev2">
+    <div class="pipeline" id="pipeline">
+      <div class="pipe-node" data-idx="0">PARSE URL<div class="pipe-data">extract slug</div></div>
+      <div class="pipe-connector"></div>
+      <div class="pipe-node" data-idx="1">FETCH MARKETS<div class="pipe-data">gamma API</div></div>
+      <div class="pipe-connector"></div>
+      <div class="pipe-node" data-idx="2">CROSS-REF<div class="pipe-data">manifold</div></div>
+      <div class="pipe-connector"></div>
+      <div class="pipe-node" data-idx="3">TRACK RECORD<div class="pipe-data">past accuracy</div></div>
+      <div class="pipe-connector"></div>
+      <div class="pipe-node" data-idx="4">AI ANALYSIS<div class="pipe-data">claude sonnet</div></div>
+      <div class="pipe-connector"></div>
+      <div class="pipe-node" data-idx="5">LOG & RESOLVE<div class="pipe-data">every 6h</div></div>
+    </div>
+  </div>
+  <div class="intel-grid rev2">
+    <div class="intel-card"><div class="intel-card-icon">◈ Step 1</div><div class="intel-card-name">Parse URL</div><div class="intel-card-desc">Extracts slug from Polymarket link. Detects /event/ URLs (multiple sub-markets) vs single market URLs and routes accordingly.</div></div>
+    <div class="intel-card"><div class="intel-card-icon">◈ Step 2</div><div class="intel-card-name">Fetch Sub-Markets</div><div class="intel-card-desc">Hits Gamma API for every sub-market — including expired/resolved ones. Parses YES/NO prices, volume, liquidity, days left.</div></div>
+    <div class="intel-card"><div class="intel-card-icon">◈ Step 3</div><div class="intel-card-name">Search Forecasters</div><div class="intel-card-desc">Cross-references Manifold Markets for matching binary markets. Grabs top 3-5 by liquidity for price comparison.</div></div>
+    <div class="intel-card"><div class="intel-card-icon">◈ Step 4</div><div class="intel-card-name">Past Track Record</div><div class="intel-card-desc">Checks prediction_store for related past predictions. Reports correct vs wrong, with specific examples and topic-level accuracy.</div></div>
+    <div class="intel-card"><div class="intel-card-icon">◈ Step 5</div><div class="intel-card-name">AI Analysis</div><div class="intel-card-desc">Claude Sonnet synthesizes everything — sub-markets, Manifold data, full accuracy history, calibration biases — into edge-scored recommendations.</div></div>
+    <div class="intel-card"><div class="intel-card-icon">◈ Step 6</div><div class="intel-card-name">Log Predictions</div><div class="intel-card-desc">Every active sub-market logged to predictions.json with AI forecast %, recommendation (BUY_YES/BUY_NO/HOLD), confidence, and reasoning.</div></div>
+    <div class="intel-card"><div class="intel-card-icon">◈ Step 7</div><div class="intel-card-name">Build Output</div><div class="intel-card-desc">Formats everything for Telegram: active markets with edge indicators, expired context, Manifold comparison, AI analysis, and direct trade links.</div></div>
+    <div class="intel-card"><div class="intel-card-icon">◈ Step 8</div><div class="intel-card-name">Background Resolve</div><div class="intel-card-desc">Every 6 hours, checks Polymarket API for resolved markets. Records outcomes, calculates hypothetical P&L. Feeds back into future research.</div></div>
+  </div>
+</section>
+
+<div class="glow-sep"></div>
+
+<!-- SECTION 04 — LIVE RESEARCH OUTPUT -->
+<section class="split" id="live-monitor">
+  <div class="st rev2">
+    <div class="snum">04 — Research output</div>
+    <h2>See every edge.<br>Scored and ranked.<br>In real time.</h2>
+    <p class="sb">Every research query shows you exactly where the edge is — price vs forecast, Manifold divergence, confidence level, and a clear BUY YES / BUY NO / HOLD for every sub-market. All delivered straight to Telegram.</p>
+    <div class="arch-grid" style="margin-top:24px;">
+      <div class="arch-module"><div class="arch-module-name">Edge Detection</div><div class="arch-module-desc">Price vs AI forecast divergence</div><div class="arch-module-file">research_engine.py</div></div>
+      <div class="arch-module"><div class="arch-module-name">Manifold Bridge</div><div class="arch-module-desc">Cross-platform price comparison</div><div class="arch-module-file">manifold_api.py</div></div>
+      <div class="arch-module"><div class="arch-module-name">Prediction Store</div><div class="arch-module-desc">Accuracy tracking & resolution</div><div class="arch-module-file">prediction_store.py</div></div>
+      <div class="arch-module"><div class="arch-module-name">Telegram Output</div><div class="arch-module-desc">Formatted research delivery</div><div class="arch-module-file">telegram_client.py</div></div>
+    </div>
+  </div>
+  <div class="sv">
+    <div class="data-monitor rev2">
+      <div class="dm-header">
+        <div class="dm-header-left">Research results — edge scores</div>
+        <div class="dm-live"><span class="dm-live-dot"></span> LIVE</div>
+      </div>
+      <div class="dm-row header"><span>MARKET</span><span>PRICE</span><span>AI EST.</span><span>EDGE</span></div>
+      <div id="dm-rows"></div>
+    </div>
+    <div class="run-term" data-term="monitor" style="margin-top:16px;">
+      <div class="rt-header">
+        <div class="rt-dots"><span class="rt-dot"></span><span class="rt-dot"></span><span class="rt-dot active"></span></div>
+        <span style="margin-left:10px;">polytragent — output.log</span>
+      </div>
+      <div class="rt-body"></div>
+    </div>
+  </div>
+</section>
+
+<div class="glow-sep"></div>
+
+<!-- SECTION 05 — SETUP -->
+<section class="split" id="how-it-works">
+  <div class="st rev2">
+    <div class="snum">05 — How it works</div>
+    <h2>One command.<br>Instant research.<br>That simple.</h2>
+    <p class="sb">No setup. No APIs to configure. Just open Telegram, send a Polymarket link, and get AI-powered research in seconds. The agent does the rest.</p>
+    <div class="sl2">
+      <div class="si"><div class="sn">01</div><div class="sb2"><h3>Open Telegram → Send /research</h3><p>Paste any Polymarket event URL. The agent detects whether it's a multi-market event or single market and routes automatically. Works with any active Polymarket link.</p></div></div>
+      <div class="si"><div class="sn">02</div><div class="sb2"><h3>AI analyzes everything in &lt;10 seconds</h3><p>Sub-markets fetched, forecasters cross-referenced, your track record checked, Claude AI analysis generated. Millions of data points synthesized into clear recommendations.</p></div></div>
+      <div class="si"><div class="sn">03</div><div class="sb2"><h3>Get edge scores + direct trade links</h3><p>Each sub-market gets a BUY YES, BUY NO, or HOLD recommendation with confidence level and reasoning. Click the trade link to execute on Polymarket instantly.</p></div></div>
+    </di
+  </div>
+  <div class="sv">
+    <div class="run-term" data-term="setup">
+      <div class="rt-header">
+        <div class="rt-dots"><span class="rt-dot"></span><span class="rt-dot"></span><span class="rt-dot active"></span></div>
+        <span style="margin-left:10px;">polytragent — research.log</span>
+      </div>
+      <div class="rt-body"></div>
+    </div>
+  </div>
+</section>
+
+<div class="glow-sep"></div>
+
+<!-- SECTION 06 — PRICING -->
+<section class="pricing-section" id="pricing">
+  <div class="ph rev2">
+    <div class="snum" style="text-align:center;margin-bottom:12px;">06 — Pricing</div>
+    <h2>Start free.<br>Go Degen.</h2>
+    <p>Free for up to 20 wallets. Upgrade to Degen Mode for unlimited access.</p>
+  </div>
+  <div class="pc-two-col rev2">
+    <!-- Free tier -->
+    <div class="pc-card">
+      <div class="pbadge" style="background:rgba(255,255,255,.07);color:#aaa;border-color:rgba(255,255,255,.12);">Free</div>
+      <div class="pname">Starter</div>
+      <div class="pprice">$0</div>
+      <div class="pper">forever · no credit card</div>
+      <span class="panc">Up to 20 wallets tracked</span>
+      <a href="https://t.me/bmpolybot" target="_blank" class="pc-free">Start free on Telegram →</a>
+      <ul class="pf" style="margin-top:24px;">
+        <li><span class="pck">✓</span> Up to 20 wallets</li>
+        <li><span class="pck">✓</span> /research queries</li>
+        <li><span class="pck">✓</span> AI edge scores</li>
+        <li><span class="pck">✓</span> Prediction tracking</li>
+        <li><span class="pck">✓</span> Telegram delivery</li>
+        <li style="color:#555;"><span style="margin-right:8px;">✕</span> Unlimited wallets</li>
+        <li style="color:#555;"><span style="margin-right:8px;">✕</span> Priority AI processing</li>
+        <li style="color:#555;"><span style="margin-right:8px;">✕</span> Calibration bias reports</li>
+      </ul>
+    </div>
+    <!-- Degen Mode -->
+    <div class="pc-card pc-card-featured">
+      <div class="pbadge">Degen Mode</div>
+      <div class="pname">Monthly</div>
+      <div class="pprice">$79.99</div>
+      <div class="pper">per month · cancel any time</div>
+      <span class="panc">Unlimited wallets · all features</span>
+      <button onclick="startCheckout()" class="pc-main" id="degenBtn">Go Degen — $79.99/mo →</button>
+      <ul class="pf" style="margin-top:24px;">
+        <li><span class="pck">✓</span> <strong>Unlimited</strong> wallets</li>
+        <li><span class="pck">✓</span> Unlimited /research queries</li>
+        <li><span class="pck">✓</span> Full AI analysis with edge scores</li>
+        <li><span class="pck">✓</span> Manifold cross-reference</li>
+        <li><span class="pck">✓</span> Prediction tracking</li>
+        <li><span class="pck">✓</span> Telegram delivery</li>
+        <li><span class="pck">✓</span> Direct trade links</li>
+        <li><span class="pck">✓</span> Full accuracy dashboard</li>
+        <li><span class="pck">✓</span> Calibration bias reports</li>
+        <li><span class="pck">✓</span> Topic-level win rates</li>
+        <li><span class="pck">✓</span> Historical P&L tracking</li>
+        <li><span class="pck">✓</span> Priority AI processing</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- SECTION 06.5 — PROFIT CALCULATOR -->
+<section class="calc-section" id="calculator">
+  <div class="calc-header rev2">
+    <div class="snum">Profit Calculator</div>
+    <h2>Calculate your<br><span style="color:var(--green)">prediction market</span> profits</h2>
+    <p>Enter your trade parameters. See potential profit, ROI, and break-even — then compare returns with and without Polytragent's AI edge detection.</p>
+  </div>
+  <div class="calc-grid">
+    <div class="calc-inputs-panel rev2">
+      <div class="calc-sect-label">Trade Parameters</div>
+      <div class="cinput">
+        <div class="cinput-top"><span>Investment Amount</span><div class="cinput-val" id="cInvD">$500</div></div>
+        <input type="range" id="cInvS" min="10" max="10000" step="10" value="500">
+        <div class="slider-ticks"><span>$10</span><span>$10,000</span></div>
+      </div>
+      <div class="cinput">
+        <div class="cinput-top"><span>Buy Price (share cost)</span><div class="cinput-val" id="cBuyD">$0.45</div></div>
+        <input type="range" id="cBuyS" min="1" max="99" step="1" value="45">
+        <div class="slider-ticks"><span>$0.01</span><span>$0.99</span></div>
+      </div>
+      <div class="cinput">
+        <div class="cinput-top"><span>Estimated Win Probability</span><div class="cinput-val" id="cProbD">65%</div></div>
+        <input type="range" id="cProbS" min="1" max="99" step="1" value="65">
+        <div class="slider-ticks"><span>1%</span><span>99%</span></div>
+      </div>
+      <div class="cinput">
+        <div class="cinput-top"><span>Position</span></div>
+        <div class="pos-toggle">
+          <button class="pos-btn active" data-v="yes" onclick="cSetPos('yes',this)">Buy YES</button>
+          <button class="pos-btn" data-v="no" onclick="cSetPos('no',this)">Buy NO</button>
+        </div>
+      </div>
+      <div class="cinput">
+        <div class="cinput-top"><span>Trades per Month</span><div class="cinput-val" id="cTradesD">20</div></div>
+        <input type="range" id="cTradesS" min="1" max="100" step="1" value="20">
+        <div class="slider-ticks"><span>1</span><span>100</span></div>
+      </div>
+      <div class="cinput" style="margin-top:28px;padding-top:24px;border-top:1px solid var(--border);">
+        <div class="calc-sect-label">Polytragent Advantage</div>
+        <div class="cinput-top"><span>AI Edge Boost (accuracy improvement)</span><div class="cinput-val" id="cEdgeD">+12%</div></div>
+        <input type="range" id="cEdgeS" min="0" max="30" step="1" value="12">
+        <div class="slider-ticks"><span>+0%</span><span>+30%</span></div>
+        <p style="font-size:10px;color:var(--gray2);margin-top:8px;font-weight:300;line-height:1.5;">Based on Polytragent's 78% win rate vs average ~55% baseline.</p>
+      </div>
+    </div>
+    <div class="calc-results-panel rev2">
+      <div class="calc-sect-label">Results — Single Trade</div>
+      <div class="res-hero">
+        <div class="res-label">Potential Profit</div>
+        <div class="res-big pos" id="cProfit">+$611.11</div>
+        <div class="res-sub" id="cRoi">ROI: +122.2%</div>
+      </div>
+      <div class="res-grid">
+        <div class="res-card"><div class="res-card-label">Shares Bought</div><div class="res-card-val" id="cShares">1,111</div><div class="res-card-note" id="cSharesN">at $0.45 each</div></div>
+        <div class="res-card"><div class="res-card-label">Payout if Win</div><div class="res-card-val" id="cPayout">$1,111.11</div><div class="res-card-note">shares resolve to $1.00</div></div>
+        <div class="res-card"><div class="res-card-label">Break-Even Prob.</div><div class="res-card-val" id="cBreakEven">45.0%</div><div class="res-card-note">minimum to be +EV</div></div>
+        <div class="res-card"><div class="res-card-label">Expected Value</div><div class="res-card-val" id="cEV">+$222.22</div><div class="res-card-note">probability-weighted</div></div>
+      </div>
+      <div class="comp-box">
+        <div class="comp-box-header"><span class="comp-box-dot"></span> Monthly Projection</div>
+        <div class="comp-r hdr"><span>Metric</span><span style="text-align:right;">Without AI</span><span style="text-align:right;">With Polytragent</span></div>
+        <div class="comp-r"><span class="comp-met">Win Rate</span><span class="comp-v neu" id="cWrBase">65%</span><span class="comp-v grn" id="cWrAI">77%</span></div>
+        <div class="comp-r"><span class="comp-met">Winning Trades</span><span class="comp-v neu" id="cWinsBase">13</span><span class="comp-v grn" id="cWinsAI">15</span></div>
+        <div class="comp-r"><span class="comp-met">Monthly Profit</span><span class="comp-v neu" id="cMpBase">+$1,500</span><span class="comp-v grn" id="cMpAI">+$3,540</span></div>
+        <div class="comp-r"><span class="comp-met">Monthly ROI</span><span class="comp-v neu" id="cMrBase">+15.0%</span><span class="comp-v grn" id="cMrAI">+35.4%</span></div>
+        <div class="comp-r"><span class="comp-met">Extra Profit from AI</span><span class="comp-v neu">—</span><span class="comp-v grn" id="cExtra">+$2,040</span></div>
+      </div>
+    </div>
+  </div>
+  <div class="calc-cta-strip">
+    <p>See those numbers in action — Polytragent finds this edge on every trade, automatically.</p>
+    <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
+      <a href="https://t.me/bmpolybot" target="_blank" class="btn-sl">Start with Polytragent →</a>
+      <a href="/resources/profit-calculator" class="btn-ol">Full calculator page</a>
+    </div>
+  </div>
+</section>
+
+<div class="glow-sep"></div>
+
+<!-- SECTION 07 — FAQ -->
+<section class="faq-section" id="faq">
+  <div class="fl2 rev2">
+    <div class="snum">07 — FAQ</div>
+    <h2>Common<br>questions.</h2>
+    <p style="font-size:15px;color:var(--gray);font-weight:300;line-height:1.7;max-width:300px;margin-top:14px;">Everything you need to know before running your first /research command.</p>
+  </div>
+  <div class="fr">
+    <div class="fqi rev2"><div class="fqq">What exactly does Polytragent do?</div><div class="fqa">Polytragent is an AI research agent for Polymarket. You send it a Polymarket event URL via Telegram, and it instantly analyzes every sub-market, cross-references forecaster platforms like Manifold Markets, reviews its own past prediction accuracy, and delivers AI-powered edge recommendations — BUY YES, BUY NO, or HOLD — with confidence levels and reasoning. It's like having a team of analysts in your pocket.</div></div>
+    <div class="fqi rev2"><div class="fqq">How many data points does it actually analyze?</div><div class="fqa">Millions. Every sub-market in the event (including expired ones for context), all matching Manifold Markets predictions, the full prediction history database with win/loss tracking, news velocity signals, and on-chain data. All of this is synthesized by Claude AI in under 10 seconds.</div></div>
+    <div class="fqi rev2"><div class="fqq">Does it learn from its mistakes?</div><div class="fqa">Yes — this is the core advantage. Every prediction is logged with the market price, AI forecast percentage, confidence level, and reasoning. A background resolver runs every 6 hours checking for outcomes. The AI sees its full track record — win rate, calibration biases, strong/weak topics, recent performance — and adjusts future predictions accordingly.</div></div>
+    <div class="fqi rev2"><div class="fqq">Does Polytragent execute trades for me?</div><div class="fqa">Polytragent is a research agent — it tells you what to buy, not buys for you. Each recommendation comes with a direct trade link to Polymarket so you can execute with one click. You stay in control of every trade.</div></div>
+    <div class="fqi rev2"><div class="fqq">What platforms does it cross-reference?</div><div class="fqa">Currently Manifold Markets is the primary cross-reference source for forecaster comparison. The agent searches by event title, finds matching binary markets, and compares prices. When Polymarket and Manifold disagree significantly, that's where edge lives.</div></div>
+    <div class="fqi rev2"><div class="fqq">How do I use it?</div><div class="fqa">Open Telegram, send /research followed by any Polymarket event URL. That's it. The agent handles everything — URL parsing, sub-market fetching, forecaster comparison, track record analysis, AI synthesis — and delivers the results right in your Telegram chat.</div></div>
+  </div>
+</section>
+
+<!-- CTA -->
+<section class="ctas">
+  <div class="ctl rev2">
+    <div class="snum" style="margin-bottom:20px;">Get started</div>
+    <h2>Stop guessing.<br>Start researching<br>with AI.</h2>
+    <p style="font-size:15px;color:var(--gray);font-weight:300;line-height:1.7;margin:24px 0 32px;max-width:360px;">Send your first /research command and get AI-powered edge detection in seconds. No setup required.</p>
+    <div style="display:flex;gap:12px;flex-wrap:wrap;">
+      <a href="https://t.me/bmpolybot" target="_blank" class="btn-sl">Start researching →</a>
+    </div>
+    <div class="trnote">
+      <span>Telegram-native</span>
+      <span>Cancel anytime</span>
+      <span>Self-improving AI</span>
+    </div>
+  </div>
+  <div class="ctr" aria-hidden="true">
+    <div class="run-term" data-term="cta">
+      <div class="rt-header">
+        <div class="rt-dots"><span class="rt-dot"></span><span class="rt-dot"></span><span class="rt-dot active"></span></div>
+        <span style="margin-left:10px;">polytragent — edge.log</span>
+      </div>
+      <div class="rt-body"></div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div>
+    <svg height="20" viewBox="0 0 340 40" fill="none" xmlns="http://www.w3.org/2000/svg" style="opacity:.35;">
+      <path d="M4 33 L20 5 L36 33" stroke="white" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+      <text x="52" y="29" font-family="Inter,sans-serif" font-size="19" font-weight="600" letter-spacing="4" fill="white">POLYTRAGENT</text>
+    </svg>
+    <div class="fcopy" style="margin-top:8px;">© 2026 Polytragent. AI Research for Polymarket.</div>
+  </div>
+  <ul class="flinks">
+    <li><a href="/features">Features</a></li>
+    <li><a href="#pricing">Pricing</a></li>
+    <li><a href="/resources">Resources</a></li>
+    <li><a href="/resources/profit-calculator">Calculator</a></li>
+    <li><a href="/blog">Blog</a></li>
+    <li><a href="#faq">FAQ</a></li>
+    <li><a href="https://x.com/polytragent" target="_blank">X / Twitter</a></li>
+    <li><a href="https://polytragent.gitbook.io/polytragent-docs/polytragent-documentation" target="_blank">Docs</a></li>
+  </ul>
+</footer>
+<div class="disc">
+  <p>Risk Disclaimer: Prediction market trading involves significant financial risk. AI-powered research does not guarantee profits. Past performance is not indicative of future results. Polytragent is a research tool, not a financial advisor. Only trade capital you can afford to lose. This website does not constitute financial advice.</p>
+</div>
+
+<script>
+// ============================================================
+// STRIPE CHECKOUT
+// ============================================================
+async function startCheckout() {
+  const btn = document.getElementById('degenBtn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Redirecting…'; }
+  try {
+    const res = await fetch('/create-checkout-session', { method: 'POST', headers: { 'Content-Type': 'application/json' } });
+    const data = await res.json();
+    if (data.url) {
+      window.location.href = data.url;
+    } else {
+      alert(data.error || 'Could not start checkout. Please try again.');
+      if (btn) { btn.disabled = false; btn.textContent = 'Go Degen — $79.99/mo →'; }
+    }
+  } catch (e) {
+    alert('Could not connect to checkout. Please try again.');
+    if (btn) { btn.disabled = false; btn.textContent = 'Go Degen — $79.99/mo →'; }
+  }
+}
+
+// ============================================================
+// GRID CANVAS
+// ============================================================
+(function(){
+  const c=document.getElementById('gridCanvas');if(!c)return;
+  const ctx=c.getContext('2d');let w,h;
+  function resize(){w=c.width=window.innerWidth;h=c.height=window.innerHeight*4;}
+  resize();window.addEventListener('resize',()=>{resize();draw();});
+  const sp=60;
+  function draw(){
+    ctx.clearRect(0,0,w,h);ctx.strokeStyle='rgba(255,255,255,.018)';ctx.lineWidth=.5;
+    for(let x=0;x<w;x+=sp){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,h);ctx.stroke();}
+    for(let y=0;y<h;y+=sp){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(w,y);ctx.stroke();}
+    ctx.fillStyle='rgba(255,255,255,.03)';
+    for(let x=0;x<w;x+=sp){for(let y=0;y<h;y+=sp){ctx.beginPath();ctx.arc(x,y,1,0,Math.PI*2);ctx.fill();}}
+  }
+  draw();
+})();
+
+// ============================================================
+// HERO CODE STREAM (scrolling background code)
+// ============================================================
+const SD=[
+  ['09:14:03','INIT','cgr','Polytragent v2.1 initialized — research engine active'],
+  ['09:14:04','PARSE','cbl','/research polymarket.com/event/trump-2026-midterms'],
+  ['09:14:04','SLUG','cg','Extracted slug: trump-2026-midterms'],
+  ['09:14:05','GAMMA','cyl','Fetching sub-markets from Gamma API...'],
+  ['09:14:05','FETCH','cbl','Found 12 sub-markets — 8 active, 4 expired/resolved'],
+  ['09:14:06','MFLD','cyl','Searching Manifold Markets: "trump 2026 midterms"'],
+  ['09:14:06','MATCH','cgr','3 matching markets found — top by liquidity'],
+  ['09:14:07','COMP','cbl','Poly: $0.41 YES / Manifold: $0.58 YES — divergence +17%'],
+  ['09:14:07','HIST','cyl','Checking prediction_store for "trump" + "midterms"...'],
+  ['09:14:08','TRACK','cgr','Found 6 related past predictions — 5/6 correct (83%)'],
+  ['09:14:08','BIAS','cg','Calibration: slight overconfidence on politics (+3%)'],
+  ['09:14:09','AI','cgr','Sending to Claude Sonnet for analysis...'],
+  ['09:14:10','EDGE','cgr','Sub-market "GOP wins House" — edge +28% — BUY YES'],
+  ['09:14:10','EDGE','cbl','Sub-market "Dem wins Senate" — edge +12% — BUY YES'],
+  ['09:14:11','HOLD','cg','Sub-market "Trump endorses" — no edge — HOLD'],
+  ['09:14:11','LOG','cyl','Logging 12 predictions to predictions.json'],
+  ['09:14:12','TELE','cgr','Research delivered to Telegram ✓'],
+  ['09:14:12','LINK','cbl','Trade links generated for 8 active markets'],
+  ['09:14:30','RESV','cyl','Background resolver: checking 47 open predictions...'],
+  ['09:14:31','OK','cgr','"ECB holds March" — resolved YES — prediction correct ✓'],
+  ['09:14:31','P&L','cgr','Hypothetical: +$14.20 on ECB position'],
+  ['09:14:32','MISS','crd','"BTC $75k March" — resolved NO — prediction wrong ✗'],
+  ['09:14:32','LEARN','cyl','Updating crypto calibration: reducing confidence -5%'],
+  ['09:14:33','STAT','cgr','Overall: 78% win rate — 18/23 lifetime predictions'],
+  ['09:14:40','PARSE','cbl','/research polymarket.com/event/fed-rate-decision-june'],
+  ['09:14:40','SLUG','cg','Extracted slug: fed-rate-decision-june'],
+  ['09:14:41','GAMMA','cyl','Fetching sub-markets from Gamma API...'],
+  ['09:14:41','FETCH','cbl','Found 8 sub-markets — 6 active, 2 expired'],
+  ['09:14:42','MFLD','cyl','Searching Manifold Markets: "fed rate june"'],
+  ['09:14:42','MATCH','cgr','5 matching markets found'],
+  ['09:14:43','COMP','cbl','Poly: $0.67 / Manifold: $0.74 — divergence +7%'],
+  ['09:14:43','HIST','cyl','Past "fed" predictions: 4/5 correct (80%)'],
+  ['09:14:44','AI','cgr','Claude analysis: BUY YES — confidence HIGH'],
+  ['09:14:44','EDGE','cgr','Edge: +7% vs market — recommendation: BUY YES'],
+  ['09:14:45','LOG','cyl','6 predictions logged to predictions.json'],
+  ['09:14:45','TELE','cgr','Research delivered to Telegram ✓'],
+  ['09:14:50','IDLE','cg','Waiting for next /research command...'],
+  ['09:15:01','RESV','cyl','Background check: 49 open predictions — 2 newly resolved'],
+  ['09:15:02','STAT','cgr','Updated win rate: 78.3% — calibration improving'],
+  ['09:15:03','IDLE','cg','Standing by...'],
+];
+const ALL=[...SD,...SD,...SD];
+function buildStream(){
+  const el=document.getElementById('stream');if(!el)return;
+  const col=document.createElement('div');col.className='scol';
+  ALL.forEach(([ts,tag,cls,msg])=>{
+    const d=document.createElement('div');d.className='cl';
+    d.innerHTML=`<span class="cg" style="flex-shrink:0">${ts}</span><span class="${cls}" style="flex-shrink:0;width:60px;font-size:9.5px;font-weight:500">[${tag.trim()}]</span><span class="cw">${msg}</span>`;
+    col.appendChild(d);
+  });
+  el.appendChild(col);
+}
+buildStream();
+
+// ============================================================
+// RUNNING TERMINAL ENGINE — scroll-triggered, replays each time
+// ============================================================
+const TERM_DATA = {
+  boot: [
+    ['09:14:03','INIT','#4a7c59','Polytragent v2.1 — research engine starting...'],
+    ['09:14:04','CMD','#fff','/research polymarket.com/event/trump-2026-midterms'],
+    ['09:14:04','PARSE','#4a6080','Detecting URL type: /event/ — multi-market mode'],
+    ['09:14:04','SLUG','#333','Extracted: trump-2026-midterms'],
+    ['09:14:05','GAMMA','#7c6a3a','Hitting Gamma API → /events?slug=trump-2026-midterms'],
+    ['09:14:05','FETCH','#4a6080','Found 12 sub-markets — parsing prices...'],
+    ['09:14:06','MKT','#4a6080','  → "GOP wins House 2026" — YES $0.41 / NO $0.59'],
+    ['09:14:06','MKT','#4a6080','  → "Dem wins Senate 2026" — YES $0.38 / NO $0.62'],
+    ['09:14:06','MKT','#333','  → "Trump endorses winner" — EXPIRED — resolved YES'],
+    ['09:14:07','MFLD','#7c6a3a','Searching Manifold: "trump 2026 midterms"...'],
+    ['09:14:07','MATCH','#4a7c59','3 markets found — comparing prices...'],
+    ['09:14:07','COMP','#4a6080','Poly: $0.41 / Manifold: $0.58 — divergence: +17%'],
+    ['09:14:08','HIST','#7c6a3a','Checking prediction_store for related events...'],
+    ['09:14:08','TRACK','#4a7c59','Found 6 past "politics" predictions — 5/6 correct'],
+    ['09:14:08','BIAS','#333','Calibration note: +3% overconfidence on politics'],
+    ['09:14:09','AI','#7c6a3a','Sending to Claude Sonnet for synthesis...'],
+    ['09:14:10','EDGE','#4a7c59','→ "GOP wins House" — BUY YES — edge +28% — HIGH conf'],
+    ['09:14:10','EDGE','#4a7c59','→ "Dem wins Senate" — BUY YES — edge +12% — MED conf'],
+    ['09:14:10','HOLD','#333','→ "Trump endorses" — HOLD — no clear edge'],
+    ['09:14:11','LOG','#7c6a3a','12 predictions logged to predictions.json'],
+    ['09:14:11','TELE','#4a7c59','Research delivered to Telegram ✓'],
+    ['09:14:12','LINK','#4a6080','Trade links: polymarket.com/event/... attached'],
+    ['09:14:15','IDLE','#333','Waiting for next /research command...'],
+  ],
+  trading: [
+    ['09:15:00','CMD','#fff','/research polymarket.com/event/fed-rate-decision-june'],
+    ['09:15:00','PARSE','#4a6080','Event URL detected — multi-market mode'],
+    ['09:15:01','GAMMA','#7c6a3a','Fetching from Gamma API...'],
+    ['09:15:01','FETCH','#4a6080','8 sub-markets found — 6 active, 2 expired'],
+    ['09:15:02','MKT','#4a6080','  → "Fed cuts 25bp June" — YES $0.67 / NO $0.33'],
+    ['09:15:02','MKT','#4a6080','  → "Fed holds June" — YES $0.28 / NO $0.72'],
+    ['09:15:02','MKT','#333','  → "Fed cuts March" — EXPIRED — resolved NO'],
+    ['09:15:03','MFLD','#7c6a3a','Searching Manifold: "fed rate june 2026"...'],
+    ['09:15:03','MATCH','#4a7c59','5 matching markets found'],
+    ['09:15:04','COMP','#4a6080','Poly: $0.67 / Manifold: $0.74 — divergence: +7%'],
+    ['09:15:04','COMP','#4a6080','Poly: $0.28 / Manifold: $0.21 — divergence: -7%'],
+    ['09:15:05','HIST','#7c6a3a','Past "fed" predictions: 4/5 correct (80%)'],
+    ['09:15:05','BIAS','#333','Strong topic — no calibration adjustment needed'],
+    ['09:15:06','AI','#7c6a3a','Claude analysis running...'],
+    ['09:15:07','EDGE','#4a7c59','→ "Fed cuts June" — BUY YES — edge +7% — HIGH conf'],
+    ['09:15:07','EDGE','#4a7c59','→ "Fed holds June" — BUY NO — edge +7% — MED conf'],
+    ['09:15:08','LOG','#7c6a3a','6 predictions logged'],
+    ['09:15:08','TELE','#4a7c59','Research delivered to Telegram ✓'],
+    ['09:15:10','IDLE','#333','Standing by for next command...'],
+    ['09:15:30','RESV','#7c6a3a','Background resolver: checking 49 open predictions...'],
+    ['09:15:31','OK','#4a7c59','"ECB holds March" — resolved YES — correct ✓'],
+    ['09:15:31','P&L','#4a7c59','Hypothetical P&L: +$14.20'],
+    ['09:15:32','MISS','#7c4a4a','"BTC $75k March" — resolved NO — wrong ✗'],
+    ['09:15:32','LEARN','#7c6a3a','Crypto calibration adjusted: -5% confidence'],
+    ['09:15:33','STAT','#4a7c59','Overall: 78% win rate — 18/23 correct'],
+  ],
+  monitor: [
+    ['09:14:10','EDGE','#4a7c59','GOP wins House — Poly $0.41 / AI est $0.69 — BUY YES'],
+    ['09:14:10','CONF','#7c6a3a','Confidence: HIGH — past politics accuracy 83%'],
+    ['09:14:10','EDGE','#4a7c59','Dem wins Senate — Poly $0.38 / AI est $0.50 — BUY YES'],
+    ['09:14:10','CONF','#7c6a3a','Confidence: MEDIUM — limited comparable data'],
+    ['09:14:11','HOLD','#333','Trump endorses winner — fair price — HOLD'],
+    ['09:14:11','TELE','#4a7c59','Results sent to Telegram ✓'],
+    ['09:15:07','EDGE','#4a7c59','Fed cuts June — Poly $0.67 / AI est $0.74 — BUY YES'],
+    ['09:15:07','MFLD','#4a6080','Manifold confirms: $0.74 — cross-platform agreement'],
+    ['09:15:07','EDGE','#4a7c59','Fed holds June — Poly $0.28 / AI est $0.21 — BUY NO'],
+    ['09:15:08','TELE','#4a7c59','Results sent to Telegram ✓'],
+    ['09:15:31','RESV','#4a7c59','ECB March — resolved — prediction CORRECT ✓'],
+    ['09:15:31','P&L','#4a7c59','Hypothetical: +$14.20 (+37.4%)'],
+    ['09:15:32','RESV','#7c4a4a','BTC $75k March — resolved — prediction WRONG ✗'],
+    ['09:15:32','LEARN','#7c6a3a','Adjusting crypto calibration...'],
+    ['09:15:33','STAT','#4a7c59','Win rate: 78% — improving on economics (+4%)'],
+    ['09:15:40','RESV','#4a7c59','Ukraine ceasefire Q1 — resolved — CORRECT ✓'],
+    ['09:15:40','P&L','#4a7c59','Hypothetical: +$8.60 (+22.1%)'],
+    ['09:15:50','STAT','#4a7c59','Lifetime: 19/24 correct — calibration score: 0.82'],
+    ['09:15:55','IDLE','#333','Background resolver sleeping — next check in 6h'],
+  ],
+  setup: [
+    ['09:14:00','SYS','#333','$ Open Telegram → @PolytragentBot'],
+    ['09:14:01','BOT','#4a6080','Welcome to Polytragent — AI Research for Polymarket'],
+    ['09:14:01','BOT','#4a6080','Commands: /research [url] · /stats · /history'],
+    ['09:14:02','CMD','#fff','/research polymarket.com/event/trump-2026-midterms'],
+    ['09:14:02','PARSE','#333','Parsing URL... event detected'],
+    ['09:14:03','GAMMA','#7c6a3a','Fetching 12 sub-markets from Gamma API...'],
+    ['09:14:04','MFLD','#7c6a3a','Cross-referencing Manifold Markets...'],
+    ['09:14:05','HIST','#7c6a3a','Checking past prediction accuracy...'],
+    ['09:14:06','AI','#7c6a3a','Running Claude Sonnet analysis...'],
+    ['09:14:08','DONE','#4a7c59','Research complete — 8 active markets analyzed'],
+    ['09:14:08','EDGE','#4a7c59','→ 3 markets with edge detected'],
+    ['09:14:08','HOLD','#333','→ 5 markets — no edge — HOLD'],
+    ['09:14:09','TELE','#4a7c59','Results delivered to your Telegram ✓'],
+    ['09:14:09','LINK','#4a6080','Trade links included — click to execute on Polymarket'],
+    ['09:14:10','LOG','#7c6a3a','8 predictions logged — tracking started'],
+    ['09:14:15','SYS','#4a7c59','That took 8 seconds. Try another event ↓'],
+    ['09:14:20','CMD','#fff','/stats'],
+    ['09:14:20','STAT','#4a7c59','Win rate: 78% — 18/23 correct predictions'],
+    ['09:14:20','STAT','#4a6080','Best topic: Economics (85%) — Weakest: Crypto (60%)'],
+    ['09:14:21','STAT','#7c6a3a','Calibration: slightly overconfident on politics (+3%)'],
+    ['09:14:25','IDLE','#333','Send another /research to continue...'],
+  ],
+  cta: [
+    ['','$','#fff','/research polymarket.com/event/ukraine-ceasefire-q2'],
+    ['','PARSE','#444','URL parsed — event mode detected'],
+    ['','GAMMA','#555','Fetching 15 sub-markets...'],
+    ['','MFLD','#555','Cross-referencing Manifold...'],
+    ['','HIST','#444','Past geo predictions: 71% accurate'],
+    ['','AI','#555','Claude analysis running...'],
+    ['','','#333',''],
+    ['','EDGE','#4a7c59','→ "Ceasefire by June" — BUY NO — edge +18%'],
+    ['','EDGE','#4a7c59','→ "Negotiations resume" — BUY YES — edge +9%'],
+    ['','HOLD','#444','→ "Full peace deal" — no edge — HOLD'],
+    ['','','#333',''],
+    ['','LOG','#555','15 predictions logged'],
+    ['','TELE','#6ee7b7','Research delivered to Telegram ✓'],
+    ['','','#333',''],
+    ['','STAT','#555','Win rate: 78% — self-improving with every prediction'],
+    ['','','#333',''],
+    ['','$','#fff','/research — send any Polymarket link to start'],
+  ],
+};
+
+// Terminal runner class — manages one terminal instance
+class TermRunner {
+  constructor(el, dataKey) {
+    this.el = el;
+    this.body = el.querySelector('.rt-body');
+    this.data = TERM_DATA[dataKey] || TERM_DATA.boot;
+    this.idx = 0;
+    this.timer = null;
+    this.running = false;
+    this.maxLines = 22;
+  }
+  start() {
+    if (this.running) return;
+    this.running = true;
+    this.idx = 0;
+    this.body.innerHTML = '';
+    this._addCursor();
+    this._tick();
+  }
+  stop() {
+    this.running = false;
+    if (this.timer) { clearTimeout(this.timer); this.timer = null; }
+  }
+  reset() {
+    this.stop();
+    this.start();
+  }
+  _addCursor() {
+    let cur = this.body.querySelector('.rt-cursor-line');
+    if (!cur) {
+      cur = document.createElement('div');
+      cur.className = 'rt-cursor-line';
+      cur.innerHTML = '<span class="rt-cursor"></span>';
+      cur.style.cssText = 'padding:3px 16px;';
+      this.body.appendChild(cur);
+    }
+  }
+  _tick() {
+    if (!this.running) return;
+    if (this.idx >= this.data.length) {
+      // Loop — restart after pause
+      this.timer = setTimeout(() => {
+        this.idx = 0;
+        this.body.innerHTML = '';
+        this._addCursor();
+        this._tick();
+      }, 2000);
+      return;
+    }
+    const [ts, tag, color, msg] = this.data[this.idx];
+    const line = document.createElement('div');
+    line.className = 'rt-line';
+    const tsHtml = ts ? `<span class="rt-ts">${ts}</span>` : '<span class="rt-ts"></span>';
+    const tagHtml = tag ? `<span class="rt-tag" style="color:${color}">[${tag}]</span>` : '<span class="rt-tag"></span>';
+    const msgColor = color === '#fff' || color === '#6ee7b7' ? color : '#555';
+    line.innerHTML = `${tsHtml}${tagHtml}<span class="rt-msg" style="color:${msgColor}">${msg}</span>`;
+    // Insert before cursor
+    const cursor = this.body.querySelector('.rt-cursor-line');
+    if (cursor) {
+      this.body.insertBefore(line, cursor);
+    } else {
+      this.body.appendChild(line);
+    }
+    // Remove old lines
+    const lines = this.body.querySelectorAll('.rt-line');
+    if (lines.length > this.maxLines) {
+      lines[0].remove();
+    }
+    // Auto scroll
+    this.body.scrollTop = this.body.scrollHeight;
+    this.idx++;
+    const delay = 120 + Math.random() * 180;
+    this.timer = setTimeout(() => this._tick(), delay);
+  }
+}
+
+// ============================================================
+// SCROLL-TRIGGERED TERMINAL SYSTEM
+// ============================================================
+const terminals = [];
+document.querySelectorAll('.run-term').forEach(el => {
+  const key = el.getAttribute('data-term');
+  const runner = new TermRunner(el, key);
+  terminals.push({ el, runner, wasVisible: false });
+});
+
+// IntersectionObserver: start on enter, reset on re-enter after leaving
+const termObserver = new IntersectionObserver(entries => {
+  entries.forEach(entry => {
+    const t = terminals.find(t => t.el === entry.target);
+    if (!t) return;
+    if (entry.isIntersecting) {
+      // Reset and replay every time it enters viewport
+      t.runner.reset();
+      t.wasVisible = true;
+    } else {
+      // Stop when out of view to save resources
+      if (t.wasVisible) {
+        t.runner.stop();
+        t.wasVisible = false;
+      }
+    }
+  });
+}, { threshold: 0.15 });
+
+terminals.forEach(t => termObserver.observe(t.el));
+
+// ============================================================
+// RESEARCH RESULTS MONITOR
+// ============================================================
+const MARKETS=[
+  {name:'GOP wins House 2026',entry:'$0.41',current:'$0.69',pnl:'+28%',cls:'dm-pos'},
+  {name:'Fed cuts 25bp June',entry:'$0.67',current:'$0.74',pnl:'+7%',cls:'dm-pos'},
+  {name:'Dem wins Senate 2026',entry:'$0.38',current:'$0.50',pnl:'+12%',cls:'dm-pos'},
+  {name:'Ukraine ceasefire Q2',entry:'$0.52',current:'$0.34',pnl:'-18%',cls:'dm-neg'},
+  {name:'BTC $100k EOY',entry:'$0.49',current:'$0.51',pnl:'+2%',cls:'dm-pos'},
+  {name:'Nvidia Q2 miss',entry:'$0.22',current:'$0.31',pnl:'+9%',cls:'dm-pos'},
+];
+const dmEl=document.getElementById('dm-rows');
+function buildMonitor(){
+  if(!dmEl)return;
+  MARKETS.forEach(m=>{
+    const row=document.createElement('div');row.className='dm-row';
+    row.innerHTML=`<span class="dm-market">${m.name}</span><span class="dm-neutral">${m.entry}</span><span class="dm-neutral">${m.current}</span><span class="${m.cls}">${m.pnl}</span>`;
+    dmEl.appendChild(row);
+  });
+}
+buildMonitor();
+setInterval(()=>{
+  if(!dmEl)return;
+  const rows=dmEl.querySelectorAll('.dm-row');
+  const idx=Math.floor(Math.random()*rows.length);
+  const row=rows[idx];if(!row)return;
+  const cells=row.children;
+  const delta=(Math.random()-.45)*0.03;
+  const base=parseFloat(cells[2].textContent.replace('$',''));
+  const np=Math.max(0.01,base+delta).toFixed(2);
+  const entry=parseFloat(cells[1].textContent.replace('$',''));
+  const pnl=((np-entry)/entry*100).toFixed(1);
+  cells[2].textContent='$'+np;
+  cells[3].textContent=(pnl>=0?'+':'')+pnl+'%';
+  cells[3].className=pnl>=0?'dm-pos':'dm-neg';
+  row.style.background='rgba(255,255,255,.02)';
+  setTimeout(()=>{row.style.background='';},300);
+},2000);
+
+// ============================================================
+// PIPELINE STEPPING
+// ============================================================
+(function(){
+  const nodes=document.querySelectorAll('.pipe-node');
+  let idx=0;
+  function step(){
+    nodes.forEach(n=>n.classList.remove('active'));
+    if(nodes[idx])nodes[idx].classList.add('active');
+    idx=(idx+1)%nodes.length;
+    setTimeout(step,1200);
+  }
+  step();
+})();
+
+// ============================================================
+// REVEAL ON SCROLL
+// ============================================================
+const obs=new IntersectionObserver(es=>{
+  es.forEach(e=>{if(e.isIntersecting)e.target.classList.add('in');});
+},{threshold:0.08});
+document.querySelectorAll('.rev2').forEach(el=>obs.observe(el));
+
+// ============================================================
+// SMOOTH SCROLL
+// ============================================================
+document.querySelectorAll('a[href^="#"]').forEach(a=>{
+  a.addEventListener('click',e=>{
+    const t=document.querySelector(a.getAttribute('href'));
+    if(t){e.preventDefault();t.scrollIntoView({behavior:'smooth',block:'start'});}
+  });
+});
+
+// ============================================================
+// PROFIT CALCULATOR
+// ============================================================
+(function(){
+  const cs={inv:500,buy:0.45,prob:0.65,pos:'yes',trades:20,edge:0.12};
+  const $c=id=>document.getElementById(id);
+
+  window.cSetPos=function(v,btn){
+    cs.pos=v;
+    document.querySelectorAll('.pos-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    cCalc();
+  };
+
+  function bindS(sid,did,key,fmt,tx){
+    const s=$c(sid);if(!s)return;
+    s.addEventListener('input',function(){
+      const raw=parseFloat(this.value);
+      const val=tx?tx(raw):raw;
+      cs[key]=val;
+      $c(did).textContent=fmt(val);
+      cCalc();
+    });
+  }
+
+  bindS('cInvS','cInvD','inv',v=>'$'+v.toLocaleString('en-US'));
+  bindS('cBuyS','cBuyD','buy',v=>'$'+v.toFixed(2),v=>v/100);
+  bindS('cProbS','cProbD','prob',v=>Math.round(v*100)+'%',v=>v/100);
+  bindS('cTradesS','cTradesD','trades',v=>v.toString());
+  bindS('cEdgeS','cEdgeD','edge',v=>'+'+Math.round(v*100)+'%',v=>v/100);
+
+  function fS(v){return(v>=0?'+':'-')+'$'+Math.abs(v).toFixed(v>=1000?0:2).replace(/\B(?=(\d{3})+(?!\d))/g,',');}
+
+  function cCalc(){
+    const{inv,buy,prob,pos,trades,edge}=cs;
+    const sc=pos==='yes'?buy:(1-buy);
+    const shares=inv/sc;
+    const tp=shares*1;
+    const profit=tp-inv;
+    const roi=(profit/inv)*100;
+    const be=sc;
+    const ev=(prob*profit)-((1-prob)*inv);
+    const aiProb=Math.min(prob+edge,0.99);
+
+    const mwBase=Math.round(trades*prob),mlBase=trades-mwBase;
+    const mpBase=(mwBase*profit)-(mlBase*inv);
+    const mrBase=(mpBase/(trades*inv))*100;
+    const mwAI=Math.round(trades*aiProb),mlAI=trades-mwAI;
+    const mpAI=(mwAI*profit)-(mlAI*inv);
+    const mrAI=(mpAI/(trades*inv))*100;
+    const extra=mpAI-mpBase;
+
+    const pEl=$c('cProfit');
+    pEl.textContent=fS(profit);
+    pEl.className='res-big '+(profit>=0?'pos':'neg');
+    $c('cRoi').textContent='ROI: '+(roi>=0?'+':'')+roi.toFixed(1)+'%';
+
+    $c('cShares').textContent=Math.floor(shares).toLocaleString('en-US');
+    $c('cSharesN').textContent='at $'+sc.toFixed(2)+' each';
+    $c('cPayout').textContent='$'+tp.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,',');
+    $c('cBreakEven').textContent=(be*100).toFixed(1)+'%';
+    const evEl=$c('cEV');
+    evEl.textContent=fS(ev);
+    evEl.style.color=ev>=0?'var(--green)':'var(--red)';
+
+    $c('cWrBase').textContent=Math.round(prob*100)+'%';
+    $c('cWrAI').textContent=Math.round(aiProb*100)+'%';
+    $c('cWinsBase').textContent=mwBase;
+    $c('cWinsAI').textContent=mwAI;
+    $c('cMpBase').textContent=fS(mpBase);
+    $c('cMpBase').className='comp-v '+(mpBase>=0?'neu':'rd');
+    $c('cMpAI').textContent=fS(mpAI);
+    $c('cMpAI').className='comp-v '+(mpAI>=0?'grn':'rd');
+    $c('cMrBase').textContent=(mrBase>=0?'+':'')+mrBase.toFixed(1)+'%';
+    $c('cMrBase').className='comp-v '+(mrBase>=0?'neu':'rd');
+    $c('cMrAI').textContent=(mrAI>=0?'+':'')+mrAI.toFixed(1)+'%';
+    $c('cMrAI').className='comp-v '+(mrAI>=0?'grn':'rd');
+    $c('cExtra').textContent=fS(extra);
+    $c('cExtra').className='comp-v '+(extra>=0?'grn':'rd');
+  }
+
+  cCalc();
+})();
+</script>
+</body>
+</html>

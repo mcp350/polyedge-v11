@@ -1,0 +1,274 @@
+{% extends "admin/base.html" %}
+{% block title %}{{ user.display_name }} — Polytragent Admin{% endblock %}
+{% block content %}
+
+<div class="page-header">
+  <div class="page-header-left">
+    <div class="page-title">{{ user.display_name }}</div>
+    <div class="page-subtitle">
+      {% if user.telegram_username %}@{{ user.telegram_username }} · {% endif %}
+      User #{{ user.id }} · joined {{ user.created_at.strftime('%b %d, %Y') }}
+    </div>
+  </div>
+  <div class="btn-group">
+    <a href="/admin/users/{{ user.id }}/edit" class="btn btn-secondary">✎ Edit</a>
+    <form method="POST" action="/admin/users/{{ user.id }}/toggle" style="display:inline">
+      <button type="submit" class="btn {% if user.is_active %}btn-danger{% else %}btn-secondary{% endif %}">
+        {% if user.is_active %}⏸ Disable{% else %}▶ Enable{% endif %}
+      </button>
+    </form>
+  </div>
+</div>
+
+<!-- Profile + Stats -->
+<div class="two-col">
+  <div class="card">
+    <div class="card-header"><span class="card-title">Profile</span></div>
+    <div class="card-body">
+      <table style="width:100%">
+        <tr><td class="td-muted" style="width:120px;padding:5px 0">Status</td><td style="padding:5px 0">
+          {% if user.subscription_status == 'active' %}<span class="badge badge-green">● active</span>
+          {% elif user.subscription_status == 'expired' %}<span class="badge badge-yellow">● expired</span>
+          {% else %}<span class="badge badge-red">● disabled</span>{% endif %}
+        </td></tr>
+        <tr><td class="td-muted" style="padding:5px 0">Tier</td><td style="padding:5px 0">
+          {% if user.subscription_tier == 'pro' %}<span class="badge badge-purple">pro</span>
+          {% elif user.subscription_tier == 'enterprise' %}<span class="badge badge-blue">enterprise</span>
+          {% else %}<span class="badge badge-gray">free</span>{% endif %}
+        </td></tr>
+        <tr><td class="td-muted" style="padding:5px 0">Monthly</td><td style="padding:5px 0">${{ "%.2f"|format(user.monthly_price) }}</td></tr>
+        {% if user.telegram_id %}<tr><td class="td-muted" style="padding:5px 0">Telegram ID</td><td style="padding:5px 0"><span class="td-muted" style="font-size:11px">{{ user.telegram_id }}</span></td></tr>{% endif %}
+        {% if user.telegram_username %}<tr><td class="td-muted" style="padding:5px 0">Username</td><td style="padding:5px 0"><a href="https://t.me/{{ user.telegram_username }}" target="_blank">@{{ user.telegram_username }}</a></td></tr>{% endif %}
+        {% if user.email %}<tr><td class="td-muted" style="padding:5px 0">Email</td><td style="padding:5px 0">{{ user.email }}</td></tr>{% endif %}
+        {% if user.subscription_start %}<tr><td class="td-muted" style="padding:5px 0">Sub Start</td><td style="padding:5px 0">{{ user.subscription_start.strftime('%b %d, %Y') }}</td></tr>{% endif %}
+        {% if user.subscription_end %}<tr><td class="td-muted" style="padding:5px 0">Sub End</td><td style="padding:5px 0">{{ user.subscription_end.strftime('%b %d, %Y') }}</td></tr>{% endif %}
+        {% if user.last_seen_at %}<tr><td class="td-muted" style="padding:5px 0">Last Seen</td><td style="padding:5px 0">{{ user.last_seen_at.strftime('%b %d, %Y') }}</td></tr>{% endif %}
+        {% if user.notes %}<tr><td class="td-muted" style="padding:5px 0;vertical-align:top">Notes</td><td style="padding:5px 0;font-size:12px;color:var(--text-muted)">{{ user.notes }}</td></tr>{% endif %}
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><span class="card-title">Usage Stats</span></div>
+    <div class="card-body">
+      <div class="stats-grid" style="grid-template-columns:1fr 1fr;gap:12px;margin-bottom:0">
+        <div class="stat-card" style="padding:12px">
+          <div class="stat-label">Queries</div>
+          <div class="stat-value" style="font-size:22px">{{ user.queries|length }}</div>
+        </div>
+        <div class="stat-card" style="padding:12px">
+          <div class="stat-label">Predictions</div>
+          <div class="stat-value" style="font-size:22px">{{ user.predictions|length }}</div>
+        </div>
+        <div class="stat-card" style="padding:12px">
+          <div class="stat-label">Win Rate</div>
+          <div class="stat-value" style="font-size:22px;color:{% if win_rate >= 60 %}var(--green){% elif win_rate >= 50 %}var(--yellow){% else %}var(--red){% endif %}">{{ win_rate }}%</div>
+        </div>
+        <div class="stat-card" style="padding:12px">
+          <div class="stat-label">MRR Contrib.</div>
+          <div class="stat-value" style="font-size:22px">${{ "%.0f"|format(user.mrr_contribution) }}</div>
+        </div>
+      </div>
+      {% if categories %}
+      <hr class="divider" style="margin:14px 0">
+      <div style="font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--text-muted);margin-bottom:10px">Markets Researched</div>
+      {% set max_cat = categories.values()|max %}
+      <div class="bar-chart">
+        {% for cat, cnt in categories.items()|sort(attribute=1, reverse=True) %}
+        <div class="bar-row">
+          <div class="bar-label">{{ cat }}</div>
+          <div class="bar-track"><div class="bar-fill" style="width:{{ (cnt / max_cat * 100)|int }}%"></div></div>
+          <div class="bar-count">{{ cnt }}</div>
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<!-- Research Queries -->
+<div class="card">
+  <div class="card-header">
+    <span class="card-title">Research Queries ({{ queries|length }})</span>
+    <button onclick="document.getElementById('add-query-form').classList.toggle('hidden')" class="btn btn-secondary btn-sm">+ Log Query</button>
+  </div>
+  <div id="add-query-form" class="hidden" style="padding:16px;border-bottom:1px solid var(--border);background:var(--bg)">
+    <form method="POST" action="/admin/users/{{ user.id }}/add-query">
+      <div class="form-row">
+        <div class="form-group" style="margin-bottom:0">
+          <label class="form-label">Market Name</label>
+          <input type="text" name="market_name" placeholder="e.g. Will Trump win in 2028?">
+        </div>
+        <div class="form-group" style="margin-bottom:0">
+          <label class="form-label">Market URL</label>
+          <input type="url" name="market_url" placeholder="https://polymarket.com/event/…">
+        </div>
+        <div class="form-group" style="margin-bottom:0">
+          <label class="form-label">Recommendation</label>
+          <select name="recommendation">
+            <option value="">— none —</option>
+            <option value="YES">YES</option>
+            <option value="NO">NO</option>
+            <option value="HOLD">HOLD</option>
+          </select>
+        </div>
+        <div class="form-group" style="margin-bottom:0">
+          <label class="form-label">Category</label>
+          <select name="category">
+            <option value="">— none —</option>
+            <option>Politics</option><option>Crypto</option><option>Sports</option>
+            <option>Economics</option><option>Science</option><option>Other</option>
+          </select>
+        </div>
+        <div class="form-group" style="margin-bottom:0">
+          <label class="form-label">Edge %</label>
+          <input type="number" name="edge_pct" step="0.1" placeholder="e.g. 12.5">
+        </div>
+        <div class="form-group" style="margin-bottom:0">
+          <label class="form-label">Date</label>
+          <input type="datetime-local" name="queried_at">
+        </div>
+      </div>
+      <div style="margin-top:12px"><button type="submit" class="btn btn-primary btn-sm">Save Query</button></div>
+    </form>
+  </div>
+  <div class="table-wrap">
+    {% if queries %}
+    <table>
+      <thead>
+        <tr><th>Date</th><th>Market</th><th>Category</th><th>Rec</th><th>Edge</th><th>Markets</th></tr>
+      </thead>
+      <tbody>
+        {% for q in queries %}
+        <tr>
+          <td class="td-muted" style="font-size:11px;white-space:nowrap">{{ q.queried_at.strftime('%b %d, %Y %H:%M') }}</td>
+          <td style="max-width:220px">
+            {% if q.market_name %}<div style="font-size:12px">{{ q.market_name }}</div>{% endif %}
+            {% if q.market_url %}<a href="{{ q.market_url }}" target="_blank" style="font-size:10px;color:var(--text-muted)">{{ q.market_url[:50] }}{% if q.market_url|length > 50 %}…{% endif %}</a>{% endif %}
+            {% if not q.market_name and not q.market_url %}<span class="td-muted">—</span>{% endif %}
+          </td>
+          <td>{% if q.category %}<span class="tag">{{ q.category }}</span>{% else %}<span class="td-muted">—</span>{% endif %}</td>
+          <td>
+            {% if q.recommendation == 'YES' %}<span class="badge badge-green">YES</span>
+            {% elif q.recommendation == 'NO' %}<span class="badge badge-red">NO</span>
+            {% elif q.recommendation == 'HOLD' %}<span class="badge badge-yellow">HOLD</span>
+            {% else %}<span class="td-muted">—</span>{% endif %}
+          </td>
+          <td class="td-mono">{% if q.edge_pct is not none %}{{ "%.1f"|format(q.edge_pct) }}%{% else %}—{% endif %}</td>
+          <td class="td-mono">{{ q.markets_analyzed }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state"><div class="empty-icon">▦</div><div>No queries logged yet</div></div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Predictions -->
+<div class="card">
+  <div class="card-header">
+    <span class="card-title">Predictions ({{ predictions|length }})</span>
+    <button onclick="document.getElementById('add-pred-form').classList.toggle('hidden')" class="btn btn-secondary btn-sm">+ Log Prediction</button>
+  </div>
+  <div id="add-pred-form" class="hidden" style="padding:16px;border-bottom:1px solid var(--border);background:var(--bg)">
+    <form method="POST" action="/admin/users/{{ user.id }}/add-prediction">
+      <div class="form-row">
+        <div class="form-group" style="margin-bottom:0">
+          <label class="form-label">Market Name</label>
+          <input type="text" name="market_name" placeholder="e.g. Will Trump win?" required>
+        </div>
+        <div class="form-group" style="margin-bottom:0">
+          <label class="form-label">Direction</label>
+          <select name="direction"><option value="">—</option><option>YES</option><option>NO</option></select>
+        </div>
+        <div class="form-group" style="margin-bottom:0">
+          <label class="form-label">Confidence (0–1)</label>
+          <input type="number" name="confidence" step="0.01" min="0" max="1" placeholder="0.75">
+        </div>
+        <div class="form-group" style="margin-bottom:0">
+          <label class="form-label">Entry Price (0–1)</label>
+          <input type="number" name="entry_price" step="0.01" min="0" max="1" placeholder="0.60">
+        </div>
+        <div class="form-group" style="margin-bottom:0">
+          <label class="form-label">Status</label>
+          <select name="status"><option value="PENDING">PENDING</option><option value="WON">WON</option><option value="LOST">LOST</option></select>
+        </div>
+        <div class="form-group" style="margin-bottom:0">
+          <label class="form-label">Category</label>
+          <select name="category">
+            <option value="">—</option><option>Politics</option><option>Crypto</option>
+            <option>Sports</option><option>Economics</option><option>Science</option><option>Other</option>
+          </select>
+        </div>
+        <div class="form-group" style="margin-bottom:0">
+          <label class="form-label">P&amp;L %</label>
+          <input type="number" name="pnl_pct" step="0.1" placeholder="e.g. 25.0">
+        </div>
+        <div class="form-group" style="margin-bottom:0">
+          <label class="form-label">Resolved At</label>
+          <input type="datetime-local" name="resolved_at">
+        </div>
+      </div>
+      <div style="margin-top:12px"><button type="submit" class="btn btn-primary btn-sm">Save Prediction</button></div>
+    </form>
+  </div>
+  <div class="table-wrap">
+    {% if predictions %}
+    <table>
+      <thead>
+        <tr><th>Date</th><th>Market</th><th>Dir</th><th>Conf</th><th>Entry</th><th>Status</th><th>P&amp;L</th><th>Category</th></tr>
+      </thead>
+      <tbody>
+        {% for p in predictions %}
+        <tr>
+          <td class="td-muted" style="font-size:11px;white-space:nowrap">{{ p.created_at.strftime('%b %d, %Y') }}</td>
+          <td style="max-width:200px;font-size:12px">{{ p.market_name or '—' }}</td>
+          <td>
+            {% if p.direction == 'YES' %}<span class="badge badge-green">YES</span>
+            {% elif p.direction == 'NO' %}<span class="badge badge-red">NO</span>
+            {% else %}<span class="td-muted">—</span>{% endif %}
+          </td>
+          <td class="td-mono">{% if p.confidence is not none %}{{ "%.0f"|format(p.confidence * 100) }}%{% else %}—{% endif %}</td>
+          <td class="td-mono">{% if p.entry_price is not none %}{{ "%.2f"|format(p.entry_price) }}{% else %}—{% endif %}</td>
+          <td>
+            {% if p.status == 'WON' %}<span class="badge badge-green">WON</span>
+            {% elif p.status == 'LOST' %}<span class="badge badge-red">LOST</span>
+            {% else %}<span class="badge badge-gray">PENDING</span>{% endif %}
+          </td>
+          <td class="td-mono" style="color:{% if p.pnl_pct and p.pnl_pct > 0 %}var(--green){% elif p.pnl_pct and p.pnl_pct < 0 %}var(--red){% else %}var(--text-muted){% endif %}">
+            {% if p.pnl_pct is not none %}{{ "%+.1f"|format(p.pnl_pct) }}%{% else %}—{% endif %}
+          </td>
+          <td>{% if p.category %}<span class="tag">{{ p.category }}</span>{% else %}<span class="td-muted">—</span>{% endif %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state"><div class="empty-icon">◈</div><div>No predictions logged yet</div></div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Danger zone -->
+<div class="card" style="border-color:rgba(248,81,73,.2)">
+  <div class="card-header" style="border-color:rgba(248,81,73,.2)"><span class="card-title" style="color:var(--red)">Danger Zone</span></div>
+  <div class="card-body">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+      <div>
+        <div style="font-size:12px;font-weight:600;margin-bottom:3px">Delete this user</div>
+        <div style="font-size:11px;color:var(--text-muted)">Permanently deletes the user and all their queries and predictions.</div>
+      </div>
+      <form method="POST" action="/admin/users/{{ user.id }}/delete" onsubmit="return confirm('Delete {{ user.display_name }}? This cannot be undone.')">
+        <button type="submit" class="btn btn-danger">Delete User</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<style>
+  .hidden { display: none !important; }
+</style>
+{% endblock %}

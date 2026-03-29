@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><link rel="icon" type="image/x-icon" href="/favicon.ico"><link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png"><link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Edge Detection Engine | Polytragent</title>
+<meta name="description" content="Calculate the difference between market price and AI estimated true probability. Score edge %, confidence level, and trading recommendation.">
+<link rel="canonical" href="https://polytragent.com/features/edge-detection">
+<!-- Open Graph -->
+<meta property="og:type" content="article">
+<meta property="og:title" content="Edge Detection Engine | Polytragent">
+<meta property="og:description" content="Calculate the difference between market price and AI estimated true probability. Score edge %, confidence level, and trading recommendation.">
+<meta property="og:url" content="https://polytragent.com/features/edge-detection">
+<meta property="og:site_name" content="Polytragent">
+<meta property="og:image" content="https://polytragent.com/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<!-- Twitter Card -->
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Edge Detection Engine | Polytragent">
+<meta name="twitter:description" content="Calculate the difference between market price and AI estimated true probability. Score edge %, confidence level, and trading recommendation.">
+<meta name="twitter:image" content="https://polytragent.com/og-image.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Home","item":"https://polytragent.com/"},{"@type":"ListItem","position":2,"name":"Features","item":"https://polytragent.com/features"},{"@type":"ListItem","position":3,"name":"Edge Detection Engine","item":"https://polytragent.com/features/edge-detection.html"}]}
+</script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{
+  --black:#000;--white:#fff;--gray:#888;--gray2:#444;--gray3:#222;
+  --border:#1a1a1a;--font-sans:'Inter',sans-serif;--font-mono:'JetBrains Mono',monospace;
+  --green:#6ee7b7;--red:#fca5a5;--blue:#93c5fd;--yellow:#fde68a;
+  --code-bg:#080808;--code-border:#141414;
+}
+html{scroll-behavior:smooth;}
+body{background:var(--black);color:var(--white);font-family:var(--font-sans);font-size:16px;line-height:1.6;overflow-x:hidden;}
+a{color:inherit;text-decoration:none;}
+
+.grid-bg{position:fixed;top:0;left:0;right:0;bottom:0;z-index:0;pointer-events:none;opacity:.35;}
+
+nav{position:fixed;top:0;left:0;right:0;z-index:200;display:flex;align-items:center;justify-content:space-between;padding:0 48px;height:64px;border-bottom:1px solid var(--border);background:rgba(0,0,0,0.92);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);}
+.nav-links{display:flex;gap:32px;list-style:none;}
+.nav-links a{font-size:14px;color:var(--gray);transition:color .15s;}
+.nav-links a:hover{color:var(--white);}
+.nav-links li{position:relative;}
+.nav-dropdown{display:none;position:absolute;top:100%;left:-16px;padding-top:12px;z-index:300;}
+.nav-links li:hover .nav-dropdown{display:block;}
+.nav-dropdown-inner{background:rgba(0,0,0,0.96);border:1px solid var(--border);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);padding:12px 0;min-width:260px;}
+.nav-dropdown a{display:block;padding:8px 20px;font-size:13px;color:var(--gray);transition:color .15s,background .15s;white-space:nowrap;}
+.nav-dropdown a:hover{color:var(--white);background:rgba(255,255,255,.04);}
+.ndrop-label{padding:6px 20px 4px;font-family:var(--font-mono);font-size:9px;color:var(--gray2);letter-spacing:2px;text-transform:uppercase;}
+.ndrop-label:not(:first-child){margin-top:8px;border-top:1px solid var(--border);padding-top:10px;}
+.nav-ctas{display:flex;gap:12px;align-items:center;}
+.btn-solid{display:inline-flex;align-items:center;gap:6px;padding:9px 20px;background:var(--white);color:var(--black);font-size:13px;font-weight:500;font-family:var(--font-sans);border:none;cursor:pointer;transition:opacity .15s;}
+.btn-solid:hover{opacity:.85;}
+.btn-outline{display:inline-flex;align-items:center;gap:6px;padding:8px 20px;background:transparent;color:var(--white);font-size:13px;border:1px dashed var(--gray2);cursor:pointer;transition:border-color .15s;}
+.btn-outline:hover{border-color:var(--white);}
+
+.breadcrumb{padding:84px 48px 20px;font-family:var(--font-mono);font-size:11px;color:var(--gray2);letter-spacing:1px;position:relative;z-index:1;}
+
+.split{display:grid;grid-template-columns:44% 56%;border-top:1px solid var(--border);position:relative;z-index:1;}
+.split.rev{grid-template-columns:56% 44%;}
+.st{padding:100px 48px;display:flex;flex-direction:column;justify-content:center;border-right:1px solid var(--border);}
+.split.rev .st{border-right:none;border-left:1px solid var(--border);}
+.sv{padding:80px 48px;display:flex;flex-direction:column;justify-content:center;background:#000;position:relative;overflow:hidden;}
+.snum{font-family:var(--font-mono);font-size:11px;color:var(--gray2);letter-spacing:2px;margin-bottom:20px;}
+h2{font-size:clamp(30px,3.8vw,50px);font-weight:600;line-height:1.1;letter-spacing:-1.5px;margin-bottom:24px;}
+.sb{font-size:15px;color:var(--gray);line-height:1.75;max-width:440px;font-weight:300;margin-bottom:36px;}
+h3{font-size:15px;font-weight:500;letter-spacing:-.3px;margin-bottom:6px;}
+
+.fl{display:flex;flex-direction:column;}
+.fi{display:flex;gap:20px;align-items:flex-start;padding:22px 0;border-bottom:1px solid var(--border);}
+.fi:first-child{border-top:1px solid var(--border);}
+.fn{font-family:var(--font-mono);font-size:11px;color:var(--gray2);padding-top:2px;flex-shrink:0;width:20px;}
+.fc h3{font-size:14px;font-weight:500;margin-bottom:4px;}
+.fc p{font-size:13px;color:var(--gray);font-weight:300;line-height:1.65;}
+
+.run-term{background:#000;border:1px solid var(--border);font-family:var(--font-mono);font-size:10px;overflow:hidden;position:relative;}
+.run-term::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(110,231,183,.15),transparent);animation:term-scan 4s ease-in-out infinite;z-index:2;}
+@keyframes term-scan{0%,100%{opacity:0;}50%{opacity:1;}}
+.rt-header{padding:10px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;color:var(--gray2);font-size:9px;letter-spacing:1px;text-transform:uppercase;}
+.rt-dots{display:flex;gap:5px;}
+.rt-dot{width:7px;height:7px;border-radius:50%;border:1px solid #333;}
+.rt-dot.active{background:#333;}
+.rt-body{padding:0;min-height:340px;max-height:440px;overflow:hidden;position:relative;}
+.rt-line{display:flex;gap:10px;padding:3px 16px;opacity:0;transform:translateY(2px);animation:rt-in .15s forwards;font-size:10px;line-height:1.65;}
+@keyframes rt-in{to{opacity:1;transform:none;}}
+.rt-ts{color:#333;flex-shrink:0;font-size:9px;padding-top:1px;width:52px;}
+.rt-tag{flex-shrink:0;font-size:9.5px;width:60px;font-weight:500;}
+.rt-msg{color:#555;font-size:10px;line-height:1.55;}
+.rt-cursor{display:inline-block;width:6px;height:12px;background:#4a7c59;animation:rt-blink 1s step-end infinite;margin-left:2px;vertical-align:middle;}
+@keyframes rt-blink{50%{opacity:0;}}
+
+.sl2{display:flex;flex-direction:column;}
+.si{display:grid;grid-template-columns:44px 1fr;gap:16px;padding:24px 0;border-bottom:1px solid var(--border);align-items:start;}
+.si:first-child{border-top:1px solid var(--border);}
+.sn{font-family:var(--font-mono);font-size:20px;font-weight:300;color:var(--gray2);line-height:1;}
+.sb2 h3{font-size:14px;font-weight:500;margin-bottom:5px;}
+.sb2 p{font-size:13px;color:var(--gray);font-weight:300;line-height:1.65;}
+
+.faq-section{border-top:1px solid var(--border);display:grid;grid-template-columns:44% 56%;position:relative;z-index:1;}
+.fl2{padding:100px 48px;border-right:1px solid var(--border);display:flex;flex-direction:column;justify-content:flex-start;}
+.fr{padding:100px 48px;}
+.fqi{border-top:1px solid var(--border);padding:22px 0;}
+.fqi:last-child{border-bottom:1px solid var(--border);}
+.fqq{font-size:14px;font-weight:400;margin-bottom:8px;color:var(--white);}
+.fqa{font-size:13px;color:var(--gray);line-height:1.7;font-weight:300;}
+
+.ctas{border-top:1px solid var(--border);display:grid;grid-template-columns:44% 56%;min-height:55vh;position:relative;z-index:1;}
+.ctl{padding:100px 48px;border-right:1px solid var(--border);display:flex;flex-direction:column;justify-content:center;}
+.ctr{padding:80px 48px;display:flex;flex-direction:column;justify-content:center;overflow:hidden;position:relative;}
+.trnote{font-family:var(--font-mono);font-size:11px;color:var(--gray2);margin-top:20px;display:flex;gap:24px;flex-wrap:wrap;}
+.trnote span::before{content:'// ';}
+
+footer{border-top:1px solid var(--border);padding:28px 48px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:20px;position:relative;z-index:1;}
+.fcopy{font-family:var(--font-mono);font-size:10px;color:var(--gray2);}
+.flinks{display:flex;gap:28px;list-style:none;}
+.flinks a{font-size:13px;color:var(--gray2);transition:color .15s;}.flinks a:hover{color:var(--white);}
+.disc{border-top:1px solid var(--border);padding:18px 48px;position:relative;z-index:1;}
+.disc p{font-size:10px;color:#2a2a2a;font-family:var(--font-mono);line-height:1.6;}
+
+.glow-sep{height:1px;background:linear-gradient(90deg,transparent 0%,rgba(110,231,183,.06) 20%,rgba(110,231,183,.1) 50%,rgba(110,231,183,.06) 80%,transparent 100%);position:relative;z-index:1;}
+
+.rev2{opacity:0;transform:translateY(16px);transition:opacity .55s,transform .55s;}
+.rev2.in{opacity:1;transform:none;}
+
+@media(max-width:900px){
+  .split,.split.rev,.faq-section,.ctas{grid-template-columns:1fr;}
+  .st{border-right:none;border-bottom:1px solid var(--border);}
+  .split.rev .st{border-left:none;border-bottom:1px solid var(--border);}
+  nav{padding:0 20px;}
+  .st,.sv,.fl2,.fr,.ctl,.ctr{padding:60px 24px;}
+  footer,.disc{padding:24px;}
+  .faq-section,.ctas{grid-template-columns:1fr;}
+  .fl2{border-right:none;border-bottom:1px solid var(--border);}
+  .breadcrumb{padding:84px 24px 20px;}
+}
+@media(max-width:600px){
+  .breadcrumb{padding:84px 20px 20px;}
+}
+</style>
+</head>
+<body>
+
+<canvas class="grid-bg" id="gridCanvas"></canvas>
+
+<nav>
+  <a href="/">
+    <svg height="22" viewBox="0 0 340 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M4 33 L20 5 L36 33" stroke="white" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+      <text x="52" y="29" font-family="Inter,sans-serif" font-size="19" font-weight="600" letter-spacing="4" fill="white">POLYTRAGENT</text>
+    </svg>
+  </a>
+  <ul class="nav-links">
+    <li><a href="/#features">Features</a></li>
+    <li><a href="/#how-it-works">How it works</a></li>
+    <li><a href="/#pricing">Pricing</a></li>
+    <li>
+      <a href="/resources">Resources ▾</a>
+      <div class="nav-dropdown"><div class="nav-dropdown-inner">
+        <div class="ndrop-label">Compare</div>
+        <a href="/compare">All Comparisons</a>
+        <a href="/compare/polytragent-vs-polycop">Polytragent vs PolyCop</a>
+        <a href="/compare/polytragent-vs-polysight">Polytragent vs Polysight</a>
+        <a href="/compare/copy-trading-bots">Copy Trading Bots</a>
+        <a href="/compare/polycop-alternative">PolyCop Alternative</a>
+        <a href="/compare/polysight-alternative">Polysight Alternative</a>
+        <div class="ndrop-label">Landing Pages</div>
+        <a href="/resources/polymarket-strategies">Polymarket Strategies 2026</a>
+        <a href="/resources/how-to-make-money-polymarket">How to Make Money</a>
+        <a href="/resources/prediction-market-strategies">Prediction Market Strategies</a>
+        <a href="/resources/polymarket-telegram-bots">Telegram Bots</a>
+        <a href="/resources/polymarket-automated-trading">Automated Trading</a>
+        <a href="/resources/polymarket-whale-tracking">Whale Tracking</a>
+        <a href="/resources/polymarket-market-making">Market Making</a>
+        <a href="/resources/polymarket-poly-token">POLY Token Airdrop</a>
+        <div class="ndrop-label">Blog</div>
+        <a href="/blog">All Articles</a>
+        <a href="/blog/polymarket-prediction-bot">Polymarket Prediction Bot</a>
+        <a href="/blog/polymarket-tools-guide">Polymarket Tools Guide</a>
+        <a href="/blog/best-polymarket-bots-2026">Best Polymarket Bots 2026</a>
+        <a href="/blog/polymarket-trading-bot">Polymarket Trading Bot</a>
+        <a href="/blog/copy-trade-bot">Copy Trade Bot Guide</a>
+        <a href="/blog/copy-trading-guide">Copy Trading Guide</a>
+        <a href="/blog/polymarket-strategies-2026">Polymarket Strategies 2026</a>
+        <a href="/blog/how-to-make-money-polymarket">How to Make Money on Polymarket</a>
+        <a href="/blog/prediction-market-strategies">Prediction Market Strategies</a>
+        <a href="/blog/polymarket-telegram-bots">Polymarket Telegram Bots</a>
+        <a href="/blog/polymarket-automated-trading">Automated Trading Guide</a>
+        <a href="/blog/polymarket-whale-tracking">Whale Tracking Guide</a>
+        <a href="/blog/polymarket-market-making">Market Making Guide</a>
+        <a href="/blog/polymarket-poly-token">POLY Token Airdrop Guide</a>
+      </div></div>
+    </li>
+    <li><a href="/#faq">FAQ</a></li>
+  </ul>
+  <div class="nav-ctas">
+    <a href="/#pricing" class="btn-outline">View pricing</a>
+    <a href="https://t.me/bmpolybot" target="_blank" class="btn-solid">Get started →</a>
+  </div>
+</nav>
+
+<div class="breadcrumb">Home / Features / Edge Detection Engine</div>
+
+<section class="split">
+  <div class="st rev2">
+    <div class="snum">01 — THE MATH</div>
+    <h2>Market price<br>vs true probability<br>= your edge.</h2>
+    <p class="sb">Edge is simple. It's the difference between what the market is priced at and what the AI estimates the true probability should be. Market says 40%. AI says 68%. Edge: +28%. Buy YES. No edge? No action. HOLD. Every market on Polymarket gets an edge score, a confidence level (HIGH / MEDIUM / LOW), and a recommendation.</p>
+    <div class="fl">
+      <div class="fi"><div class="fn">—</div><div class="fc"><h3>Edge Calculation</h3><p>Edge % = (AI estimate - Market price) / Market price × 100. Simple math. The larger the edge, the more actionable the signal.</p></div></div>
+      <div class="fi"><div class="fn">—</div><div class="fc"><h3>Confidence Scoring</h3><p>HIGH: Multiple data sources agree, past accuracy is strong, no calibration red flags. MEDIUM: Some disagreement, moderate past accuracy. LOW: Weak signals or poor historical performance on this topic.</p></div></div>
+      <div class="fi"><div class="fn">—</div><div class="fc"><h3>No-Edge HOLD</h3><p>If edge < 5% or confidence is LOW, the recommendation is HOLD. There's no actionable edge. No trade = no risk. This is the safety valve.</p></div></div>
+    </div>
+  </div>
+  <div class="sv">
+    <div class="run-term" data-term="research">
+      <div class="rt-header">
+        <div class="rt-dots"><span class="rt-dot"></span><span class="rt-dot"></span><span class="rt-dot active"></span></div>
+        <span style="margin-left:10px;">polytragent — edge scoring</span>
+      </div>
+      <div class="rt-body"></div>
+    </div>
+  </div>
+</section>
+
+<div class="glow-sep"></div>
+
+<section class="split rev">
+  <div class="sv">
+    <div class="run-term" data-term="trading">
+      <div class="rt-header">
+        <div class="rt-dots"><span class="rt-dot"></span><span class="rt-dot"></span><span class="rt-dot active"></span></div>
+        <span style="margin-left:10px;">polytragent — confidence assessment</span>
+      </div>
+      <div class="rt-body"></div>
+    </div>
+  </div>
+  <div class="st rev2">
+    <div class="snum">02 — THE SCORING</div>
+    <h2>How does<br>Polytragent<br>assign<br>confidence?</h2>
+    <p class="sb">Confidence is multifactorial. It's a weighted average of multiple signals: sub-market agreement, Manifold cross-reference validation, prediction history on this topic, overall calibration, recency (how fresh are the underlying data points). A 20% edge with LOW confidence is ignored. A 10% edge with HIGH confidence is a BUY signal.</p>
+    <div class="sl2">
+      <div class="si"><div class="sn">01</div><div class="sb2"><h3>Sub-Market Agreement</h3><p>If multiple Polymarket sub-markets on the same event all suggest the same direction, confidence goes up +20%.</p></div></div>
+      <div class="si"><div class="sn">02</div><div class="sb2"><h3>Manifold Cross-Reference</h3><p>If Manifold forecasters agree with the AI's edge direction, add +25% to confidence. If they disagree, subtract -15%.</p></div></div>
+      <div class="si"><div class="sn">03</div><div class="sb2"><h3>Topic-Specific Accuracy</h3><p>If the AI has >80% accuracy on this topic category, add +15%. If <65%, subtract -20%.</p></div></div>
+      <div class="si"><div class="sn">04</div><div class="sb2"><h3>Calibration Score</h3><p>Is the AI over/underconfident on this kind of market? If perfectly calibrated, no adjustment. If biased, reduce confidence by the bias amount.</p></div></div>
+      <div class="si"><div class="sn">05</div><div class="sb2"><h3>Data Freshness</h3><p>Older market data gets a freshness penalty. Markets with volume updates in last 2 hours: no penalty. Stale data (>24h): -10% confidence.</p></div></div>
+      <div class="si"><div class="sn">06</div><div class="sb2"><h3>Final Confidence Bucket</h3><p>Calculate weighted score. Round to HIGH (>75%), MEDIUM (50–75%), or LOW (<50%). Display recommendation.</p></div></div>
+    </div>
+  </div>
+</section>
+
+<div class="glow-sep"></div>
+
+<section class="faq-section">
+  <div class="fl2">
+    <h2 style="margin-bottom:40px;font-size:clamp(24px,3vw,40px);">Edge detection<br>FAQ</h2>
+  </div>
+  <div class="fr">
+    <div class="fqi rev2"><div class="fqq">What's the minimum edge to act on?</div><div class="fqa">Edges under 5% are noise. After transaction fees (~2%), you're breaking even. Polytragent flags 5–10% edges as MEDIUM confidence, 10%+ as potential HIGH confidence signals.</div></div>
+    <div class="fqi rev2"><div class="fqq">How does Polytragent handle disagreement between sub-markets?</div><div class="fqa">If two sub-markets suggest opposite directions, the AI weights them by liquidity. The sub-market with higher trading volume gets more vote. This reduces false signals.</div></div>
+    <div class="fqi rev2"><div class="fqq">Can I trade on LOW confidence edges?</div><div class="fqa">You can, but Polytragent doesn't recommend it. LOW confidence recommendations are flagged as HOLD. The reasoning: expected value is negative after factoring in risk.</div></div>
+    <div class="fqi rev2"><div class="fqq">What if the market moves before I execute?</div><div class="fqa">Edge scores refresh on every /research command. If the market price has moved closer to the AI's estimate, edge decreases. This is live data.</div></div>
+    <div class="fqi rev2"><div class="fqq">How accurate is the AI's true probability estimate?</div><div class="fqa">Over the full year of data, the AI's calibration is 78% accurate. This varies by topic: 85% on economics, 60% on crypto. These biases are explicitly tracked and accounted for.</div></div>
+    <div class="fqi rev2"><div class="fqq">What if no data sources agree?</div><div class="fqa">Confidence is capped at MEDIUM or LOW. Polytragent will still recommend action if the edge is >15%, but with transparency that underlying confidence is weak.</div></div>
+  </div>
+</section>
+
+<div class="glow-sep"></div>
+
+<section class="ctas">
+  <div class="ctl">
+    <h2 style="font-size:clamp(28px,3vw,42px);margin-bottom:24px;">Find edges<br>with confidence.</h2>
+    <p style="font-size:15px;color:var(--gray);margin-bottom:40px;">Every recommendation comes with a confidence score. HOLD when there's no edge. BUY when it's real.</p>
+    <a href="https://t.me/bmpolybot" target="_blank" class="btn-sl">Start trading with confidence — $79.99/mo →</a>
+  </div>
+  <div class="ctr">
+    <div class="run-term" data-term="cta">
+      <div class="rt-header">
+        <div class="rt-dots"><span class="rt-dot"></span><span class="rt-dot"></span><span class="rt-dot active"></span></div>
+        <span style="margin-left:10px;">polytragent — edge scoring</span>
+      </div>
+      <div class="rt-body"></div>
+    </div>
+    <div class="trnote"><span>Edge calculated in real-time</span><span>Confidence scores are multi-factor</span><span>HOLD protects against false signals</span></div>
+  </div>
+</section>
+
+<footer>
+  <div>
+    <svg height="20" viewBox="0 0 340 40" fill="none" xmlns="http://www.w3.org/2000/svg" style="opacity:.35;">
+      <path d="M4 33 L20 5 L36 33" stroke="white" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+      <text x="52" y="29" font-family="Inter,sans-serif" font-size="19" font-weight="600" letter-spacing="4" fill="white">POLYTRAGENT</text>
+    </svg>
+    <div class="fcopy" style="margin-top:8px;">© 2026 Polytragent. AI Research for Polymarket.</div>
+  </div>
+  <ul class="flinks">
+    <li><a href="/features">Features</a></li>
+    <li><a href="/#pricing">Pricing</a></li>
+    <li><a href="/resources">Resources</a></li>
+    <li><a href="/blog">Blog</a></li>
+    <li><a href="/#faq">FAQ</a></li>
+    <li><a href="https://x.com/polytragent" target="_blank">X / Twitter</a></li>
+    <li><a href="https://polytragent.gitbook.io/polytragent-docs/polytragent-documentation" target="_blank">Docs</a></li>
+  </ul>
+</footer>
+<div class="disc">
+  <p>Risk Disclaimer: Prediction market trading involves significant financial risk. AI-powered research does not guarantee profits. Past performance is not indicative of future results. Polytragent is a research tool, not a financial advisor. Only trade capital you can afford to lose. This website does not constitute financial advice.</p>
+</div>
+
+<script>
+(function(){
+  const c=document.getElementById('gridCanvas');if(!c)return;
+  const ctx=c.getContext('2d');let w,h;
+  function resize(){w=c.width=window.innerWidth;h=c.height=window.innerHeight*4;}
+  resize();window.addEventListener('resize',()=>{resize();draw();});
+  const sp=60;
+  function draw(){
+    ctx.clearRect(0,0,w,h);ctx.strokeStyle='rgba(255,255,255,.018)';ctx.lineWidth=.5;
+    for(let x=0;x<w;x+=sp){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,h);ctx.stroke();}
+    for(let y=0;y<h;y+=sp){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(w,y);ctx.stroke();}
+    ctx.fillStyle='rgba(255,255,255,.03)';
+    for(let x=0;x<w;x+=sp){for(let y=0;y<h;y+=sp){ctx.beginPath();ctx.arc(x,y,1,0,Math.PI*2);ctx.fill();}}
+  }
+  draw();
+})();
+
+const TERM_DATA = {
+  research: [
+    ['09:14:10','MFLD','#7c6a3a','Cross-referencing Manifold Markets...'],
+    ['09:14:11','MATCH','#4a7c59','3 matching markets found'],
+    ['09:14:11','COMP','#4a6080','Poly: $0.41 / Manifold: $0.58 — agree on YES'],
+    ['09:14:12','HIST','#7c6a3a','Checking prediction history on "politics"...'],
+    ['09:14:12','TRACK','#4a7c59','Topic accuracy: 83% — strong signal'],
+    ['09:14:13','BIAS','#7c6a3a','Calibration: +3% overconfident on politics'],
+    ['09:14:13','AI','#7c6a3a','Claude estimate: 69% true probability'],
+    ['09:14:14','EDGE','#4a7c59','Edge: ($0.69 - $0.41) / $0.41 = +68%'],
+    ['09:14:14','CONF','#4a6080','Confidence: HIGH — multi-factor agreement'],
+  ],
+  trading: [
+    ['09:14:14','WEIGHT','#7c6a3a','Sub-market agreement: +20%'],
+    ['09:14:14','WEIGHT','#7c6a3a','Manifold cross-ref: +25%'],
+    ['09:14:15','WEIGHT','#7c6a3a','Topic accuracy (politics): +15%'],
+    ['09:14:15','WEIGHT','#7c6a3a','Calibration bias: -3%'],
+    ['09:14:15','WEIGHT','#7c6a3a','Data freshness: +0%'],
+    ['09:14:15','CALC','#4a6080','Weighted total: 57 points'],
+    ['09:14:16','CONF','#4a7c59','Final: HIGH confidence (>75% threshold)'],
+    ['09:14:16','REC','#4a7c59','RECOMMENDATION: BUY YES — edge +68%'],
+  ],
+  cta: [
+    ['','POLY','#4a6080','Polymarket: Fed cuts June — YES $0.67'],
+    ['','AI','#555','AI estimate: 74% probability'],
+    ['','EDGE','#4a7c59','Edge: +7% — modest but actionable'],
+    ['','','#333',''],
+    ['','CHECK','#555','Sub-market agreement: OK (+20%)'],
+    ['','CHECK','#555','Manifold cross-ref: OK (+25%)'],
+    ['','CHECK','#555','Topic accuracy (econ): strong (85%)'],
+    ['','','#333',''],
+    ['','CONF','#4a7c59','Final: MEDIUM confidence — edge is real'],
+    ['','REC','#4a7c59','RECOMMENDATION: BUY YES'],
+  ],
+};
+
+class TermRunner {
+  constructor(el, dataKey) {
+    this.el = el;
+    this.body = el.querySelector('.rt-body');
+    this.data = TERM_DATA[dataKey] || TERM_DATA.research;
+    this.idx = 0;
+    this.timer = null;
+    this.running = false;
+    this.maxLines = 22;
+  }
+  start() {
+    if (this.running) return;
+    this.running = true;
+    this.idx = 0;
+    this.body.innerHTML = '';
+    this._addCursor();
+    this._tick();
+  }
+  stop() {
+    this.running = false;
+    if (this.timer) { clearTimeout(this.timer); this.timer = null; }
+  }
+  reset() {
+    this.stop();
+    this.start();
+  }
+  _addCursor() {
+    let cur = this.body.querySelector('.rt-cursor-line');
+    if (!cur) {
+      cur = document.createElement('div');
+      cur.className = 'rt-cursor-line';
+      cur.innerHTML = '<span class="rt-cursor"></span>';
+      cur.style.cssText = 'padding:3px 16px;';
+      this.body.appendChild(cur);
+    }
+  }
+  _tick() {
+    if (!this.running) return;
+    if (this.idx >= this.data.length) {
+      this.timer = setTimeout(() => {
+        this.idx = 0;
+        this.body.innerHTML = '';
+        this._addCursor();
+        this._tick();
+      }, 2000);
+      return;
+    }
+    const [ts, tag, color, msg] = this.data[this.idx];
+    const line = document.createElement('div');
+    line.className = 'rt-line';
+    const tsHtml = ts ? `<span class="rt-ts">${ts}</span>` : '<span class="rt-ts"></span>';
+    const tagHtml = tag ? `<span class="rt-tag" style="color:${color}">[${tag}]</span>` : '<span class="rt-tag"></span>';
+    const msgColor = color === '#fff' || color === '#6ee7b7' ? color : '#555';
+    line.innerHTML = `${tsHtml}${tagHtml}<span class="rt-msg" style="color:${msgColor}">${msg}</span>`;
+    const cursor = this.body.querySelector('.rt-cursor-line');
+    if (cursor) {
+      this.body.insertBefore(line, cursor);
+    } else {
+      this.body.appendChild(line);
+    }
+    const lines = this.body.querySelectorAll('.rt-line');
+    if (lines.length > this.maxLines) {
+      lines[0].remove();
+    }
+    this.body.scrollTop = this.body.scrollHeight;
+    this.idx++;
+    const delay = 120 + Math.random() * 180;
+    this.timer = setTimeout(() => this._tick(), delay);
+  }
+}
+
+const terminals = [];
+document.querySelectorAll('.run-term').forEach(el => {
+  const key = el.getAttribute('data-term');
+  const runner = new TermRunner(el, key);
+  terminals.push({ el, runner, wasVisible: false });
+});
+
+const termObserver = new IntersectionObserver(entries => {
+  entries.forEach(entry => {
+    const t = terminals.find(t => t.el === entry.target);
+    if (!t) return;
+    if (entry.isIntersecting) {
+      t.runner.reset();
+      t.wasVisible = true;
+    } else {
+      if (t.wasVisible) {
+        t.runner.stop();
+        t.wasVisible = false;
+      }
+    }
+  });
+}, { threshold: 0.15 });
+
+terminals.forEach(t => termObserver.observe(t.el));
+
+const obs=new IntersectionObserver(es=>{
+  es.forEach(e=>{if(e.isIntersecting)e.target.classList.add('in');});
+},{threshold:0.08});
+document.querySelectorAll('.rev2').forEach(el=>obs.observe(el));
+
+document.querySelectorAll('a[href^="#"]').forEach(a=>{
+  a.addEventListener('click',e=>{
+    const t=document.querySelector(a.getAttribute('href'));
+    if(t){e.preventDefault();t.scrollIntoView({behavior:'smooth',block:'start'});}
+  });
+});
+</script>
+</body>
+</html>

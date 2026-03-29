@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><link rel="icon" type="image/x-icon" href="/favicon.ico"><link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png"><link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>Prediction Market Strategies — 7 Methods That Work in 2026</title>
+  <meta name="description" content="Master 7 proven prediction market strategies for 2026. Fundamental analysis, statistical arbitrage, forecaster consensus, AI edge detection, and portfolio construction.">
+<link rel="canonical" href="https://polytragent.com/resources/prediction-market-strategies">
+  <meta name="keywords" content="prediction market strategies, prediction market trading, forecasting strategies, polymarket methods, arbitrage strategies, edge detection">
+  <meta property="og:title" content="Prediction Market Strategies — 7 Methods That Work in 2026">
+  <meta property="og:description" content="7 proven prediction market strategies: fundamental analysis, arbitrage, forecaster consensus, AI edge detection, and portfolio construction.">
+  <meta property="og:url" content="https://polytragent.com/resources/prediction-market-strategies">
+  <meta property="og:type" content="article">
+  <meta name="twitter:card" content="summary_large_image">
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      {"@type": "ListItem", "position": 1, "name": "Home", "item": "https://polytragent.com"},
+      {"@type": "ListItem", "position": 2, "name": "Resources", "item": "https://polytragent.com/#resources"},
+      {"@type": "ListItem", "position": 3, "name": "Prediction Market Strategies"}
+    ]
+  }
+  </script>
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebPage",
+    "name": "Prediction Market Strategies",
+    "description": "Master 7 proven prediction market strategies for 2026",
+    "url": "https://polytragent.com/resources/prediction-market-strategies",
+    "publisher": {
+      "@type": "Organization",
+      "name": "Polytragent"
+    }
+  }
+  </script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+  <style>
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{
+  --black:#000;--white:#fff;--gray:#888;--gray2:#444;--gray3:#222;
+  --border:#1a1a1a;--font-sans:'Inter',sans-serif;--font-mono:'JetBrains Mono',monospace;
+  --green:#6ee7b7;--red:#fca5a5;--blue:#93c5fd;--yellow:#fde68a;
+  --code-bg:#080808;--code-border:#141414;
+}
+html{scroll-behavior:smooth;}
+body{background:var(--black);color:var(--white);font-family:var(--font-sans);font-size:16px;line-height:1.6;overflow-x:hidden;}
+a{color:inherit;text-decoration:none;}
+
+.grid-bg{position:fixed;top:0;left:0;right:0;bottom:0;z-index:0;pointer-events:none;opacity:.35;}
+
+nav{position:fixed;top:0;left:0;right:0;z-index:200;display:flex;align-items:center;justify-content:space-between;padding:0 48px;height:64px;border-bottom:1px solid var(--border);background:rgba(0,0,0,0.92);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);}
+.nav-links{display:flex;gap:32px;list-style:none;}
+.nav-links a{font-size:14px;color:var(--gray);transition:color .15s;}
+.nav-links a:hover{color:var(--white);}
+.nav-links li{position:relative;}
+.nav-dropdown{display:none;position:absolute;top:100%;left:-16px;padding-top:12px;z-index:300;}
+.nav-links li:hover .nav-dropdown{display:block;}
+.nav-dropdown-inner{background:rgba(0,0,0,0.96);border:1px solid var(--border);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);padding:12px 0;min-width:260px;}
+.nav-dropdown a{display:block;padding:8px 20px;font-size:13px;color:var(--gray);transition:color .15s,background .15s;white-space:nowrap;}
+.nav-dropdown a:hover{color:var(--white);background:rgba(255,255,255,.04);}
+.ndrop-label{padding:6px 20px 4px;font-family:var(--font-mono);font-size:9px;color:var(--gray2);letter-spacing:2px;text-transform:uppercase;}
+.ndrop-label:not(:first-child){margin-top:8px;border-top:1px solid var(--border);padding-top:10px;}
+.nav-ctas{display:flex;gap:12px;align-items:center;}
+.btn-solid{display:inline-flex;align-items:center;gap:6px;padding:9px 20px;background:var(--white);color:var(--black);font-size:13px;font-weight:500;font-family:var(--font-sans);border:none;cursor:pointer;transition:opacity .15s;}
+.btn-solid:hover{opacity:.85;}
+.btn-outline{display:inline-flex;align-items:center;gap:6px;padding:8px 20px;background:transparent;color:var(--white);font-size:13px;border:1px dashed var(--gray2);cursor:pointer;transition:border-color .15s;}
+.btn-outline:hover{border-color:var(--white);}
+
+.split{display:grid;grid-template-columns:44% 56%;border-top:1px solid var(--border);position:relative;z-index:1;}
+.split.rev{grid-template-columns:56% 44%;}
+.st{padding:100px 48px;display:flex;flex-direction:column;justify-content:center;border-right:1px solid var(--border);}
+.split.rev .st{border-right:none;border-left:1px solid var(--border);}
+.sv{padding:80px 48px;display:flex;flex-direction:column;justify-content:center;background:#000;position:relative;overflow:hidden;}
+.snum{font-family:var(--font-mono);font-size:11px;color:var(--gray2);letter-spacing:2px;margin-bottom:20px;}
+h2{font-size:clamp(30px,3.8vw,50px);font-weight:600;line-height:1.1;letter-spacing:-1.5px;margin-bottom:24px;}
+.sb{font-size:15px;color:var(--gray);line-height:1.75;max-width:440px;font-weight:300;margin-bottom:36px;}
+h3{font-size:15px;font-weight:500;letter-spacing:-.3px;margin-bottom:6px;}
+
+.fl{display:flex;flex-direction:column;}
+.fi{display:flex;gap:20px;align-items:flex-start;padding:22px 0;border-bottom:1px solid var(--border);}
+.fi:first-child{border-top:1px solid var(--border);}
+.fn{font-family:var(--font-mono);font-size:11px;color:var(--gray2);padding-top:2px;flex-shrink:0;width:20px;}
+.fc h3{font-size:14px;font-weight:500;margin-bottom:4px;}
+.fc p{font-size:13px;color:var(--gray);font-weight:300;line-height:1.65;}
+
+.run-term{background:#000;border:1px solid var(--border);font-family:var(--font-mono);font-size:10px;overflow:hidden;position:relative;}
+.run-term::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(110,231,183,.15),transparent);animation:term-scan 4s ease-in-out infinite;z-index:2;}
+@keyframes term-scan{0%,100%{opacity:0;}50%{opacity:1;}}
+.rt-header{padding:10px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;color:var(--gray2);font-size:9px;letter-spacing:1px;text-transform:uppercase;}
+.rt-dots{display:flex;gap:5px;}
+.rt-dot{width:7px;height:7px;border-radius:50%;border:1px solid #333;}
+.rt-dot.active{background:#333;}
+.rt-body{padding:0;min-height:340px;max-height:440px;overflow:hidden;position:relative;}
+.rt-line{display:flex;gap:10px;padding:3px 16px;opacity:0;transform:translateY(2px);animation:rt-in .15s forwards;font-size:10px;line-height:1.65;}
+@keyframes rt-in{to{opacity:1;transform:none;}}
+.rt-ts{color:#333;flex-shrink:0;font-size:9px;padding-top:1px;width:52px;}
+.rt-tag{flex-shrink:0;font-size:9.5px;width:60px;font-weight:500;}
+.rt-msg{color:#555;font-size:10px;line-height:1.55;}
+.rt-cursor{display:inline-block;width:6px;height:12px;background:#4a7c59;animation:rt-blink 1s step-end infinite;margin-left:2px;vertical-align:middle;}
+@keyframes rt-blink{50%{opacity:0;}}
+
+.mg{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--border);}
+.mc{background:#000;padding:32px 28px;position:relative;overflow:hidden;}
+.mc::after{content:'';position:absolute;top:0;right:0;width:40%;height:100%;background:linear-gradient(180deg,rgba(110,231,183,.02),transparent);pointer-events:none;opacity:0;transition:opacity .5s;}
+.mc:hover::after{opacity:1;}
+.mn{font-size:40px;font-weight:600;letter-spacing:-2px;line-height:1;margin-bottom:6px;}
+.ml{font-size:12px;color:var(--gray);font-weight:300;line-height:1.4;}
+
+.data-monitor{background:var(--code-bg);border:1px solid var(--code-border);font-family:var(--font-mono);overflow:hidden;}
+.dm-header{padding:10px 16px;border-bottom:1px solid var(--code-border);display:flex;align-items:center;justify-content:space-between;}
+.dm-header-left{display:flex;align-items:center;gap:8px;font-size:9px;color:var(--gray2);letter-spacing:1px;text-transform:uppercase;}
+.dm-live{display:flex;align-items:center;gap:5px;font-size:9px;color:#4a7c59;}
+.dm-live-dot{width:5px;height:5px;border-radius:50%;background:#4a7c59;animation:dm-pulse 2s infinite;}
+@keyframes dm-pulse{0%,100%{opacity:1;}50%{opacity:.3;}}
+.dm-row{display:grid;grid-template-columns:1fr 80px 80px 60px;padding:10px 16px;border-bottom:1px solid var(--code-border);font-size:10px;color:#555;transition:background .2s;align-items:center;}
+.dm-row:hover{background:rgba(255,255,255,.02);}
+.dm-row.header{color:var(--gray2);font-size:9px;letter-spacing:1px;text-transform:uppercase;}
+.dm-market{color:#888;font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.dm-pos{color:#4a7c59;font-size:10px;font-weight:500;}
+.dm-neg{color:#7c4a4a;font-size:10px;font-weight:500;}
+
+.pipeline{display:flex;align-items:center;gap:0;padding:24px 0;overflow:hidden;}
+.pipe-node{flex-shrink:0;padding:10px 16px;border:1px solid var(--code-border);font-family:var(--font-mono);font-size:9px;color:#555;letter-spacing:1px;text-transform:uppercase;position:relative;transition:all .3s;}
+.pipe-node.active{border-color:#333;color:#888;background:rgba(255,255,255,.02);}
+.pipe-node.active::before{content:'';position:absolute;top:-1px;left:0;right:0;height:1px;background:#4a7c59;}
+.pipe-connector{width:32px;height:1px;background:var(--code-border);flex-shrink:0;position:relative;}
+.pipe-connector::after{content:'›';position:absolute;right:-3px;top:-8px;color:#333;font-size:14px;}
+
+.arch-grid{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--code-border);}
+.arch-module{background:#000;padding:20px;position:relative;overflow:hidden;transition:background .3s;}
+.arch-module:hover{background:#050505;}
+.arch-module-name{font-family:var(--font-mono);font-size:10px;color:#666;margin-bottom:4px;display:flex;align-items:center;gap:6px;}
+.arch-module-name::before{content:'◈';color:#333;font-size:8px;}
+.arch-module-desc{font-size:11px;color:#444;font-weight:300;}
+.arch-module-file{font-family:var(--font-mono);font-size:9px;color:#2a2a2a;margin-top:8px;}
+
+.ctas{border-top:1px solid var(--border);display:grid;grid-template-columns:44% 56%;min-height:55vh;position:relative;z-index:1;}
+.ctl{padding:100px 48px;border-right:1px solid var(--border);display:flex;flex-direction:column;justify-content:center;}
+.ctr{padding:80px 48px;display:flex;flex-direction:column;justify-content:center;overflow:hidden;position:relative;}
+.trnote{font-family:var(--font-mono);font-size:11px;color:var(--gray2);margin-top:20px;display:flex;gap:24px;flex-wrap:wrap;}
+.trnote span::before{content:'// ';}
+
+.btn-sl{padding:14px 28px;font-size:14px;font-weight:500;background:var(--white);color:var(--black);border:none;cursor:pointer;font-family:var(--font-sans);display:inline-flex;align-items:center;gap:8px;transition:opacity .15s;}
+.btn-sl:hover{opacity:.85;}
+
+.glow-sep{height:1px;background:linear-gradient(90deg,transparent 0%,rgba(110,231,183,.06) 20%,rgba(110,231,183,.1) 50%,rgba(110,231,183,.06) 80%,transparent 100%);position:relative;z-index:1;}
+
+.rev2{opacity:0;transform:translateY(16px);transition:opacity .55s,transform .55s;}
+.rev2.in{opacity:1;transform:none;}
+
+footer{border-top:1px solid var(--border);padding:28px 48px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:20px;position:relative;z-index:1;}
+.fcopy{font-family:var(--font-mono);font-size:10px;color:var(--gray2);}
+.flinks{display:flex;gap:28px;list-style:none;}
+.flinks a{font-size:13px;color:var(--gray2);transition:color .15s;}.flinks a:hover{color:var(--white);}
+.disc{border-top:1px solid var(--border);padding:18px 48px;position:relative;z-index:1;}
+.disc p{font-size:10px;color:#2a2a2a;font-family:var(--font-mono);line-height:1.6;}
+
+@media(max-width:900px){
+  .split,.split.rev,.ctas{grid-template-columns:1fr;}
+  .st{border-right:none;border-bottom:1px solid var(--border);}
+  .split.rev .st{border-left:none;border-bottom:1px solid var(--border);}
+  nav{padding:0 20px;}
+  .st,.sv,.ctl,.ctr{padding:60px 24px;}
+  .mg{grid-template-columns:1fr;}
+  .nav-links{display:none;}
+  footer,.disc{padding:24px;}
+  .ctas{grid-template-columns:1fr;}
+  .arch-grid{grid-template-columns:1fr;}
+  .pipeline{flex-wrap:wrap;gap:8px;}
+  .pipe-connector{width:16px;}
+}
+  </style>
+</head>
+<body>
+  <canvas id="gridCanvas" class="grid-bg"></canvas>
+
+  <nav>
+    <a href="/"><svg height="22" viewBox="0 0 340 40" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 33 L20 5 L36 33" stroke="white" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/><text x="52" y="29" font-family="Inter,sans-serif" font-size="19" font-weight="600" letter-spacing="4" fill="white">POLYTRAGENT</text></svg></a>
+    <ul class="nav-links">
+      <li><a href="/#features">Features</a></li>
+      <li><a href="/#how-it-works">How it works</a></li>
+      <li><a href="/#pricing">Pricing</a></li>
+      <li>
+        <a href="/resources">Resources ▾</a>
+        <div class="nav-dropdown"><div class="nav-dropdown-inner">
+          <div class="ndrop-label">Compare</div>
+          <a href="/compare">All Comparisons</a>
+          <a href="/compare/polytragent-vs-polycop">Polytragent vs PolyCop</a>
+          <a href="/compare/polytragent-vs-polysight">Polytragent vs Polysight</a>
+          <a href="/compare/copy-trading-bots">Copy Trading Bots</a>
+          <a href="/compare/polycop-alternative">PolyCop Alternative</a>
+          <a href="/compare/polysight-alternative">Polysight Alternative</a>
+          <div class="ndrop-label">Landing Pages</div>
+          <a href="/resources/polymarket-strategies">Polymarket Strategies 2026</a>
+          <a href="/resources/how-to-make-money-polymarket">How to Make Money</a>
+          <a href="/resources/prediction-market-strategies">Prediction Market Strategies</a>
+          <a href="/resources/polymarket-telegram-bots">Telegram Bots</a>
+          <a href="/resources/polymarket-automated-trading">Automated Trading</a>
+          <a href="/resources/polymarket-whale-tracking">Whale Tracking</a>
+          <a href="/resources/polymarket-market-making">Market Making</a>
+          <a href="/resources/polymarket-poly-token">POLY Token Airdrop</a>
+          <div class="ndrop-label">Blog</div>
+          <a href="/blog">All Articles</a>
+        </div></div>
+      </li>
+      <li><a href="/#faq">FAQ</a></li>
+    </ul>
+    <div class="nav-ctas"><a href="/#pricing" class="btn-outline">See plans</a><a href="https://t.me/bmpolybot" target="_blank" class="btn-solid">Get started →</a></div>
+  </nav>
+
+  <div style="height:64px;"></div>
+
+  <!-- Section 1: Fundamental Analysis -->
+  <div class="split">
+    <div class="st rev2">
+      <div class="snum">01 / FUNDAMENTALS</div>
+      <h2>Fundamental Analysis Strategy</h2>
+      <p class="sb">Research news, data, and trends to identify which outcomes are likely. Combine with market prices to find edge. The foundation of all prediction market trading.</p>
+      <div class="fl">
+        <div class="fi">
+          <div class="fn">→</div>
+          <div class="fc"><h3>News Monitoring</h3><p>Track relevant stories and announcements</p></div>
+        </div>
+        <div class="fi">
+          <div class="fn">→</div>
+          <div class="fc"><h3>Data Analysis</h3><p>Use public datasets to estimate true probability</p></div>
+        </div>
+        <div class="fi">
+          <div class="fn">→</div>
+          <div class="fc"><h3>Conviction Scoring</h3><p>Rate your confidence (1-10) in each analysis</p></div>
+        </div>
+      </div>
+    </div>
+    <div class="sv rev2">
+      <div class="run-term">
+        <div class="rt-header">
+          <div style="display:flex;gap:4px;align-items:center;"><span style="font-size:9px;">●</span> NEWS ANALYSIS</div>
+          <div class="rt-dots">
+            <div class="rt-dot"></div>
+            <div class="rt-dot"></div>
+            <div class="rt-dot active"></div>
+          </div>
+        </div>
+        <div class="rt-body">
+          <div class="rt-line" style="animation-delay:0ms;"><span class="rt-ts">08:15</span><span class="rt-tag" style="color:#fde68a;">NEWS</span><span class="rt-msg">New data: unemployment fell to 3.4%</span></div>
+          <div class="rt-line" style="animation-delay:50ms;"><span class="rt-ts">08:15</span><span class="rt-tag" style="color:#4a7c59;">ANALYZE</span><span class="rt-msg">Reduces Fed rate hike probability</span></div>
+          <div class="rt-line" style="animation-delay:100ms;"><span class="rt-ts">08:16</span><span class="rt-tag" style="color:#4a7c59;">DATA</span><span class="rt-msg">Historical: 3.4% → 15% rate hike prob</span></div>
+          <div class="rt-line" style="animation-delay:150ms;"><span class="rt-ts">08:16</span><span class="rt-tag" style="color:#4a7c59;">CHECK</span><span class="rt-msg">Market price: 35% (over-estimated)</span></div>
+          <div class="rt-line" style="animation-delay:200ms;"><span class="rt-ts">08:17</span><span class="rt-tag" style="color:#4a7c59;">EDGE</span><span class="rt-msg">+20% edge on NO side. Conviction: 9/10</span></div>
+          <div class="rt-line" style="animation-delay:250ms;"><span class="rt-ts">08:17</span><span class="rt-tag" style="color:#4a7c59;">EXEC</span><span class="rt-msg">→ Shorted rate hike at 0.35</span></div>
+          <div class="rt-line" style="animation-delay:300ms;"><span class="rt-ts">08:18</span><span class="rt-tag" style="color:#4a7c59;">DONE</span><span class="rt-msg">Position: 2000 NO contracts<span class="rt-cursor"></span></span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="glow-sep"></div>
+
+  <!-- Section 2: Statistical Arbitrage -->
+  <div class="split rev">
+    <div class="sv rev2">
+      <div style="padding:40px 0;">
+        <div style="font-family:var(--font-mono);font-size:11px;color:var(--gray2);margin-bottom:24px;letter-spacing:1px;text-transform:uppercase;">Arb Pipeline</div>
+        <div class="pipeline">
+          <div class="pipe-node">Scan Markets</div>
+          <div class="pipe-connector"></div>
+          <div class="pipe-node">Check Correlations</div>
+          <div class="pipe-connector"></div>
+          <div class="pipe-node">Find Mispricing</div>
+          <div class="pipe-connector"></div>
+          <div class="pipe-node active">Execute Spread</div>
+        </div>
+      </div>
+    </div>
+    <div class="st rev2">
+      <div class="snum">02 / ARBITRAGE</div>
+      <h2>Statistical Arbitrage</h2>
+      <p class="sb">Find pairs of correlated markets that are mispriced relative to each other. Exploit the spread while hedging directional risk.</p>
+      <div class="fl">
+        <div class="fi">
+          <div class="fn">→</div>
+          <div class="fc"><h3>Pair Trading</h3><p>Find two markets that should move together but don't</p></div>
+        </div>
+        <div class="fi">
+          <div class="fn">→</div>
+          <div class="fc"><h3>Beta Hedging</h3><p>Long underpriced + short overpriced = delta-neutral</p></div>
+        </div>
+        <div class="fi">
+          <div class="fn">→</div>
+          <div class="fc"><h3>Market-Neutral Returns</h3><p>Profit regardless of market direction</p></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="glow-sep"></div>
+
+  <!-- Section 3: Forecaster Consensus -->
+  <div class="split">
+    <div class="st rev2">
+      <div class="snum">03 / CONSENSUS</div>
+      <h2>Forecaster Consensus Analysis</h2>
+      <p class="sb">Aggregate predictions from experienced forecasters across platforms. The wisdom of crowds often beats individual prices.</p>
+      <div class="fl">
+        <div class="fi">
+          <div class="fn">→</div>
+          <div class="fc"><h3>Track Top Forecasters</h3><p>Monitor best 100+ forecasters across all platforms</p></div>
+        </div>
+        <div class="fi">
+          <div class="fn">→</div>
+          <div class="fc"><h3>Calibration Analysis</h3><p>Rate forecaster accuracy (Brier score, accuracy)</p></div>
+        </div>
+        <div class="fi">
+          <div class="fn">→</div>
+          <div class="fc"><h3>Weighted Aggregate</h3><p>Combine forecasts weighted by track record</p></div>
+        </div>
+      </div>
+    </div>
+    <div class="sv rev2">
+      <div class="data-monitor">
+        <div class="dm-header">
+          <div class="dm-header-left">
+            <span>● FORECASTER CONSENSUS</span>
+          </div>
+          <div class="dm-live">
+            <div class="dm-live-dot"></div>
+            <span>LIVE</span>
+          </div>
+        </div>
+        <div style="max-height:380px;overflow-y:auto;">
+          <div class="dm-row header">
+            <div>FORECASTER</div>
+            <div>FORECAST</div>
+            <div>TRACK REC</div>
+            <div>WEIGHT</div>
+          </div>
+          <div class="dm-row">
+            <div class="dm-market">Metaculus Top 1%</div>
+            <div class="dm-pos">72%</div>
+            <div class="dm-pos">0.88 Brier</div>
+            <div class="dm-pos">25%</div>
+          </div>
+          <div class="dm-row">
+            <div class="dm-market">Manifold Top Traders</div>
+            <div class="dm-pos">69%</div>
+            <div class="dm-pos">0.82 Brier</div>
+            <div class="dm-pos">20%</div>
+          </div>
+          <div class="dm-row">
+            <div class="dm-market">Prediction Markets Avg</div>
+            <div class="dm-pos">71%</div>
+            <div class="dm-pos">0.85 Brier</div>
+            <div class="dm-pos">30%</div>
+          </div>
+          <div class="dm-row">
+            <div class="dm-market">Domain Experts</div>
+            <div class="dm-pos">68%</div>
+            <div class="dm-pos">0.79 Brier</div>
+            <div class="dm-pos">15%</div>
+          </div>
+          <div class="dm-row">
+            <div class="dm-market">CONSENSUS FORECAST</div>
+            <div class="dm-pos">70%</div>
+            <div class="dm-pos">0.84 Brier</div>
+            <div class="dm-pos">100%</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="glow-sep"></div>
+
+  <!-- Section 4: AI Edge Detection -->
+  <div class="split rev">
+    <div class="sv rev2">
+      <div class="run-term">
+        <div class="rt-header">
+          <div style="display:flex;gap:4px;align-items:center;"><span style="font-size:9px;">●</span> EDGE DETECTION</div>
+          <div class="rt-dots">
+            <div class="rt-dot"></div>
+            <div class="rt-dot"></div>
+            <div class="rt-dot active"></div>
+          </div>
+        </div>
+        <div class="rt-body">
+          <div class="rt-line" style="animation-delay:0ms;"><span class="rt-ts">12:45</span><span class="rt-tag" style="color:#4a7c59;">SCAN</span><span class="rt-msg">Scanning 2000+ markets for edges</span></div>
+          <div class="rt-line" style="animation-delay:50ms;"><span class="rt-ts">12:46</span><span class="rt-tag" style="color:#4a7c59;">AI</span><span class="rt-msg">Analyzing 47 candidate markets...</span></div>
+          <div class="rt-line" style="animation-delay:100ms;"><span class="rt-ts">12:47</span><span class="rt-tag" style="color:#4a7c59;">MODEL</span><span class="rt-msg">Testing 5 ML models for consensus</span></div>
+          <div class="rt-line" style="animation-delay:150ms;"><span class="rt-ts">12:48</span><span class="rt-tag" style="color:#93c5fd;">INFO</span><span class="rt-msg">Top edge: TSLA $500 by 2026</span></div>
+          <div class="rt-line" style="animation-delay:200ms;"><span class="rt-ts">12:48</span><span class="rt-tag" style="color:#4a7c59;">AI</span><span class="rt-msg">AI forecast: 43% | Market: 28%</span></div>
+          <div class="rt-line" style="animation-delay:250ms;"><span class="rt-ts">12:49</span><span class="rt-tag" style="color:#4a7c59;">EDGE</span><span class="rt-msg">+15% edge | Confidence: 7.8/10</span></div>
+          <div class="rt-line" style="animation-delay:300ms;"><span class="rt-ts">12:49</span><span class="rt-tag" style="color:#4a7c59;">ALERT</span><span class="rt-msg">27 qualifying edges found<span class="rt-cursor"></span></span></div>
+        </div>
+      </div>
+    </div>
+    <div class="st rev2">
+      <div class="snum">04 / AI EDGE</div>
+      <h2>AI Edge Detection</h2>
+      <p class="sb">Use machine learning to find edges faster than humans. Scan thousands of markets and identify pricing anomalies in seconds.</p>
+      <div class="fl">
+        <div class="fi">
+          <div class="fn">→</div>
+          <div class="fc"><h3>ML Consensus</h3><p>Ensemble of 5 ML models agree on forecast</p></div>
+        </div>
+        <div class="fi">
+          <div class="fn">→</div>
+          <div class="fc"><h3>Speed Advantage</h3><p>Analyze 2000+ markets in 60 seconds</p></div>
+        </div>
+        <div class="fi">
+          <div class="fn">→</div>
+          <div class="fc"><h3>Confidence Scoring</h3><p>Rate edge confidence (1-10) from model agreement</p></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="glow-sep"></div>
+
+  <!-- Section 5: Portfolio Construction -->
+  <div class="split">
+    <div class="st rev2">
+      <div class="snum">05 / PORTFOLIO</div>
+      <h2>Portfolio Construction & Diversification</h2>
+      <p class="sb">Don't put all capital in one trade. Build a balanced portfolio across uncorrelated markets to maximize risk-adjusted returns.</p>
+      <div class="fl">
+        <div class="fi">
+          <div class="fn">→</div>
+          <div class="fc"><h3>Correlation Analysis</h3><p>Ensure portfolio is < 0.4 avg correlation</p></div>
+        </div>
+        <div class="fi">
+          <div class="fn">→</div>
+          <div class="fc"><h3>Rebalancing</h3><p>Auto-rebalance weekly to maintain target allocation</p></div>
+        </div>
+        <div class="fi">
+          <div class="fn">→</div>
+          <div class="fc"><h3>Kelly Optimization</h3><p>Size each position by Kelly Criterion formula</p></div>
+        </div>
+      </div>
+    </div>
+    <div class="sv rev2">
+      <div class="arch-grid">
+        <div class="arch-module">
+          <div class="arch-module-name">Crypto Markets</div>
+          <div class="arch-module-desc">30% allocation (BTC, ETH, POLY)</div>
+          <div class="arch-module-file">crypto.py</div>
+        </div>
+        <div class="arch-module">
+          <div class="arch-module-name">Politics &amp; Policy</div>
+          <div class="arch-module-desc">25% allocation (elections, rates)</div>
+          <div class="arch-module-file">politics.py</div>
+        </div>
+        <div class="arch-module">
+          <div class="arch-module-name">Economics</div>
+          <div class="arch-module-desc">20% allocation (GDP, employment)</div>
+          <div class="arch-module-file">econ.py</div>
+        </div>
+        <div class="arch-module">
+          <div class="arch-module-name">Tech &amp; Science</div>
+          <div class="arch-module-desc">25% allocation (AI, space, health)</div>
+          <div class="arch-module-file">tech.py</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="glow-sep"></div>
+
+  <!-- CTA Section -->
+  <div class="ctas">
+    <div class="ctl rev2">
+      <div class="snum">READY TO COMPETE</div>
+      <h2>Master Prediction Market Strategies</h2>
+      <p class="sb" style="margin-bottom:32px;">Polytragent automates all 7 strategies and more. From fundamental analysis to AI edge detection to portfolio construction — everything you need to win.</p>
+      <a href="https://t.me/bmpolybot" target="_blank" class="btn-sl">Start with Polytragent →</a>
+      <div class="trnote">
+        <span>All strategies automated</span>
+        <span>Real-time execution</span>
+        <span>30-day free trial</span>
+      </div>
+    </div>
+    <div class="ctr rev2">
+      <div class="run-term">
+        <div class="rt-header">
+          <div style="display:flex;gap:4px;align-items:center;"><span style="font-size:9px;">●</span> STRATEGY PERF</div>
+          <div class="rt-dots">
+            <div class="rt-dot"></div>
+            <div class="rt-dot"></div>
+            <div class="rt-dot active"></div>
+          </div>
+        </div>
+        <div class="rt-body">
+          <div class="rt-line" style="animation-delay:0ms;"><span class="rt-ts">FUND ANAL</span><span class="rt-tag" style="color:#4a7c59;">ROI</span><span class="rt-msg">+8.2% | Win rate: 64%</span></div>
+          <div class="rt-line" style="animation-delay:50ms;"><span class="rt-ts">STAT ARB</span><span class="rt-tag" style="color:#4a7c59;">ROI</span><span class="rt-msg">+6.1% | Win rate: 68%</span></div>
+          <div class="rt-line" style="animation-delay:100ms;"><span class="rt-ts">CONSENSUS</span><span class="rt-tag" style="color:#4a7c59;">ROI</span><span class="rt-msg">+5.4% | Win rate: 61%</span></div>
+          <div class="rt-line" style="animation-delay:150ms;"><span class="rt-ts">AI EDGE</span><span class="rt-tag" style="color:#4a7c59;">ROI</span><span class="rt-msg">+7.8% | Win rate: 65%</span></div>
+          <div class="rt-line" style="animation-delay:200ms;"><span class="rt-ts">PORTFOLIO</span><span class="rt-tag" style="color:#4a7c59;">ROI</span><span class="rt-msg">+6.9% | Sharpe: 1.47</span></div>
+          <div class="rt-line" style="animation-delay:250ms;"><span class="rt-ts">COMBINED</span><span class="rt-tag" style="color:#4a7c59;">ROI</span><span class="rt-msg">+7.2% (all strategies)</span></div>
+          <div class="rt-line" style="animation-delay:300ms;"><span class="rt-ts">NEXT SCAN</span><span class="rt-tag" style="color:#4a7c59;">IN</span><span class="rt-msg">30 seconds...<span class="rt-cursor"></span></span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    <div>
+      <svg height="20" viewBox="0 0 340 40" fill="none" xmlns="http://www.w3.org/2000/svg" style="opacity:.35;"><path d="M4 33 L20 5 L36 33" stroke="white" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/><text x="52" y="29" font-family="Inter,sans-serif" font-size="19" font-weight="600" letter-spacing="4" fill="white">POLYTRAGENT</text></svg>
+      <div class="fcopy" style="margin-top:8px;">© 2026 Polytragent. AI Research for Polymarket.</div>
+    </div>
+    <ul class="flinks">
+      <li><a href="/features">Features</a></li>
+      <li><a href="/#pricing">Pricing</a></li>
+      <li><a href="/resources">Resources</a></li>
+      <li><a href="/blog">Blog</a></li>
+      <li><a href="/#faq">FAQ</a></li>
+      <li><a href="https://x.com/polytragent" target="_blank">X / Twitter</a></li>
+    <li><a href="https://polytragent.gitbook.io/polytragent-docs/polytragent-documentation" target="_blank">Docs</a></li>
+    </ul>
+  </footer>
+  <div class="disc">
+    <p>Risk Disclaimer: Prediction market trading involves significant financial risk. AI-powered research does not guarantee profits. Past performance is not indicative of future results. Polytragent is a research tool, not a financial advisor. Only trade capital you can afford to lose.</p>
+  </div>
+
+  <script>
+(function(){
+  const c=document.getElementById('gridCanvas');if(!c)return;
+  const ctx=c.getContext('2d');let w,h;
+  function resize(){w=c.width=window.innerWidth;h=c.height=window.innerHeight*4;}
+  resize();window.addEventListener('resize',()=>{resize();draw();});
+  const sp=60;
+  function draw(){
+    ctx.clearRect(0,0,w,h);ctx.strokeStyle='rgba(255,255,255,.018)';ctx.lineWidth=.5;
+    for(let x=0;x<w;x+=sp){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,h);ctx.stroke();}
+    for(let y=0;y<h;y+=sp){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(w,y);ctx.stroke();}
+    ctx.fillStyle='rgba(255,255,255,.03)';
+    for(let x=0;x<w;x+=sp){for(let y=0;y<h;y+=sp){ctx.beginPath();ctx.arc(x,y,1,0,Math.PI*2);ctx.fill();}}
+  }
+  draw();
+})();
+const obs=new IntersectionObserver(es=>{
+  es.forEach(e=>{if(e.isIntersecting)e.target.classList.add('in');});
+},{threshold:0.08});
+document.querySelectorAll('.rev2').forEach(el=>obs.observe(el));
+  </script>
+</body>
+</html>

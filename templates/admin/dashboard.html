@@ -1,0 +1,132 @@
+{% extends "admin/base.html" %}
+{% block title %}Dashboard — Polytragent Admin{% endblock %}
+{% block content %}
+
+<div class="page-header">
+  <div class="page-header-left">
+    <div class="page-title">Dashboard</div>
+    <div class="page-subtitle">Overview of all users, queries, and revenue</div>
+  </div>
+  <a href="/admin/users/new" class="btn btn-primary">+ Add User</a>
+</div>
+
+<div class="stats-grid">
+  <div class="stat-card">
+    <div class="stat-label">Total Users</div>
+    <div class="stat-value">{{ total_users }}</div>
+    <div class="stat-sub">all time</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Active Subscribers</div>
+    <div class="stat-value">{{ active_users }}</div>
+    <div class="stat-sub">paying now</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">MRR</div>
+    <div class="stat-value">${{ "%.0f"|format(mrr) }}</div>
+    <div class="stat-sub">$79.99/user/mo</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Total Queries</div>
+    <div class="stat-value">{{ total_queries }}</div>
+    <div class="stat-sub">/research commands</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Predictions</div>
+    <div class="stat-value">{{ total_predictions }}</div>
+    <div class="stat-sub">tracked calls</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Win Rate</div>
+    <div class="stat-value" style="color:{% if win_rate >= 60 %}var(--green){% elif win_rate >= 50 %}var(--yellow){% else %}var(--red){% endif %}">{{ win_rate }}%</div>
+    <div class="stat-sub">resolved predictions</div>
+  </div>
+</div>
+
+<div class="two-col">
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">Recent Users</span>
+      <a href="/admin/users" class="btn btn-ghost btn-sm">View all →</a>
+    </div>
+    <div class="table-wrap">
+      {% if recent_users %}
+      <table>
+        <thead>
+          <tr>
+            <th>User</th>
+            <th>Status</th>
+            <th>Joined</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for u in recent_users %}
+          <tr>
+            <td>
+              <a href="/admin/users/{{ u.id }}" style="color:var(--text)">{{ u.display_name }}</a>
+              {% if u.telegram_username %}<br><span class="text-muted" style="font-size:11px">@{{ u.telegram_username }}</span>{% endif %}
+            </td>
+            <td>
+              {% if u.subscription_status == 'active' %}
+                <span class="badge badge-green">active</span>
+              {% elif u.subscription_status == 'expired' %}
+                <span class="badge badge-yellow">expired</span>
+              {% else %}
+                <span class="badge badge-red">disabled</span>
+              {% endif %}
+            </td>
+            <td class="td-muted" style="font-size:11px">{{ u.created_at.strftime('%b %d') }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <div class="empty-state">
+        <div class="empty-icon">◉</div>
+        <div>No users yet</div>
+        <div style="margin-top:10px"><a href="/admin/users/new" class="btn btn-primary btn-sm">Add first user</a></div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">Recent Queries</span>
+    </div>
+    <div class="table-wrap">
+      {% if recent_queries %}
+      <table>
+        <thead>
+          <tr>
+            <th>User</th>
+            <th>Market</th>
+            <th>Rec</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for q, u in recent_queries %}
+          <tr>
+            <td><a href="/admin/users/{{ u.id }}" style="color:var(--text);font-size:12px">{{ u.display_name }}</a></td>
+            <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px" class="td-muted" title="{{ q.market_name or q.market_url or '' }}">{{ q.market_name or (q.market_url[:40] + '…' if q.market_url and q.market_url|length > 40 else q.market_url) or '—' }}</td>
+            <td>
+              {% if q.recommendation == 'YES' %}<span class="badge badge-green">YES</span>
+              {% elif q.recommendation == 'NO' %}<span class="badge badge-red">NO</span>
+              {% elif q.recommendation == 'HOLD' %}<span class="badge badge-yellow">HOLD</span>
+              {% else %}<span class="text-muted">—</span>{% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <div class="empty-state">
+        <div class="empty-icon">▦</div>
+        <div>No queries logged yet</div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+{% endblock %}

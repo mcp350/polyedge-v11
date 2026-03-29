@@ -1,0 +1,665 @@
+<!-- Polytragent Profit Calculator v1.1 -->
+<!DOCTYPE html>
+<html lang="en">
+<head><link rel="icon" type="image/x-icon" href="/favicon.ico"><link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png"><link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>Polymarket Profit Calculator — ROI & Edge Calculator | Polytragent</title>
+  <meta name="description" content="Calculate your potential Polymarket profits, ROI, and break-even probability. Free prediction market calculator — see how AI-powered edge detection with Polytragent amplifies your returns.">
+  <link rel="canonical" href="https://polytragent.com/resources/profit-calculator">
+  <meta name="keywords" content="polymarket profit calculator, polymarket roi calculator, prediction market calculator, polymarket edge calculator, polymarket returns">
+  <!-- Open Graph -->
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Polymarket Profit Calculator — ROI & Edge Calculator">
+  <meta property="og:description" content="Calculate your potential Polymarket profits and ROI. See how AI edge detection amplifies returns.">
+  <meta property="og:url" content="https://polytragent.com/resources/profit-calculator">
+  <meta property="og:site_name" content="Polytragent">
+  <meta property="og:image" content="https://polytragent.com/og-image.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Polymarket Profit Calculator — ROI & Edge Calculator">
+  <meta name="twitter:description" content="Calculate your potential Polymarket profits and ROI. See how AI edge detection amplifies returns.">
+  <meta name="twitter:image" content="https://polytragent.com/og-image.png">
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      {"@type": "ListItem", "position": 1, "name": "Home", "item": "https://polytragent.com"},
+      {"@type": "ListItem", "position": 2, "name": "Resources", "item": "https://polytragent.com/resources"},
+      {"@type": "ListItem", "position": 3, "name": "Profit Calculator"}
+    ]
+  }
+  </script>
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebApplication",
+    "name": "Polymarket Profit Calculator",
+    "description": "Free calculator to estimate Polymarket prediction market profits, ROI, and break-even probability.",
+    "url": "https://polytragent.com/resources/profit-calculator",
+    "applicationCategory": "FinanceApplication",
+    "operatingSystem": "Web",
+    "offers": {"@type": "Offer", "price": "0", "priceCurrency": "USD"},
+    "publisher": {
+      "@type": "Organization",
+      "name": "Polytragent",
+      "url": "https://polytragent.com"
+    }
+  }
+  </script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+
+  <style>
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{
+  --black:#000;--white:#fff;--gray:#888;--gray2:#444;--gray3:#222;
+  --border:#1a1a1a;--font-sans:'Inter',sans-serif;--font-mono:'JetBrains Mono',monospace;
+  --green:#6ee7b7;--red:#fca5a5;--blue:#93c5fd;--yellow:#fde68a;
+  --code-bg:#080808;--code-border:#141414;
+}
+html{scroll-behavior:smooth;}
+body{background:var(--black);color:var(--white);font-family:var(--font-sans);font-size:16px;line-height:1.6;overflow-x:hidden;}
+a{color:inherit;text-decoration:none;}
+
+.grid-bg{position:fixed;top:0;left:0;right:0;bottom:0;z-index:0;pointer-events:none;opacity:.35;}
+
+nav{position:fixed;top:0;left:0;right:0;z-index:200;display:flex;align-items:center;justify-content:space-between;padding:0 48px;height:64px;border-bottom:1px solid var(--border);background:rgba(0,0,0,0.92);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);}
+.nav-links{display:flex;gap:32px;list-style:none;}
+.nav-links a{font-size:14px;color:var(--gray);transition:color .15s;}
+.nav-links a:hover{color:var(--white);}
+.nav-links li{position:relative;}
+.nav-dropdown{display:none;position:absolute;top:100%;left:-16px;padding-top:12px;z-index:300;}
+.nav-links li:hover .nav-dropdown{display:block;}
+.nav-dropdown-inner{background:rgba(0,0,0,0.96);border:1px solid var(--border);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);padding:12px 0;min-width:260px;}
+.nav-dropdown a{display:block;padding:8px 20px;font-size:13px;color:var(--gray);transition:color .15s,background .15s;white-space:nowrap;}
+.nav-dropdown a:hover{color:var(--white);background:rgba(255,255,255,.04);}
+.ndrop-label{padding:6px 20px 4px;font-family:var(--font-mono);font-size:9px;color:var(--gray2);letter-spacing:2px;text-transform:uppercase;}
+.ndrop-label:not(:first-child){margin-top:8px;border-top:1px solid var(--border);padding-top:10px;}
+.nav-ctas{display:flex;gap:12px;align-items:center;}
+.btn-solid{display:inline-flex;align-items:center;gap:6px;padding:9px 20px;background:var(--white);color:var(--black);font-size:13px;font-weight:500;font-family:var(--font-sans);border:none;cursor:pointer;transition:opacity .15s;}
+.btn-solid:hover{opacity:.85;}
+.btn-outline{display:inline-flex;align-items:center;gap:6px;padding:8px 20px;background:transparent;color:var(--white);font-size:13px;border:1px dashed var(--gray2);cursor:pointer;transition:border-color .15s;}
+.btn-outline:hover{border-color:var(--white);}
+
+/* PAGE LAYOUT */
+.page-content{margin-top:64px;position:relative;z-index:1;}
+
+.calc-hero{padding:80px 48px 60px;border-bottom:1px solid var(--border);text-align:center;}
+.calc-hero-tag{font-family:var(--font-mono);font-size:11px;color:var(--gray);letter-spacing:2px;text-transform:uppercase;margin-bottom:24px;display:flex;align-items:center;justify-content:center;gap:10px;}
+.calc-hero-tag::before{content:'';display:inline-block;width:24px;height:1px;background:var(--gray);}
+.calc-hero-tag::after{content:'';display:inline-block;width:24px;height:1px;background:var(--gray);}
+.calc-hero h1{font-size:clamp(36px,4.5vw,60px);font-weight:600;line-height:1.1;letter-spacing:-2px;margin-bottom:20px;}
+.calc-hero h1 span{color:var(--green);}
+.calc-hero p{font-size:16px;color:var(--gray);max-width:560px;margin:0 auto;font-weight:300;line-height:1.7;}
+
+/* CALCULATOR GRID */
+.calc-wrapper{display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid var(--border);}
+
+/* LEFT — INPUTS */
+.calc-inputs{padding:48px;border-right:1px solid var(--border);}
+.calc-section-label{font-family:var(--font-mono);font-size:9px;color:var(--gray2);letter-spacing:2px;text-transform:uppercase;margin-bottom:28px;display:flex;align-items:center;gap:8px;}
+.calc-section-label::before{content:'//';color:var(--gray2);}
+
+.input-group{margin-bottom:32px;}
+.input-group:last-child{margin-bottom:0;}
+.input-label{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px;}
+.input-label span{font-size:13px;font-weight:400;color:var(--gray);}
+.input-value{font-family:var(--font-mono);font-size:14px;font-weight:500;color:var(--white);background:var(--code-bg);border:1px solid var(--code-border);padding:4px 12px;min-width:80px;text-align:right;}
+
+.slider-wrap{position:relative;width:100%;}
+input[type="range"]{-webkit-appearance:none;width:100%;height:2px;background:var(--border);outline:none;cursor:pointer;position:relative;}
+input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;background:var(--white);border:none;cursor:grab;position:relative;z-index:2;}
+input[type="range"]::-moz-range-thumb{width:16px;height:16px;background:var(--white);border:none;cursor:grab;}
+input[type="range"]:active::-webkit-slider-thumb{cursor:grabbing;background:var(--green);}
+.slider-range{display:flex;justify-content:space-between;margin-top:6px;font-family:var(--font-mono);font-size:9px;color:var(--gray2);}
+
+.input-row{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
+
+.toggle-group{display:flex;gap:0;border:1px solid var(--border);}
+.toggle-btn{flex:1;padding:10px 16px;font-size:12px;font-family:var(--font-sans);font-weight:500;color:var(--gray);background:transparent;border:none;cursor:pointer;transition:all .15s;text-align:center;}
+.toggle-btn.active{background:var(--white);color:var(--black);}
+.toggle-btn:not(.active):hover{color:var(--white);background:rgba(255,255,255,.04);}
+
+/* RIGHT — RESULTS */
+.calc-results{padding:48px;display:flex;flex-direction:column;gap:0;}
+
+.result-hero{text-align:center;padding:40px 24px;border:1px solid var(--code-border);background:var(--code-bg);margin-bottom:24px;position:relative;overflow:hidden;}
+.result-hero::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--green),transparent);}
+.result-label{font-family:var(--font-mono);font-size:9px;color:var(--gray2);letter-spacing:2px;text-transform:uppercase;margin-bottom:8px;}
+.result-big{font-size:clamp(42px,5vw,64px);font-weight:700;letter-spacing:-2px;line-height:1;transition:color .3s;}
+.result-big.positive{color:var(--green);}
+.result-big.negative{color:var(--red);}
+.result-sub{font-family:var(--font-mono);font-size:12px;color:var(--gray);margin-top:8px;}
+
+.result-grid{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--code-border);margin-bottom:24px;}
+.result-card{background:var(--black);padding:20px;position:relative;}
+.result-card::after{content:'';position:absolute;top:0;right:0;width:40%;height:100%;background:linear-gradient(180deg,rgba(110,231,183,.02),transparent);pointer-events:none;opacity:0;transition:opacity .4s;}
+.result-card:hover::after{opacity:1;}
+.result-card-label{font-family:var(--font-mono);font-size:9px;color:var(--gray2);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;}
+.result-card-value{font-size:22px;font-weight:600;letter-spacing:-1px;}
+.result-card-note{font-size:11px;color:var(--gray);margin-top:2px;font-weight:300;}
+
+/* COMPARISON SECTION */
+.comparison-section{border:1px solid var(--code-border);background:var(--code-bg);overflow:hidden;}
+.comp-header{padding:12px 20px;border-bottom:1px solid var(--code-border);display:flex;align-items:center;justify-content:space-between;}
+.comp-header-left{font-family:var(--font-mono);font-size:9px;color:var(--gray2);letter-spacing:1px;text-transform:uppercase;display:flex;align-items:center;gap:8px;}
+.comp-header-left .dot{width:5px;height:5px;border-radius:50%;background:var(--green);animation:pulse-g 2s infinite;}
+@keyframes pulse-g{0%,100%{opacity:1;}50%{opacity:.3;}}
+.comp-row{display:grid;grid-template-columns:1fr 100px 100px;padding:12px 20px;border-bottom:1px solid var(--code-border);font-size:12px;align-items:center;transition:background .2s;}
+.comp-row:last-child{border-bottom:none;}
+.comp-row:hover{background:rgba(255,255,255,.02);}
+.comp-row.header{font-family:var(--font-mono);font-size:9px;color:var(--gray2);letter-spacing:1px;text-transform:uppercase;}
+.comp-metric{color:var(--gray);font-weight:300;}
+.comp-val{font-family:var(--font-mono);font-size:12px;text-align:right;font-weight:500;}
+.comp-val.green{color:var(--green);}
+.comp-val.red{color:var(--red);}
+.comp-val.neutral{color:var(--gray);}
+
+/* SCENARIO TERMINAL */
+.scenario-section{margin-top:24px;}
+.scenario-term{border:1px solid var(--code-border);background:var(--code-bg);font-family:var(--font-mono);overflow:hidden;}
+.scenario-term-header{padding:10px 16px;border-bottom:1px solid var(--code-border);display:flex;align-items:center;gap:8px;font-size:9px;color:var(--gray2);letter-spacing:1px;text-transform:uppercase;}
+.st-dots{display:flex;gap:5px;}
+.st-dot{width:7px;height:7px;border-radius:50%;border:1px solid #333;}
+.st-dot.active{background:#333;}
+.scenario-body{padding:14px 16px;font-size:11px;line-height:1.8;}
+.sc-line{display:flex;gap:10px;color:#555;}
+.sc-tag{color:var(--gray2);flex-shrink:0;width:50px;font-size:10px;}
+.sc-msg{color:#666;}
+.sc-green{color:#4a7c59;}
+.sc-red{color:#7c4a4a;}
+.sc-yellow{color:#7c6a3a;}
+.sc-blue{color:#4a5f7c;}
+
+/* CTA STRIP */
+.calc-cta{padding:60px 48px;border-bottom:1px solid var(--border);text-align:center;}
+.calc-cta h2{font-size:clamp(28px,3vw,42px);font-weight:600;letter-spacing:-1.5px;margin-bottom:16px;}
+.calc-cta p{font-size:15px;color:var(--gray);max-width:480px;margin:0 auto 32px;font-weight:300;}
+.calc-cta-btns{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;}
+.btn-sl{padding:14px 28px;font-size:14px;font-weight:500;background:var(--white);color:var(--black);border:none;cursor:pointer;font-family:var(--font-sans);display:inline-flex;align-items:center;gap:8px;transition:opacity .15s;}
+.btn-sl:hover{opacity:.85;}
+.btn-ol{padding:13px 28px;font-size:14px;font-weight:400;background:transparent;color:var(--white);border:1px dashed var(--gray2);cursor:pointer;font-family:var(--font-sans);display:inline-flex;align-items:center;gap:8px;transition:border-color .15s;}
+.btn-ol:hover{border-color:var(--white);}
+
+/* HOW IT WORKS */
+.how-section{border-bottom:1px solid var(--border);display:grid;grid-template-columns:44% 56%;}
+.how-left{padding:80px 48px;border-right:1px solid var(--border);display:flex;flex-direction:column;justify-content:center;}
+.how-left h2{font-size:clamp(28px,3.5vw,44px);font-weight:600;letter-spacing:-1.5px;line-height:1.1;margin-bottom:16px;}
+.how-left p{font-size:15px;color:var(--gray);font-weight:300;line-height:1.7;max-width:380px;}
+.how-right{padding:80px 48px;}
+.how-step{display:grid;grid-template-columns:44px 1fr;gap:16px;padding:22px 0;border-bottom:1px solid var(--border);align-items:start;}
+.how-step:first-child{border-top:1px solid var(--border);}
+.how-num{font-family:var(--font-mono);font-size:20px;font-weight:300;color:var(--gray2);line-height:1;}
+.how-text h3{font-size:14px;font-weight:500;margin-bottom:4px;}
+.how-text p{font-size:13px;color:var(--gray);font-weight:300;line-height:1.65;}
+
+footer{border-top:1px solid var(--border);padding:28px 48px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:20px;position:relative;z-index:1;}
+.fcopy{font-family:var(--font-mono);font-size:10px;color:var(--gray2);}
+.flinks{display:flex;gap:28px;list-style:none;}
+.flinks a{font-size:13px;color:var(--gray2);transition:color .15s;}.flinks a:hover{color:var(--white);}
+.disc{border-top:1px solid var(--border);padding:18px 48px;position:relative;z-index:1;}
+.disc p{font-size:10px;color:#2a2a2a;font-family:var(--font-mono);line-height:1.6;}
+
+.glow-sep{height:1px;background:linear-gradient(90deg,transparent 0%,rgba(110,231,183,.06) 20%,rgba(110,231,183,.1) 50%,rgba(110,231,183,.06) 80%,transparent 100%);position:relative;z-index:1;}
+
+@media(max-width:900px){
+  .calc-wrapper,.how-section{grid-template-columns:1fr;}
+  .calc-inputs{border-right:none;border-bottom:1px solid var(--border);}
+  .how-left{border-right:none;border-bottom:1px solid var(--border);}
+  nav{padding:0 20px;}
+  .calc-hero,.calc-inputs,.calc-results,.calc-cta,.how-left,.how-right{padding:48px 24px;}
+  .nav-links{display:none;}
+  .result-grid{grid-template-columns:1fr;}
+  .comp-row{grid-template-columns:1fr 80px 80px;}
+  .input-row{grid-template-columns:1fr;}
+  footer,.disc{padding:24px;}
+}
+@media(max-width:600px){
+  .calc-cta-btns{flex-direction:column;align-items:center;}
+  .result-big{font-size:36px;}
+}
+  </style>
+</head>
+<body>
+
+<canvas class="grid-bg" id="gridCanvas"></canvas>
+
+<nav>
+  <a href="/">
+    <svg height="22" viewBox="0 0 340 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M4 33 L20 5 L36 33" stroke="white" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+      <text x="52" y="29" font-family="Inter,sans-serif" font-size="19" font-weight="600" letter-spacing="4" fill="white">POLYTRAGENT</text>
+    </svg>
+  </a>
+  <ul class="nav-links">
+    <li><a href="/#features">Features</a></li>
+    <li><a href="/#how-it-works">How it works</a></li>
+    <li><a href="/#pricing">Pricing</a></li>
+    <li>
+      <a href="/resources">Resources ▾</a>
+      <div class="nav-dropdown"><div class="nav-dropdown-inner">
+        <div class="ndrop-label">Tools</div>
+        <a href="/resources/profit-calculator" style="color:var(--white);">Profit Calculator</a>
+        <div class="ndrop-label">Compare</div>
+        <a href="/compare">All Comparisons</a>
+        <a href="/compare/polytragent-vs-polycop">Polytragent vs PolyCop</a>
+        <a href="/compare/polytragent-vs-polysight">Polytragent vs Polysight</a>
+        <div class="ndrop-label">Guides</div>
+        <a href="/resources/polymarket-strategies">Polymarket Strategies 2026</a>
+        <a href="/resources/how-to-make-money-polymarket">How to Make Money</a>
+        <a href="/resources/prediction-market-strategies">Prediction Market Strategies</a>
+        <div class="ndrop-label">Blog</div>
+        <a href="/blog">All Articles</a>
+      </div></div>
+    </li>
+    <li><a href="/#faq">FAQ</a></li>
+    <li><a href="https://polytragent.gitbook.io/polytragent-docs/polytragent-documentation" target="_blank">Docs</a></li>
+  </ul>
+  <div class="nav-ctas">
+    <a href="/#pricing" class="btn-outline">See pricing</a>
+    <a href="https://t.me/bmpolybot" target="_blank" class="btn-solid">Get started →</a>
+  </div>
+</nav>
+
+<div class="page-content">
+
+  <!-- HERO -->
+  <section class="calc-hero">
+    <div class="calc-hero-tag">Polymarket Profit Calculator</div>
+    <h1>Calculate your<br><span>prediction market</span> profits</h1>
+    <p>Enter your trade parameters below. See potential profit, ROI, and break-even probability — then compare returns with and without Polytragent's AI edge detection.</p>
+  </section>
+
+  <div class="glow-sep"></div>
+
+  <!-- CALCULATOR -->
+  <div class="calc-wrapper">
+
+    <!-- INPUTS -->
+    <div class="calc-inputs">
+      <div class="calc-section-label">Trade Parameters</div>
+
+      <div class="input-group">
+        <div class="input-label">
+          <span>Investment Amount</span>
+          <div class="input-value" id="investDisplay">$500</div>
+        </div>
+        <div class="slider-wrap">
+          <input type="range" id="investSlider" min="10" max="10000" step="10" value="500">
+          <div class="slider-range"><span>$10</span><span>$10,000</span></div>
+        </div>
+      </div>
+
+      <div class="input-group">
+        <div class="input-label">
+          <span>Buy Price (share cost)</span>
+          <div class="input-value" id="buyDisplay">$0.45</div>
+        </div>
+        <div class="slider-wrap">
+          <input type="range" id="buySlider" min="1" max="99" step="1" value="45">
+          <div class="slider-range"><span>$0.01</span><span>$0.99</span></div>
+        </div>
+      </div>
+
+      <div class="input-group">
+        <div class="input-label">
+          <span>Your Estimated Win Probability</span>
+          <div class="input-value" id="probDisplay">65%</div>
+        </div>
+        <div class="slider-wrap">
+          <input type="range" id="probSlider" min="1" max="99" step="1" value="65">
+          <div class="slider-range"><span>1%</span><span>99%</span></div>
+        </div>
+      </div>
+
+      <div class="input-group">
+        <div class="input-label">
+          <span>Position</span>
+        </div>
+        <div class="toggle-group">
+          <button class="toggle-btn active" data-val="yes" onclick="setPosition('yes',this)">Buy YES</button>
+          <button class="toggle-btn" data-val="no" onclick="setPosition('no',this)">Buy NO</button>
+        </div>
+      </div>
+
+      <div class="input-group">
+        <div class="input-label">
+          <span>Number of Trades (monthly)</span>
+          <div class="input-value" id="tradesDisplay">20</div>
+        </div>
+        <div class="slider-wrap">
+          <input type="range" id="tradesSlider" min="1" max="100" step="1" value="20">
+          <div class="slider-range"><span>1</span><span>100</span></div>
+        </div>
+      </div>
+
+      <div class="input-group" style="margin-top:36px;padding-top:28px;border-top:1px solid var(--border);">
+        <div class="calc-section-label">Polytragent Advantage</div>
+        <div class="input-label">
+          <span>AI Edge Boost (accuracy improvement)</span>
+          <div class="input-value" id="edgeDisplay">+12%</div>
+        </div>
+        <div class="slider-wrap">
+          <input type="range" id="edgeSlider" min="0" max="30" step="1" value="12">
+          <div class="slider-range"><span>+0%</span><span>+30%</span></div>
+        </div>
+        <p style="font-size:11px;color:var(--gray2);margin-top:10px;font-weight:300;line-height:1.6;">Based on Polytragent's 78% win rate vs the average trader's ~55% baseline accuracy on prediction markets.</p>
+      </div>
+    </div>
+
+    <!-- RESULTS -->
+    <div class="calc-results">
+      <div class="calc-section-label">Results — Single Trade</div>
+
+      <div class="result-hero" id="resultHero">
+        <div class="result-label">Potential Profit</div>
+        <div class="result-big positive" id="profitAmount">+$611.11</div>
+        <div class="result-sub" id="profitRoi">ROI: +122.2%</div>
+      </div>
+
+      <div class="result-grid">
+        <div class="result-card">
+          <div class="result-card-label">Shares Bought</div>
+          <div class="result-card-value" id="sharesBought">1,111</div>
+          <div class="result-card-note">at $0.45 each</div>
+        </div>
+        <div class="result-card">
+          <div class="result-card-label">Payout if Win</div>
+          <div class="result-card-value" id="payoutWin">$1,111.11</div>
+          <div class="result-card-note">shares resolve to $1.00</div>
+        </div>
+        <div class="result-card">
+          <div class="result-card-label">Break-Even Prob.</div>
+          <div class="result-card-value" id="breakEven">45.0%</div>
+          <div class="result-card-note">minimum to be +EV</div>
+        </div>
+        <div class="result-card">
+          <div class="result-card-label">Expected Value</div>
+          <div class="result-card-value" id="expectedValue">+$222.22</div>
+          <div class="result-card-note">probability-weighted</div>
+        </div>
+      </div>
+
+      <!-- COMPARISON: With vs Without Polytragent -->
+      <div class="comparison-section">
+        <div class="comp-header">
+          <div class="comp-header-left"><span class="dot"></span> Monthly Projection</div>
+        </div>
+        <div class="comp-row header">
+          <span>Metric</span>
+          <span style="text-align:right;">Without AI</span>
+          <span style="text-align:right;">With Polytragent</span>
+        </div>
+        <div class="comp-row">
+          <span class="comp-metric">Win Rate</span>
+          <span class="comp-val neutral" id="compWinBase">65%</span>
+          <span class="comp-val green" id="compWinAI">77%</span>
+        </div>
+        <div class="comp-row">
+          <span class="comp-metric">Winning Trades</span>
+          <span class="comp-val neutral" id="compWinsBase">13</span>
+          <span class="comp-val green" id="compWinsAI">15</span>
+        </div>
+        <div class="comp-row">
+          <span class="comp-metric">Monthly Profit</span>
+          <span class="comp-val neutral" id="compProfitBase">+$1,500</span>
+          <span class="comp-val green" id="compProfitAI">+$3,540</span>
+        </div>
+        <div class="comp-row">
+          <span class="comp-metric">Monthly ROI</span>
+          <span class="comp-val neutral" id="compRoiBase">+15.0%</span>
+          <span class="comp-val green" id="compRoiAI">+35.4%</span>
+        </div>
+        <div class="comp-row">
+          <span class="comp-metric">Extra Profit from AI</span>
+          <span class="comp-val neutral">—</span>
+          <span class="comp-val green" id="compExtraProfit">+$2,040</span>
+        </div>
+      </div>
+
+      <!-- SCENARIO LOG -->
+      <div class="scenario-section">
+        <div class="scenario-term">
+          <div class="scenario-term-header">
+            <div class="st-dots"><div class="st-dot active"></div><div class="st-dot"></div><div class="st-dot"></div></div>
+            trade_analysis.log
+          </div>
+          <div class="scenario-body" id="scenarioBody">
+            <div class="sc-line"><span class="sc-tag">INIT</span><span class="sc-msg">Loading trade parameters...</span></div>
+            <div class="sc-line"><span class="sc-tag">CALC</span><span class="sc-msg">Investment: $500 → <span class="sc-green">1,111 shares</span> @ $0.45</span></div>
+            <div class="sc-line"><span class="sc-tag">EDGE</span><span class="sc-msg">Break-even: 45.0% | Your estimate: 65% → <span class="sc-green">+20.0% edge</span></span></div>
+            <div class="sc-line"><span class="sc-tag">PROB</span><span class="sc-msg">Expected value: <span class="sc-green">+$222.22</span> per trade</span></div>
+            <div class="sc-line"><span class="sc-tag">AI</span><span class="sc-msg">Polytragent boost: +12% accuracy → win rate <span class="sc-green">77%</span></span></div>
+            <div class="sc-line"><span class="sc-tag">PROJ</span><span class="sc-msg">Monthly (20 trades): <span class="sc-green">+$3,540</span> with AI vs +$1,500 baseline</span></div>
+            <div class="sc-line"><span class="sc-tag sc-green">REC</span><span class="sc-msg sc-green">Signal: STRONG BUY — significant edge detected ✓</span></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="glow-sep"></div>
+
+  <!-- HOW POLYMARKET WORKS SECTION -->
+  <section class="how-section">
+    <div class="how-left">
+      <h2>How Polymarket<br>profit works</h2>
+      <p>Polymarket uses binary outcome shares. Buy low, sell high — or hold until resolution. Every share resolves to $1.00 or $0.00. Your edge is the gap between price and true probability.</p>
+    </div>
+    <div class="how-right">
+      <div class="how-step">
+        <div class="how-num">01</div>
+        <div class="how-text">
+          <h3>Buy shares at market price</h3>
+          <p>YES shares cost $0.01–$0.99. The price reflects the market's implied probability. A $0.40 YES share means the market thinks there's a 40% chance.</p>
+        </div>
+      </div>
+      <div class="how-step">
+        <div class="how-num">02</div>
+        <div class="how-text">
+          <h3>Find edge with Polytragent</h3>
+          <p>Our AI analyzes millions of data points, cross-references forecasters, and detects mispriced markets. If the true probability is higher than the price — that's edge.</p>
+        </div>
+      </div>
+      <div class="how-step">
+        <div class="how-num">03</div>
+        <div class="how-text">
+          <h3>Profit on resolution</h3>
+          <p>If your shares resolve YES, each pays $1.00. Bought at $0.45? That's $0.55 profit per share — a 122% ROI. The bigger the edge, the bigger the expected value.</p>
+        </div>
+      </div>
+      <div class="how-step">
+        <div class="how-num">04</div>
+        <div class="how-text">
+          <h3>Compound your edge</h3>
+          <p>Consistent small edges compound. 20 trades per month at 78% accuracy scales to thousands in monthly profit. That's the Polytragent advantage.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="glow-sep"></div>
+
+  <!-- CTA -->
+  <section class="calc-cta">
+    <h2>Stop guessing. Start researching.</h2>
+    <p>Polytragent analyzes every Polymarket sub-market in seconds. Find the edge the calculator just showed you — on every single trade.</p>
+    <div class="calc-cta-btns">
+      <a href="https://t.me/bmpolybot" target="_blank" class="btn-sl">Start with Polytragent →</a>
+      <a href="/#pricing" class="btn-ol">See pricing plans</a>
+    </div>
+  </section>
+
+</div>
+
+<footer>
+  <div>
+    <svg height="20" viewBox="0 0 340 40" fill="none" xmlns="http://www.w3.org/2000/svg" style="opacity:.35;">
+      <path d="M4 33 L20 5 L36 33" stroke="white" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+      <text x="52" y="29" font-family="Inter,sans-serif" font-size="19" font-weight="600" letter-spacing="4" fill="white">POLYTRAGENT</text>
+    </svg>
+    <div class="fcopy" style="margin-top:8px;">© 2026 Polytragent. AI Research for Polymarket.</div>
+  </div>
+  <ul class="flinks">
+    <li><a href="/#features">Features</a></li>
+    <li><a href="/#pricing">Pricing</a></li>
+    <li><a href="/resources">Resources</a></li>
+    <li><a href="/resources/profit-calculator">Profit Calculator</a></li>
+    <li><a href="/blog">Blog</a></li>
+    <li><a href="https://x.com/polytragent" target="_blank">X / Twitter</a></li>
+    <li><a href="https://polytragent.gitbook.io/polytragent-docs/polytragent-documentation" target="_blank">Docs</a></li>
+  </ul>
+</footer>
+<div class="disc">
+  <p>Risk Disclaimer: Prediction market trading involves significant financial risk. AI-powered research does not guarantee profits. Past performance is not indicative of future results. Polytragent is a research tool, not a financial advisor. Only trade capital you can afford to lose. This calculator provides estimates only and does not constitute financial advice.</p>
+</div>
+
+<script>
+// Grid background
+(function(){
+  const c=document.getElementById('gridCanvas'),x=c.getContext('2d');
+  function draw(){c.width=innerWidth;c.height=innerHeight;x.strokeStyle='#111';x.lineWidth=.5;const s=60;for(let i=0;i<c.width;i+=s){x.beginPath();x.moveTo(i,0);x.lineTo(i,c.height);x.stroke();}for(let j=0;j<c.height;j+=s){x.beginPath();x.moveTo(0,j);x.lineTo(c.width,j);x.stroke();}}
+  draw();addEventListener('resize',draw);
+})();
+
+// Calculator logic
+const state = {
+  investment: 500,
+  buyPrice: 0.45,
+  winProb: 0.65,
+  position: 'yes',
+  trades: 20,
+  edgeBoost: 0.12
+};
+
+const $ = id => document.getElementById(id);
+
+function setPosition(val, btn) {
+  state.position = val;
+  document.querySelectorAll('.toggle-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  calculate();
+}
+
+function bindSlider(sliderId, displayId, stateKey, formatter, transform) {
+  const slider = $(sliderId);
+  slider.addEventListener('input', function() {
+    const raw = parseFloat(this.value);
+    const val = transform ? transform(raw) : raw;
+    state[stateKey] = val;
+    $(displayId).textContent = formatter(val);
+    calculate();
+  });
+}
+
+function fmtDollar(v) { return '$' + v.toLocaleString('en-US'); }
+function fmtPrice(v) { return '$' + v.toFixed(2); }
+function fmtPct(v) { return Math.round(v * 100) + '%'; }
+function fmtEdge(v) { return '+' + Math.round(v * 100) + '%'; }
+
+bindSlider('investSlider', 'investDisplay', 'investment', fmtDollar);
+bindSlider('buySlider', 'buyDisplay', 'buyPrice', fmtPrice, v => v / 100);
+bindSlider('probSlider', 'probDisplay', 'winProb', fmtPct, v => v / 100);
+bindSlider('tradesSlider', 'tradesDisplay', 'trades', v => v.toString());
+bindSlider('edgeSlider', 'edgeDisplay', 'edgeBoost', fmtEdge, v => v / 100);
+
+function calculate() {
+  const { investment, buyPrice, winProb, position, trades, edgeBoost } = state;
+
+  // Share cost depends on position
+  const shareCost = position === 'yes' ? buyPrice : (1 - buyPrice);
+  const shares = investment / shareCost;
+  const profitPerShare = 1 - shareCost;
+  const totalPayout = shares * 1; // $1 per share if win
+  const totalProfit = totalPayout - investment;
+  const roi = (totalProfit / investment) * 100;
+  const breakEven = shareCost; // break-even = share cost as probability
+  const edge = winProb - breakEven;
+  const ev = (winProb * totalProfit) - ((1 - winProb) * investment);
+
+  // With AI boost
+  const aiWinProb = Math.min(winProb + edgeBoost, 0.99);
+  const aiEv = (aiWinProb * totalProfit) - ((1 - aiWinProb) * investment);
+
+  // Monthly projections
+  const monthlyWinsBase = Math.round(trades * winProb);
+  const monthlyLossBase = trades - monthlyWinsBase;
+  const monthlyProfitBase = (monthlyWinsBase * totalProfit) - (monthlyLossBase * investment);
+  const monthlyRoiBase = (monthlyProfitBase / (trades * investment)) * 100;
+
+  const monthlyWinsAI = Math.round(trades * aiWinProb);
+  const monthlyLossAI = trades - monthlyWinsAI;
+  const monthlyProfitAI = (monthlyWinsAI * totalProfit) - (monthlyLossAI * investment);
+  const monthlyRoiAI = (monthlyProfitAI / (trades * investment)) * 100;
+
+  const extraProfit = monthlyProfitAI - monthlyProfitBase;
+
+  // Update DOM — Single trade
+  const profitEl = $('profitAmount');
+  profitEl.textContent = (totalProfit >= 0 ? '+' : '') + '$' + Math.abs(totalProfit).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  profitEl.className = 'result-big ' + (totalProfit >= 0 ? 'positive' : 'negative');
+  $('profitRoi').textContent = 'ROI: ' + (roi >= 0 ? '+' : '') + roi.toFixed(1) + '%';
+
+  $('sharesBought').textContent = Math.floor(shares).toLocaleString('en-US');
+  $('sharesBought').closest('.result-card').querySelector('.result-card-note').textContent = 'at $' + shareCost.toFixed(2) + ' each';
+
+  $('payoutWin').textContent = '$' + totalPayout.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  $('breakEven').textContent = (breakEven * 100).toFixed(1) + '%';
+
+  const evEl = $('expectedValue');
+  evEl.textContent = (ev >= 0 ? '+' : '-') + '$' + Math.abs(ev).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  evEl.style.color = ev >= 0 ? 'var(--green)' : 'var(--red)';
+
+  // Update comparison table
+  $('compWinBase').textContent = Math.round(winProb * 100) + '%';
+  $('compWinAI').textContent = Math.round(aiWinProb * 100) + '%';
+  $('compWinsBase').textContent = monthlyWinsBase;
+  $('compWinsAI').textContent = monthlyWinsAI;
+
+  function fmtSigned(v) {
+    return (v >= 0 ? '+' : '-') + '$' + Math.abs(v).toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  }
+
+  $('compProfitBase').textContent = fmtSigned(monthlyProfitBase);
+  $('compProfitBase').className = 'comp-val ' + (monthlyProfitBase >= 0 ? 'neutral' : 'red');
+  $('compProfitAI').textContent = fmtSigned(monthlyProfitAI);
+  $('compProfitAI').className = 'comp-val ' + (monthlyProfitAI >= 0 ? 'green' : 'red');
+  $('compRoiBase').textContent = (monthlyRoiBase >= 0 ? '+' : '') + monthlyRoiBase.toFixed(1) + '%';
+  $('compRoiBase').className = 'comp-val ' + (monthlyRoiBase >= 0 ? 'neutral' : 'red');
+  $('compRoiAI').textContent = (monthlyRoiAI >= 0 ? '+' : '') + monthlyRoiAI.toFixed(1) + '%';
+  $('compRoiAI').className = 'comp-val ' + (monthlyRoiAI >= 0 ? 'green' : 'red');
+  $('compExtraProfit').textContent = fmtSigned(extraProfit);
+  $('compExtraProfit').className = 'comp-val ' + (extraProfit >= 0 ? 'green' : 'red');
+
+  // Update terminal log
+  const posLabel = position === 'yes' ? 'YES' : 'NO';
+  const edgePct = (edge * 100).toFixed(1);
+  const signal = edge > 0.15 ? 'STRONG BUY' : edge > 0.05 ? 'BUY' : edge > 0 ? 'LEAN BUY' : 'NO EDGE';
+  const signalClass = edge > 0.05 ? 'sc-green' : edge > 0 ? 'sc-yellow' : 'sc-red';
+  const signalIcon = edge > 0 ? '✓' : '✗';
+
+  $('scenarioBody').innerHTML = `
+    <div class="sc-line"><span class="sc-tag">INIT</span><span class="sc-msg">Loading trade parameters...</span></div>
+    <div class="sc-line"><span class="sc-tag">CALC</span><span class="sc-msg">Investment: $${investment.toLocaleString()} → <span class="sc-green">${Math.floor(shares).toLocaleString()} shares</span> @ $${shareCost.toFixed(2)} (${posLabel})</span></div>
+    <div class="sc-line"><span class="sc-tag">EDGE</span><span class="sc-msg">Break-even: ${(breakEven*100).toFixed(1)}% | Your estimate: ${Math.round(winProb*100)}% → <span class="${edge>=0?'sc-green':'sc-red'}">${edge>=0?'+':''}${edgePct}% edge</span></span></div>
+    <div class="sc-line"><span class="sc-tag">PROB</span><span class="sc-msg">Expected value: <span class="${ev>=0?'sc-green':'sc-red'}">${ev>=0?'+':'-'}$${Math.abs(ev).toFixed(2)}</span> per trade</span></div>
+    <div class="sc-line"><span class="sc-tag">AI</span><span class="sc-msg">Polytragent boost: +${Math.round(edgeBoost*100)}% accuracy → win rate <span class="sc-green">${Math.round(aiWinProb*100)}%</span></span></div>
+    <div class="sc-line"><span class="sc-tag">PROJ</span><span class="sc-msg">Monthly (${trades} trades): <span class="${monthlyProfitAI>=0?'sc-green':'sc-red'}">${fmtSigned(monthlyProfitAI)}</span> with AI vs ${fmtSigned(monthlyProfitBase)} baseline</span></div>
+    <div class="sc-line"><span class="sc-tag ${signalClass}">${signal.split(' ')[0]}</span><span class="sc-msg ${signalClass}">Signal: ${signal} — ${edge>0?'edge detected':'no edge at this price'} ${signalIcon}</span></div>
+  `;
+}
+
+// Initial calculation
+calculate();
+</script>
+</body>
+</html>

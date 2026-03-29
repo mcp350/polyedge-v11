@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><link rel="icon" type="image/x-icon" href="/favicon.ico"><link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png"><link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Polymarket Copy Trade Bot | Automated Wallet Mirroring Software</title>
+  <meta name="description" content="Polytragent's copy trade bot automatically mirrors top trader strategies on Polymarket. Hands-off execution with smart wallet mirroring and proportional sizing.">
+<link rel="canonical" href="https://polytragent.com/blog/copy-trade-bot">
+  <meta name="keywords" content="copy trade bot, polymarket copy trading, wallet mirroring bot, automated trader">
+  <meta name="author" content="Polytragent">
+  <meta property="og:title" content="Polymarket Copy Trade Bot">
+  <meta property="og:description" content="Polytragent's copy trade bot automatically mirrors top traders. No manual execution needed.">
+  <meta property="og:type" content="article">
+  <meta property="og:url" content="https://polytragent.com/blog/copy-trade-bot">
+
+  <!-- Twitter Card -->
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Polymarket Copy Trade Bot | Automated Wallet Mirroring Software">
+<meta name="twitter:description" content="Polytragent&#x27;s copy trade bot automatically mirrors top trader strategies on Polymarket. Hands-off execution with smart wallet mirroring and proportional sizing.">
+<meta name="twitter:image" content="https://polytragent.com/og-image.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+
+  <script type="application/ld+json">
+{"@context":"https://schema.org","@type":"Article","headline":"Polymarket Copy Trade Bot | Automated Wallet Mirroring Software","description":"Polytragent&#x27;s copy trade bot automatically mirrors top trader strategies on Polymarket. Hands-off execution with smart wallet mirroring and proportional sizing.","url":"https://polytragent.com/blog/copy-trade-bot","datePublished":"2026-03-16","dateModified":"2026-03-23","author":{"@type":"Organization","name":"Polytragent","url":"https://polytragent.com"},"publisher":{"@type":"Organization","name":"Polytragent","logo":{"@type":"ImageObject","url":"https://polytragent.com/favicon-512x512.png"}}}
+</script>
+
+  
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Home","item":"https://polytragent.com/"},{"@type":"ListItem","position":2,"name":"Blog","item":"https://polytragent.com/blog"},{"@type":"ListItem","position":3,"name":"Copy Trade Bot"}]}
+</script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{
+  --black:#000;--white:#fff;--gray:#888;--gray2:#444;--gray3:#222;
+  --border:#1a1a1a;--font-sans:'Inter',sans-serif;--font-mono:'JetBrains Mono',monospace;
+  --green:#6ee7b7;--red:#fca5a5;--blue:#93c5fd;--yellow:#fde68a;
+  --code-bg:#080808;--code-border:#141414;
+}
+html{scroll-behavior:smooth;}
+body{background:var(--black);color:var(--white);font-family:var(--font-sans);font-size:16px;line-height:1.6;overflow-x:hidden;}
+a{color:inherit;text-decoration:none;}
+
+.grid-bg{position:fixed;top:0;left:0;right:0;bottom:0;z-index:0;pointer-events:none;opacity:.35;}
+
+nav{position:fixed;top:0;left:0;right:0;z-index:200;display:flex;align-items:center;justify-content:space-between;padding:0 48px;height:64px;border-bottom:1px solid var(--border);background:rgba(0,0,0,0.92);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);}
+.nav-links{display:flex;gap:32px;list-style:none;}
+.nav-links a{font-size:14px;color:var(--gray);transition:color .15s;}
+.nav-links a:hover{color:var(--white);}
+.nav-links li{position:relative;}
+.nav-dropdown{display:none;position:absolute;top:100%;left:-16px;padding-top:12px;z-index:300;}
+.nav-links li:hover .nav-dropdown{display:block;}
+.nav-dropdown-inner{background:rgba(0,0,0,0.96);border:1px solid var(--border);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);padding:12px 0;min-width:260px;}
+.nav-dropdown a{display:block;padding:8px 20px;font-size:13px;color:var(--gray);transition:color .15s,background .15s;white-space:nowrap;}
+.nav-dropdown a:hover{color:var(--white);background:rgba(255,255,255,.04);}
+.ndrop-label{padding:6px 20px 4px;font-family:var(--font-mono);font-size:9px;color:var(--gray2);letter-spacing:2px;text-transform:uppercase;}
+.ndrop-label:not(:first-child){margin-top:8px;border-top:1px solid var(--border);padding-top:10px;}
+.nav-ctas{display:flex;gap:12px;align-items:center;}
+.btn-solid{display:inline-flex;align-items:center;gap:6px;padding:9px 20px;background:var(--white);color:var(--black);font-size:13px;font-weight:500;font-family:var(--font-sans);border:none;cursor:pointer;transition:opacity .15s;}
+.btn-solid:hover{opacity:.85;}
+.btn-outline{display:inline-flex;align-items:center;gap:6px;padding:8px 20px;background:transparent;color:var(--white);font-size:13px;border:1px dashed var(--gray2);cursor:pointer;transition:border-color .15s;}
+.btn-outline:hover{border-color:var(--white);}
+
+.run-term{background:#000;border:1px solid var(--border);font-family:var(--font-mono);font-size:10px;overflow:hidden;position:relative;}
+.run-term::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(110,231,183,.15),transparent);animation:term-scan 4s ease-in-out infinite;z-index:2;}
+@keyframes term-scan{0%,100%{opacity:0;}50%{opacity:1;}}
+.rt-header{padding:10px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;color:var(--gray2);font-size:9px;letter-spacing:1px;text-transform:uppercase;}
+.rt-dots{display:flex;gap:5px;}
+.rt-dot{width:7px;height:7px;border-radius:50%;border:1px solid #333;}
+.rt-dot.active{background:#333;}
+.rt-body{padding:0;min-height:340px;max-height:440px;overflow:hidden;position:relative;}
+.rt-line{display:flex;gap:10px;padding:3px 16px;opacity:0;transform:translateY(2px);animation:rt-in .15s forwards;font-size:10px;line-height:1.65;}
+@keyframes rt-in{to{opacity:1;transform:none;}}
+.rt-ts{color:#333;flex-shrink:0;font-size:9px;padding-top:1px;width:52px;}
+.rt-tag{flex-shrink:0;font-size:9.5px;width:60px;font-weight:500;}
+.rt-msg{color:#555;font-size:10px;line-height:1.55;}
+.rt-cursor{display:inline-block;width:6px;height:12px;background:#4a7c59;animation:rt-blink 1s step-end infinite;margin-left:2px;vertical-align:middle;}
+@keyframes rt-blink{50%{opacity:0;}}
+
+.faq-section{border-top:1px solid var(--border);display:grid;grid-template-columns:44% 56%;position:relative;z-index:1;}
+.fl2{padding:100px 48px;border-right:1px solid var(--border);display:flex;flex-direction:column;justify-content:flex-start;}
+.fr{padding:100px 48px;}
+.fqi{border-top:1px solid var(--border);padding:22px 0;}
+.fqi:last-child{border-bottom:1px solid var(--border);}
+.fqq{font-size:14px;font-weight:400;margin-bottom:8px;color:var(--white);}
+.fqa{font-size:13px;color:var(--gray);line-height:1.7;font-weight:300;}
+
+.ctas{border-top:1px solid var(--border);display:grid;grid-template-columns:44% 56%;min-height:55vh;position:relative;z-index:1;}
+.ctl{padding:100px 48px;border-right:1px solid var(--border);display:flex;flex-direction:column;justify-content:center;}
+.ctr{padding:80px 48px;display:flex;flex-direction:column;justify-content:center;overflow:hidden;position:relative;}
+.trnote{font-family:var(--font-mono);font-size:11px;color:var(--gray2);margin-top:20px;display:flex;gap:24px;flex-wrap:wrap;}
+.trnote span::before{content:'// ';}
+
+.btn-sl{padding:14px 28px;font-size:14px;font-weight:500;background:var(--white);color:var(--black);border:none;cursor:pointer;font-family:var(--font-sans);display:inline-flex;align-items:center;gap:8px;transition:opacity .15s;}
+.btn-sl:hover{opacity:.85;}
+
+.rev2{opacity:0;transform:translateY(16px);transition:opacity .55s,transform .55s;}
+.rev2.in{opacity:1;transform:none;}
+
+footer{border-top:1px solid var(--border);padding:28px 48px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:20px;position:relative;z-index:1;}
+.fcopy{font-family:var(--font-mono);font-size:10px;color:var(--gray2);}
+.flinks{display:flex;gap:28px;list-style:none;}
+.flinks a{font-size:13px;color:var(--gray2);transition:color .15s;}.flinks a:hover{color:var(--white);}
+.disc{border-top:1px solid var(--border);padding:18px 48px;position:relative;z-index:1;}
+.disc p{font-size:10px;color:#2a2a2a;font-family:var(--font-mono);line-height:1.6;}
+
+.article-content{max-width:720px;padding:120px 48px 80px;margin:0 auto;position:relative;z-index:1;}
+.article-breadcrumb{font-family:var(--font-mono);font-size:11px;color:var(--gray2);margin-bottom:40px;display:flex;align-items:center;gap:8px;}
+.article-breadcrumb a{color:var(--gray);transition:color .15s;}
+.article-breadcrumb a:hover{color:var(--white);}
+.article-breadcrumb span{color:var(--gray2);}
+.article-tag{font-family:var(--font-mono);font-size:11px;color:var(--gray);letter-spacing:2px;text-transform:uppercase;margin-bottom:24px;display:flex;align-items:center;gap:10px;}
+.article-tag::before{content:'';display:inline-block;width:24px;height:1px;background:var(--gray);}
+.article-h1{font-size:clamp(32px,4.5vw,56px);font-weight:600;line-height:1.08;letter-spacing:-2px;margin-bottom:24px;}
+.article-meta{font-size:13px;color:var(--gray);font-weight:300;margin-bottom:48px;padding-bottom:48px;border-bottom:1px solid var(--border);}
+.article-content h2{font-size:clamp(24px,3vw,36px);margin-top:64px;margin-bottom:20px;}
+.article-content h3{font-size:18px;margin-top:40px;margin-bottom:12px;}
+.article-content p{font-size:15px;color:var(--gray);line-height:1.8;font-weight:300;margin-bottom:20px;max-width:none;}
+.article-content ul,.article-content ol{margin:20px 0;padding-left:24px;}
+.article-content li{font-size:14px;color:var(--gray);line-height:1.7;font-weight:300;margin-bottom:10px;}
+.article-content strong{color:var(--white);font-weight:500;}
+.article-cta{margin:60px 0;padding:48px;border:1px solid var(--border);text-align:center;position:relative;overflow:hidden;}
+.article-cta::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(110,231,183,.15),transparent);}
+.article-cta h3{font-size:24px;font-weight:600;letter-spacing:-1px;margin-bottom:12px;}
+.article-cta p{font-size:14px;color:var(--gray);margin-bottom:24px;max-width:400px;margin-left:auto;margin-right:auto;}
+
+.comp-table{width:100%;border-collapse:collapse;margin:32px 0;font-size:13px;}
+.comp-table th{font-family:var(--font-mono);font-size:10px;color:var(--gray2);letter-spacing:1px;text-transform:uppercase;padding:12px 16px;border-bottom:1px solid var(--border);text-align:left;font-weight:400;}
+.comp-table td{padding:12px 16px;border-bottom:1px solid var(--border);color:var(--gray);font-weight:300;}
+.comp-table tr:hover{background:rgba(255,255,255,.02);}
+.comp-table .check{color:#4a7c59;font-weight:500;}
+.comp-table .cross{color:#7c4a4a;font-weight:500;}
+.comp-table .highlight{color:var(--white);font-weight:500;}
+
+@media(max-width:900px){
+  .split,.split.rev,.faq-section,.ctas{grid-template-columns:1fr;}
+  nav{padding:0 20px;}
+  .article-content{padding:60px 24px;}
+  .nav-links{display:none;}
+  footer,.disc{padding:24px;}
+  .faq-section,.ctas{grid-template-columns:1fr;}
+  .fl2{border-right:none;border-bottom:1px solid var(--border);}
+  .article-content{padding:100px 24px 60px;}
+}
+  </style>
+</head>
+<body>
+  <canvas class="grid-bg" id="gridCanvas"></canvas>
+
+  <nav>
+    <a href="/">
+      <svg height="22" viewBox="0 0 340 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M4 33 L20 5 L36 33" stroke="white" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+        <text x="52" y="29" font-family="Inter,sans-serif" font-size="19" font-weight="600" letter-spacing="4" fill="white">POLYTRAGENT</text>
+      </svg>
+    </a>
+  <ul class="nav-links">
+    <li><a href="/#features">Features</a></li>
+    <li><a href="/#how-it-works">How it works</a></li>
+    <li><a href="/#pricing">Pricing</a></li>
+    <li>
+      <a href="/resources">Resources ▾</a>
+      <div class="nav-dropdown"><div class="nav-dropdown-inner">
+        <div class="ndrop-label">Compare</div>
+        <a href="/compare">All Comparisons</a>
+        <a href="/compare/polytragent-vs-polycop">Polytragent vs PolyCop</a>
+        <a href="/compare/polytragent-vs-polysight">Polytragent vs Polysight</a>
+        <a href="/compare/copy-trading-bots">Copy Trading Bots</a>
+        <a href="/compare/polycop-alternative">PolyCop Alternative</a>
+        <a href="/compare/polysight-alternative">Polysight Alternative</a>
+        <div class="ndrop-label">Landing Pages</div>
+        <a href="/resources/polymarket-strategies">Polymarket Strategies 2026</a>
+        <a href="/resources/how-to-make-money-polymarket">How to Make Money</a>
+        <a href="/resources/prediction-market-strategies">Prediction Market Strategies</a>
+        <a href="/resources/polymarket-telegram-bots">Telegram Bots</a>
+        <a href="/resources/polymarket-automated-trading">Automated Trading</a>
+        <a href="/resources/polymarket-whale-tracking">Whale Tracking</a>
+        <a href="/resources/polymarket-market-making">Market Making</a>
+        <a href="/resources/polymarket-poly-token">POLY Token Airdrop</a>
+        <div class="ndrop-label">Blog</div>
+        <a href="/blog">All Articles</a>
+        <a href="/blog/polymarket-prediction-bot">Polymarket Prediction Bot</a>
+        <a href="/blog/polymarket-tools-guide">Polymarket Tools Guide</a>
+        <a href="/blog/best-polymarket-bots-2026">Best Polymarket Bots 2026</a>
+        <a href="/blog/polymarket-trading-bot">Polymarket Trading Bot</a>
+        <a href="/blog/copy-trade-bot">Copy Trade Bot Guide</a>
+        <a href="/blog/copy-trading-guide">Copy Trading Guide</a>
+        <a href="/blog/polymarket-strategies-2026">Polymarket Strategies 2026</a>
+        <a href="/blog/how-to-make-money-polymarket">How to Make Money on Polymarket</a>
+        <a href="/blog/prediction-market-strategies">Prediction Market Strategies</a>
+        <a href="/blog/polymarket-telegram-bots">Polymarket Telegram Bots</a>
+        <a href="/blog/polymarket-automated-trading">Automated Trading Guide</a>
+        <a href="/blog/polymarket-whale-tracking">Whale Tracking Guide</a>
+        <a href="/blog/polymarket-market-making">Market Making Guide</a>
+        <a href="/blog/polymarket-poly-token">POLY Token Airdrop Guide</a>
+      </div></div>
+    </li>
+    <li><a href="/#faq">FAQ</a></li>
+  </ul>
+    <div class="nav-ctas">
+      <a href="/#pricing" class="btn-outline">View pricing</a>
+      <a href="https://t.me/bmpolybot" class="btn-solid" target="_blank">Get started →</a>
+    </div>
+  </nav>
+
+  <article class="article-content">
+    <div class="article-breadcrumb">
+      <a href="/">Home</a>
+      <span>/</span>
+      <a href="/blog">Blog</a>
+      <span>/</span>
+      <span>Copy Trade Bot</span>
+    </div>
+
+    <div class="article-tag">Copy Trading</div>
+
+    <h1 class="article-h1">Polytragent's Copy Trade Bot: Hands-Off Trading at Scale</h1>
+
+    <div class="article-meta">
+      Published March 14, 2026 • 7 min read • By Polytragent Team
+    </div>
+
+    <p>Imagine if you could hire a personal trading assistant that works 24/7, never sleeps, never gets emotional, and automatically copies the best traders on Polymarket. That's what the Polytragent copy trade bot does. No coding. No complex setup. Just connect your wallet and start mirroring top performers within minutes.</p>
+
+    <h2>What Is the Polytragent Copy Trade Bot?</h2>
+
+    <p>The Polytragent copy trade bot is an automated execution engine that monitors selected traders' wallets on Polymarket and instantly replicates their trades in your account. When your copied trader buys 500 YES shares on a political market, your account automatically buys a proportional amount based on your capital size.</p>
+
+    <p>It's the ultimate hands-off approach to prediction market trading—execute professional-grade trading strategies without needing professional-grade knowledge.</p>
+
+    <h3>Core Features</h3>
+
+    <ul>
+      <li><strong>Real-time Wallet Monitoring:</strong> Scans blockchain transactions from your selected traders every 2-3 seconds</li>
+      <li><strong>Instant Trade Execution:</strong> Executes mirror trades within 5-15 seconds of the original</li>
+      <li><strong>Proportional Sizing:</strong> Scales position sizes based on your capital relative to the trader's capital</li>
+      <li><strong>Risk Management:</strong> Enforces position limits, stop losses, and exposure caps automatically</li>
+      <li><strong>Performance Dashboard:</strong> Real-time tracking of all copied positions, P&L, and trader stats</li>
+    </ul>
+
+    <h2>How the Copy Trade Bot Works</h2>
+
+    <p>The architecture is elegant but powerful. Let's walk through a real execution:</p>
+
+    <div class="run-term rev2">
+      <div class="rt-header">
+        <div class="rt-dots">
+          <div class="rt-dot active"></div>
+          <div class="rt-dot"></div>
+          <div class="rt-dot"></div>
+        </div>
+        <span style="margin-left:auto;">copy_trade_engine.py</span>
+      </div>
+      <div class="rt-body">
+        <div class="rt-line"><span class="rt-ts">[09:14:22]</span><span class="rt-tag">MONITOR</span><span class="rt-msg">Scanning wallets: 0x7f2c...8a4d, 0x2e8b...5f1c, 0x9a3c...2b7e</span></div>
+        <div class="rt-line"><span class="rt-ts">[09:14:32]</span><span class="rt-tag">SIGNAL</span><span class="rt-msg">New transaction detected from 0x7f2c...8a4d</span></div>
+        <div class="rt-line"><span class="rt-ts">[09:14:33]</span><span class="rt-tag">DECODE</span><span class="rt-msg">Order: Buy 2,000 YES on "Will Fed cut rates in May?"</span></div>
+        <div class="rt-line"><span class="rt-ts">[09:14:34]</span><span class="rt-tag">ANALYSIS</span><span class="rt-msg">Trader portfolio: $245,800 | Your portfolio: $49,500</span></div>
+        <div class="rt-line"><span class="rt-ts">[09:14:35]</span><span class="rt-tag">SCALE</span><span class="rt-msg">Position size: 2,000 * (49,500/245,800) = 404 shares</span></div>
+        <div class="rt-line"><span class="rt-ts">[09:14:36]</span><span class="rt-tag">RISK</span><span class="rt-msg">Risk check: 404 shares = 1.7% portfolio. Max: 3%. PASS</span></div>
+        <div class="rt-line"><span class="rt-ts">[09:14:37]</span><span class="rt-tag">ROUTE</span><span class="rt-msg">Finding best prices... Market spread: $0.524 / $0.531</span></div>
+        <div class="rt-line"><span class="rt-ts">[09:14:38]</span><span class="rt-tag">EXECUTE</span><span class="rt-msg">Buying 404 YES @ $0.527 (limit order)</span></div>
+        <div class="rt-line"><span class="rt-ts">[09:14:39]</span><span class="rt-tag">CONFIRM</span><span class="rt-msg">Order filled! Cost: $212.87. Entry: $0.527. Slippage: 0.57%</span></div>
+        <div class="rt-line"><span class="rt-ts">[09:14:40]</span><span class="rt-tag">LOG</span><span class="rt-msg">Trade recorded. Continuing to monitor...<span class="rt-cursor"></span></span></div>
+      </div>
+    </div>
+
+    <h2>Copy Trade Bot vs Manual Copy Trading</h2>
+
+    <p>You might think you could manually copy trades yourself. Let's be honest—you can't compete with automation. Here's why the bot wins:</p>
+
+    <table class="comp-table rev2">
+      <thead>
+        <tr>
+          <th>Capability</th>
+          <th>Manual Trading</th>
+          <th class="highlight">Copy Trade Bot</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Speed</td>
+          <td>Minutes (you need to see the trade, understand it, execute)</td>
+          <td class="check">Seconds (automated detection and execution)</td>
+        </tr>
+        <tr>
+          <td>24/7 Monitoring</td>
+          <td class="cross">Only while you're awake and checking</td>
+          <td class="check">Always monitoring, even while you sleep</td>
+        </tr>
+        <tr>
+          <td>Consistent Sizing</td>
+          <td class="cross">Prone to errors, mood-dependent adjustments</td>
+          <td class="check">Always correctly proportional, no mistakes</td>
+        </tr>
+        <tr>
+          <td>Scalability</td>
+          <td class="cross">Can copy maybe 2-3 traders max</td>
+          <td class="check">Copy 10+ traders simultaneously</td>
+        </tr>
+        <tr>
+          <td>Emotions</td>
+          <td class="cross">You might skip trades you dislike</td>
+          <td class="check">No emotions, every trade copied exactly</td>
+        </tr>
+        <tr>
+          <td>Cost</td>
+          <td class="cross">Your time (opportunity cost)</td>
+          <td class="check">$79.99/month platform fee</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2>Key Advantages of the Polytragent Copy Trade Bot</h2>
+
+    <h3>1. No Slippage Optimization</h3>
+    <p>Our bot uses intelligent order routing to find the best available prices on Polymarket. We don't just market buy—we use limit orders and smart execution to minimize slippage. On a $1,000 trade, that might save you $5-15 compared to market buys.</p>
+
+    <h3>2. Multi-Trader Diversification</h3>
+    <p>You can copy 10+ traders simultaneously. If one trader has a bad month, your overall portfolio is protected by your other traders. Diversification is automatic—just enable the traders you like.</p>
+
+    <h3>3. Transparent Performance Tracking</h3>
+    <p>Every copy trade is tracked in real-time. You see individual P&L, can compare trader performance, and understand exactly how much each copied trader contributed to your returns. Full transparency.</p>
+
+    <h3>4. Configurable Risk Controls</h3>
+    <p>You maintain control. Set max position size, daily loss limits, and asset exposure caps. The bot respects your risk boundaries and never exceeds your comfort level.</p>
+
+    <h3>5. Perfect Execution Consistency</h3>
+    <p>Unlike humans, the bot never gets lazy, never skips trades, never second-guesses. Every trade your copied traders make is replicated exactly (at your scaled position size). Perfect consistency every time.</p>
+
+    <h2>Who Benefits From Copy Trade Bots</h2>
+
+    <h3>New Traders</h3>
+    <p>If you're new to prediction markets, copy trading gets you profitable immediately while you learn. You're not starting from zero—you're leveraging proven winners' expertise.</p>
+
+    <h3>Busy Professionals</h3>
+    <p>Don't have time to analyze markets constantly? The copy trade bot frees you from active management. Set it and forget it—the bot works while you focus on your job.</p>
+
+    <h3>Passive Income Seekers</h3>
+    <p>Instead of watching markets all day, copy successful traders and earn returns passively. Your capital works 24/7 on your behalf.</p>
+
+    <h3>Risk-Averse Investors</h3>
+    <p>Copy multiple traders to diversify your risk. No single trader's loss can hurt you significantly. Spread your capital across different trading styles and profit from their average performance.</p>
+
+    <h2>Getting Started: 5-Minute Setup</h2>
+
+    <ol>
+      <li><strong>Sign up</strong> to Polytragent (1 minute)</li>
+      <li><strong>Connect Polymarket wallet</strong> via secure OAuth (1 minute)</li>
+      <li><strong>Browse top traders</strong> and select 3-5 to copy (2 minutes)</li>
+      <li><strong>Allocate capital</strong> across your selected traders (1 minute)</li>
+      <li><strong>Enable mirroring</strong> and start earning (click button)</li>
+    </ol>
+
+    <p>That's it. No APIs to configure. No custom code. No complexity. Within 5 minutes, your copy trade bot is live and executing.</p>
+
+    <h2>Real-World Performance Example</h2>
+
+    <p>Here's how copy trading performs in practice. Say you copy three traders with $15,000 capital ($5,000 per trader allocation):</p>
+
+    <ul>
+      <li><strong>Trader A (Arbitrage specialist):</strong> Consistent 12% monthly returns, low volatility</li>
+      <li><strong>Trader B (Trend follower):</strong> Volatile but high returns, averaging 18% monthly</li>
+      <li><strong>Trader C (Contrarian):</strong> Different strategy, 8% monthly, uncorrelated with A and B</li>
+    </ul>
+
+    <p>Your blended return: (~12% + 18% + 8%) / 3 = 12.7% monthly average. With $15,000 capital, you're generating roughly $1,900/month in trading profits. That's $22,800 annually with just $15,000 invested.</p>
+
+    <p>Add Polytragent's $79.99/month subscription cost, and you're netting $21,900/year—a 146% ROI. Compare that to index funds returning 10-12% annually.</p>
+
+    <h2>Advanced Features</h2>
+
+    <h3>Adaptive Slippage Management</h3>
+    <p>Our bot doesn't just execute—it's intelligent about execution. It analyzes current market depth, order book imbalances, and volatility before placing trades. In low-liquidity markets, it breaks large orders into smaller chunks to minimize impact. In high-liquidity markets, it can execute larger positions instantly. This adaptive approach saves traders 15-30% in slippage costs compared to manual market buys.</p>
+
+    <h3>Correlated Strategy Detection</h3>
+    <p>Many traders use similar strategies. If you copy 10 traders, you might unknowingly be copying 5 near-identical approaches. Our platform identifies correlated traders and warns you. You can then diversify into uncorrelated strategies (contrarian traders, arbitrage specialists, news-reactive traders) to genuinely protect your portfolio.</p>
+
+    <h3>Real-Time Risk Dashboard</h3>
+    <p>The copy trade bot provides a unified dashboard showing:</p>
+    <ul>
+      <li><strong>Portfolio Heat Map:</strong> Visual representation of position distribution and concentration</li>
+      <li><strong>Correlation Matrix:</strong> Shows how your copied traders are correlated with each other</li>
+      <li><strong>Risk Metrics:</strong> Value at Risk (VaR), portfolio volatility, max drawdown</li>
+      <li><strong>Trader Performance:</strong> Real-time P&L for each copied trader, ranked by return and risk-adjusted metrics</li>
+      <li><strong>Alert System:</strong> Notifications when traders hit position limits, when correlation changes, or when there's significant slippage</li>
+    </ul>
+
+    <h2>Common Use Cases</h2>
+
+    <h3>The Busy Executive</h3>
+    <p>You're making $200,000/year at your job. You have $50,000 to invest but zero time to actively trade. You allocate it across 5 proven Polymarket traders through Polytragent. Over 12 months, your bot generates 11% returns = $5,500 profit on autopilot. Meanwhile, you focus on what you do best—your day job. Cost: $79.99/month in platform fees. Profit: $4,300/year net. Great deal.</p>
+
+    <h3>The Crypto Native Learning the Polymarket</h3>
+    <p>You've traded crypto for 3 years but Polymarket is new. Instead of learning through painful losses, you copy 3 experienced Polymarket traders and earn as you learn. After 6 months, you've internalized their strategies, learned what works, and you're ready to trade independently. Total education cost: ~$600 in platform fees. ROI: Priceless knowledge and $2,000+ in trading profits.</p>
+
+    <h3>The DeFi Whale</h3>
+    <p>You have $500,000 to deploy. Rather than concentrating it with one strategy, you copy 15 different traders—each getting $33k capital allocation. Your blended return is 10% monthly (lower variance than any individual trader). You generate $50,000/month in trading profits. Cost: $199/month for Pro tier. This 0.4% monthly fee is negligible.</p>
+
+    <h2>Risk Considerations</h2>
+
+    <p>Copy trading isn't risk-free. Be aware of:</p>
+
+    <ul>
+      <li><strong>Trader Risk:</strong> The traders you copy can lose money. No bot prevents bad trading decisions</li>
+      <li><strong>Market Risk:</strong> Prediction markets are volatile. Prices can move dramatically on news</li>
+      <li><strong>Correlation Risk:</strong> Multiple traders might have correlated strategies, increasing portfolio risk</li>
+      <li><strong>Execution Risk:</strong> Network delays or exchange issues could cause slippage</li>
+      <li><strong>Systemic Risk:</strong> Polymarket exchange downtime or regulatory action could freeze accounts</li>
+      <li><strong>Trader Withdrawal Risk:</strong> If a trader you've been copying quits trading, you lose that revenue stream</li>
+    </ul>
+
+    <p>Mitigate these by diversifying across 4-5 traders with uncorrelated strategies, maintaining realistic return expectations, monitoring trader performance monthly, and never betting more than 5% per trader.</p>
+
+    <h2>Comparing Copy Trade Bots: Polytragent vs Competitors</h2>
+
+    <p>Not all copy trading platforms are equal. Here's how Polytragent compares:</p>
+
+    <h3>Polytragent Copy Trade Bot</h3>
+    <ul>
+      <li><strong>Speed:</strong> 2-3 seconds detection, 5-15 seconds execution</li>
+      <li><strong>Cost:</strong> $79.99/month, 0% performance fees</li>
+      <li><strong>Traders:</strong> 500+ verified traders available</li>
+      <li><strong>Execution Quality:</strong> AI-optimized routing, minimizes slippage</li>
+      <li><strong>Risk Management:</strong> Automatic position limits, correlation detection, circuit breakers</li>
+      <li><strong>Transparency:</strong> Real-time P&L, 100% auditable trades</li>
+    </ul>
+
+    <h3>Competitor A (Traditional Copy Trading)</h3>
+    <ul>
+      <li><strong>Speed:</strong> Manual execution, 5-10 minute delays</li>
+      <li><strong>Cost:</strong> 20% of profits (performance fee)</li>
+      <li><strong>Traders:</strong> 50 curated traders only</li>
+      <li><strong>Execution Quality:</strong> High slippage, market buy only</li>
+      <li><strong>Risk Management:</strong> Minimal controls</li>
+      <li><strong>Transparency:</strong> Opaque, monthly statements only</li>
+    </ul>
+
+    <h3>Competitor B (Generic Automation Platform)</h3>
+    <ul>
+      <li><strong>Speed:</strong> 30-60 seconds (designed for slower markets)</li>
+      <li><strong>Cost:</strong> $299/month + 10% of profits</li>
+      <li><strong>Traders:</strong> Limited trader selection</li>
+      <li><strong>Execution Quality:</strong> Basic routing, high slippage</li>
+      <li><strong>Risk Management:</strong> Manual setup required</li>
+      <li><strong>Transparency:</strong> Limited real-time data</li>
+    </ul>
+
+    <p>Polytragent wins on speed, cost, transparency, and risk management. We're purpose-built for prediction markets, not a generic solution.</p>
+
+    <div class="article-cta rev2">
+      <h3>Start Copy Trading Today</h3>
+      <p>Join Polytragent and automate your prediction market strategy. No complex setup. No coding required. Just copy, execute, and profit.</p>
+      <a href="https://t.me/bmpolybot" class="btn-sl" target="_blank">Get started →</a>
+    </div>
+  </article>
+
+  <section class="faq-section rev2">
+    <div class="fl2">
+      <h2 style="margin-bottom:48px;">FAQ</h2>
+      <p class="sb">Common questions about Polytragent's copy trade bot and automated wallet mirroring.</p>
+    </div>
+    <div class="fr">
+      <div class="fqi">
+        <div class="fqq">How fast is the copy trade bot?</div>
+        <div class="fqa">Our bot detects trades within 2-3 seconds of blockchain confirmation and executes mirror trades within 5-15 seconds total. That's fast enough to capture the same price the original trader got, though with minimal slippage in high-volatility markets.</div>
+      </div>
+      <div class="fqi">
+        <div class="fqq">What if my copied trader loses money?</div>
+        <div class="fqa">You'll lose money too. The bot is a perfect mirror—it copies wins and losses. That's why diversification matters. If you copy 5 traders and one has a bad month, your other four traders offset the losses.</div>
+      </div>
+      <div class="fqi">
+        <div class="fqq">Can I adjust the position sizes?</div>
+        <div class="fqa">Yes. You can set a scaling factor (e.g., 50% of recommended size, or 150% to increase leverage). The bot automatically applies your scaling to all mirror trades.</div>
+      </div>
+      <div class="fqi">
+        <div class="fqq">What happens if I disable a trader?</div>
+        <div class="fqa">The bot stops copying new trades, but existing positions remain open. You manage them manually or wait for exits. You can re-enable the trader anytime to resume copying.</div>
+      </div>
+      <div class="fqi">
+        <div class="fqq">How much does the copy trade bot cost?</div>
+        <div class="fqa">Polytragent costs $79.99/month — one plan, full access. No performance fees. You keep 100% of trading profits.</div>
+      </div>
+      <div class="fqi">
+        <div class="fqq">Is copy trading legal?</div>
+        <div class="fqa">Yes. Copy trading on Polymarket is completely legal and encouraged by the platform. Traders benefit from liquidity, and followers benefit from proven strategies. Everyone wins.</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="ctas rev2">
+    <div class="ctl">
+      <h2>Automate your Polymarket trading</h2>
+      <p class="sb">Copy successful traders and execute their strategies automatically. No manual work. Just results.</p>
+      <div>
+        <a href="https://t.me/bmpolybot" class="btn-sl" target="_blank">Get started →</a>
+        <div class="trnote">
+          <span>5-minute setup</span>
+          <span>No credit card required</span>
+        </div>
+      </div>
+    </div>
+    <div class="ctr" style="background:linear-gradient(135deg,rgba(110,231,183,.02),rgba(110,231,183,.01));">
+      <div style="font-family:var(--font-mono);font-size:11px;color:var(--gray2);letter-spacing:2px;margin-bottom:20px;">AUTOMATION STATS</div>
+      <div style="font-size:clamp(20px,3vw,32px);font-weight:600;margin-bottom:8px;">12,847</div>
+      <div style="font-size:13px;color:var(--gray);margin-bottom:24px;">Mirror trades executed automatically this month</div>
+      <div style="height:1px;background:var(--border);margin:24px 0;"></div>
+      <div style="font-size:clamp(20px,3vw,32px);font-weight:600;margin-bottom:8px;">2.3s</div>
+      <div style="font-size:13px;color:var(--gray);">Average execution latency from detection to fill</div>
+    </div>
+  </section>
+
+  <footer>
+    <div>
+      <svg height="20" viewBox="0 0 340 40" fill="none" xmlns="http://www.w3.org/2000/svg" style="opacity:.35;">
+        <path d="M4 33 L20 5 L36 33" stroke="white" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+        <text x="52" y="29" font-family="Inter,sans-serif" font-size="19" font-weight="600" letter-spacing="4" fill="white">POLYTRAGENT</text>
+      </svg>
+      <div class="fcopy" style="margin-top:8px;">© 2026 Polytragent. Built for Polymarket.</div>
+    </div>
+  <ul class="flinks">
+    <li><a href="/features">Features</a></li>
+    <li><a href="/#pricing">Pricing</a></li>
+    <li><a href="/resources">Resources</a></li>
+    <li><a href="/blog">Blog</a></li>
+    <li><a href="/#faq">FAQ</a></li>
+    <li><a href="https://x.com/polytragent" target="_blank">X / Twitter</a></li>
+    <li><a href="https://polytragent.gitbook.io/polytragent-docs/polytragent-documentation" target="_blank">Docs</a></li>
+  </ul>
+  </footer>
+  <div class="disc">
+    <p>Risk Disclaimer: Prediction market trading involves significant financial risk. Copy trading does not guarantee profits. Past performance of copied traders is not indicative of future results. Only invest capital you can afford to lose. This website does not constitute financial advice.</p>
+  </div>
+
+  <script>
+(function(){
+  const c=document.getElementById('gridCanvas');if(!c)return;
+  const ctx=c.getContext('2d');let w,h;
+  function resize(){w=c.width=window.innerWidth;h=c.height=window.innerHeight*4;}
+  resize();window.addEventListener('resize',()=>{resize();draw();});
+  const sp=60;
+  function draw(){
+    ctx.clearRect(0,0,w,h);ctx.strokeStyle='rgba(255,255,255,.018)';ctx.lineWidth=.5;
+    for(let x=0;x<w;x+=sp){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,h);ctx.stroke();}
+    for(let y=0;y<h;y+=sp){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(w,y);ctx.stroke();}
+    ctx.fillStyle='rgba(255,255,255,.03)';
+    for(let x=0;x<w;x+=sp){for(let y=0;y<h;y+=sp){ctx.beginPath();ctx.arc(x,y,1,0,Math.PI*2);ctx.fill();}}
+  }
+  draw();
+})();
+
+const obs=new IntersectionObserver(es=>{
+  es.forEach(e=>{if(e.isIntersecting)e.target.classList.add('in');});
+},{threshold:0.08});
+document.querySelectorAll('.rev2').forEach(el=>obs.observe(el));
+  </script>
+</body>
+</html>

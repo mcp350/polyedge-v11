@@ -1,0 +1,105 @@
+{% extends "admin/base.html" %}
+{% block title %}{{ 'Edit' if action == 'edit' else 'New User' }} — Polytragent Admin{% endblock %}
+{% block content %}
+
+<div class="page-header">
+  <div class="page-header-left">
+    <div class="page-title">{{ 'Edit User' if action == 'edit' else 'Add User' }}</div>
+    <div class="page-subtitle">{{ user.display_name if user else 'Create a new subscriber' }}</div>
+  </div>
+  {% if user %}
+  <a href="/admin/users/{{ user.id }}" class="btn btn-secondary">← Back</a>
+  {% else %}
+  <a href="/admin/users" class="btn btn-secondary">← Users</a>
+  {% endif %}
+</div>
+
+<div class="card" style="max-width:680px">
+  <form method="POST" action="{{ '/admin/users/' + user.id|string + '/edit' if action == 'edit' else '/admin/users/new' }}">
+
+    <div class="card-body">
+      <div class="form-section">
+        <div class="form-section-title">Identity</div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">First Name</label>
+            <input type="text" name="first_name" value="{{ user.first_name or '' if user else '' }}" placeholder="John">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Last Name</label>
+            <input type="text" name="last_name" value="{{ user.last_name or '' if user else '' }}" placeholder="Doe">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Telegram Username</label>
+            <input type="text" name="telegram_username" value="{{ user.telegram_username or '' if user else '' }}" placeholder="johndoe (no @)">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Telegram ID</label>
+            <input type="text" name="telegram_id" value="{{ user.telegram_id or '' if user else '' }}" placeholder="123456789">
+            <div class="form-hint">Numeric ID from Telegram</div>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Email</label>
+          <input type="email" name="email" value="{{ user.email or '' if user else '' }}" placeholder="john@example.com">
+        </div>
+      </div>
+
+      <div class="form-section">
+        <div class="form-section-title">Subscription</div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Status</label>
+            <select name="is_active">
+              <option value="1" {{ 'selected' if (not user or user.is_active) }}>Active</option>
+              <option value="0" {{ 'selected' if user and not user.is_active }}>Disabled</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Tier</label>
+            <select name="subscription_tier">
+              <option value="free" {{ 'selected' if user and user.subscription_tier == 'free' }}>Free</option>
+              <option value="pro" {{ 'selected' if not user or user.subscription_tier == 'pro' }}>Pro ($79.99/mo)</option>
+              <option value="enterprise" {{ 'selected' if user and user.subscription_tier == 'enterprise' }}>Enterprise</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Subscription Start</label>
+            <input type="date" name="subscription_start" value="{{ user.subscription_start.strftime('%Y-%m-%d') if user and user.subscription_start else '' }}">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Subscription End</label>
+            <input type="date" name="subscription_end" value="{{ user.subscription_end.strftime('%Y-%m-%d') if user and user.subscription_end else '' }}">
+          </div>
+        </div>
+        <div class="form-group" style="max-width:200px">
+          <label class="form-label">Monthly Price ($)</label>
+          <input type="number" name="monthly_price" step="0.01" value="{{ user.monthly_price if user else '79.99' }}" placeholder="79.99">
+        </div>
+      </div>
+
+      <div class="form-section" style="margin-bottom:0">
+        <div class="form-section-title">Notes</div>
+        <div class="form-group" style="margin-bottom:0">
+          <textarea name="notes" placeholder="Internal notes about this user…">{{ user.notes or '' if user else '' }}</textarea>
+        </div>
+      </div>
+    </div>
+
+    <div style="padding:14px 16px;border-top:1px solid var(--border);display:flex;gap:8px">
+      <button type="submit" class="btn btn-primary">{{ 'Save Changes' if action == 'edit' else 'Create User' }}</button>
+      {% if user %}
+      <a href="/admin/users/{{ user.id }}" class="btn btn-secondary">Cancel</a>
+      {% else %}
+      <a href="/admin/users" class="btn btn-secondary">Cancel</a>
+      {% endif %}
+    </div>
+
+  </form>
+</div>
+
+{% endblock %}

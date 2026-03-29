@@ -1,0 +1,107 @@
+{% extends "admin/base.html" %}
+{% block title %}Users — Polytragent Admin{% endblock %}
+{% block content %}
+
+<div class="page-header">
+  <div class="page-header-left">
+    <div class="page-title">Users</div>
+    <div class="page-subtitle">{{ users|length }} user{{ 's' if users|length != 1 else '' }}{% if search %} matching "{{ search }}"{% endif %}</div>
+  </div>
+  <a href="/admin/users/new" class="btn btn-primary">+ Add User</a>
+</div>
+
+<form method="GET" action="/admin/users" class="search-bar">
+  <input type="text" name="q" value="{{ search }}" placeholder="Search name, username, email…">
+  <select name="status" onchange="this.form.submit()">
+    <option value="" {% if not status_filter %}selected{% endif %}>All statuses</option>
+    <option value="active" {% if status_filter == 'active' %}selected{% endif %}>Active</option>
+    <option value="inactive" {% if status_filter == 'inactive' %}selected{% endif %}>Inactive</option>
+  </select>
+  <button type="submit" class="btn btn-secondary">Search</button>
+  {% if search or status_filter %}<a href="/admin/users" class="btn btn-ghost">Clear</a>{% endif %}
+</form>
+
+<div class="card">
+  <div class="table-wrap">
+    {% if users %}
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>User</th>
+          <th>Telegram</th>
+          <th>Status</th>
+          <th>Tier</th>
+          <th>Queries</th>
+          <th>Predictions</th>
+          <th>Last Seen</th>
+          <th>Sub End</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for u in users %}
+        <tr>
+          <td class="td-muted" style="font-size:11px">{{ u.id }}</td>
+          <td>
+            <a href="/admin/users/{{ u.id }}" style="color:var(--text);font-weight:500">{{ u.display_name }}</a>
+            {% if u.email %}<br><span class="td-muted" style="font-size:11px">{{ u.email }}</span>{% endif %}
+          </td>
+          <td class="td-muted" style="font-size:12px">
+            {% if u.telegram_username %}<a href="https://t.me/{{ u.telegram_username }}" target="_blank" style="color:var(--blue)">@{{ u.telegram_username }}</a>{% endif %}
+            {% if u.telegram_id %}<br><span style="font-size:10px">{{ u.telegram_id }}</span>{% endif %}
+          </td>
+          <td>
+            {% if u.subscription_status == 'active' %}
+              <span class="badge badge-green">● active</span>
+            {% elif u.subscription_status == 'expired' %}
+              <span class="badge badge-yellow">● expired</span>
+            {% else %}
+              <span class="badge badge-red">● disabled</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if u.subscription_tier == 'pro' %}<span class="badge badge-purple">pro</span>
+            {% elif u.subscription_tier == 'enterprise' %}<span class="badge badge-blue">enterprise</span>
+            {% else %}<span class="badge badge-gray">free</span>{% endif %}
+          </td>
+          <td class="td-mono">{{ u.queries|length }}</td>
+          <td class="td-mono">{{ u.predictions|length }}</td>
+          <td class="td-muted" style="font-size:11px">
+            {{ u.last_seen_at.strftime('%b %d, %Y') if u.last_seen_at else '—' }}
+          </td>
+          <td class="td-muted" style="font-size:11px">
+            {% if u.subscription_end %}
+              <span style="color:{% if u.subscription_end < now %}var(--red){% else %}var(--text-muted){% endif %}">
+                {{ u.subscription_end.strftime('%b %d, %Y') }}
+              </span>
+            {% else %}—{% endif %}
+          </td>
+          <td>
+            <div class="btn-group">
+              <a href="/admin/users/{{ u.id }}" class="btn btn-ghost btn-sm" title="View">👁</a>
+              <a href="/admin/users/{{ u.id }}/edit" class="btn btn-ghost btn-sm" title="Edit">✎</a>
+              <form method="POST" action="/admin/users/{{ u.id }}/toggle" style="display:inline">
+                <button type="submit" class="btn btn-ghost btn-sm" title="{{ 'Disable' if u.is_active else 'Enable' }}">
+                  {{ '⏸' if u.is_active else '▶' }}
+                </button>
+              </form>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state">
+      <div class="empty-icon">◉</div>
+      <div>{% if search %}No users match "{{ search }}"{% else %}No users yet{% endif %}</div>
+      {% if not search %}
+      <div style="margin-top:12px"><a href="/admin/users/new" class="btn btn-primary btn-sm">Add first user</a></div>
+      {% endif %}
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+{% endblock %}

@@ -18,7 +18,12 @@ log = logging.getLogger("polytragent.wallet")
 # ═══════════════════════════════════════════════
 
 POLYGON_RPC = os.environ.get("POLYGON_RPC_URL", "https://polygon-rpc.com")
-USDC_CONTRACT = "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174"  # USDC on Polygon
+POLYGON_RPC_FALLBACK = "https://rpc-mainnet.matic.quiknode.pro"
+
+# USDC on Polygon — there are TWO versions:
+USDC_NATIVE_CONTRACT = "0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359"  # Native USDC (Circle, post-2023)
+USDC_BRIDGED_CONTRACT = "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174"  # USDC.e (bridged, legacy)
+USDC_CONTRACT = USDC_NATIVE_CONTRACT  # Primary (most exchanges send this)
 USDC_DECIMALS = 6
 
 # ERC-20 Transfer ABI (minimal)
@@ -301,35 +306,98 @@ def delete_wallet(chat_id: str, wallet_index: int) -> dict:
 # BALANCE CHECKING
 # ═══════════════════════════════════════════════
 
+def _get_web3() -> "Web3":
+    """Get a Web3 instance, falling back to secondary RPC if primary fails."""
+    from web3 import Web3
+    w3 = Web3(Web3.HTTPProvider(POLYGON_RPC))
+    if not w3.is_connected():
+        log.warning(f"Primary RPC {POLYGON_RPC} not connected, trying fallback")
+        w3 = Web3(Web3.HTTPProvider(POLYGON_RPC_FALLBACK))
+    return w3
+
+
+def _query_erc20_balance(w3, contract_address: str, wallet_address: str) -> float:
+    """Query ERC-20 balance for a given contract and wallet address."""
+    contract = w3.eth.contract(
+        address=w3.to_checksum_address(contract_address),
+        abi=ERC20_ABI
+    )
+    raw = contract.functions.balanceOf(
+        w3.to_checksum_address(wallet_address)
+    ).call()
+    return raw / (10 ** USDC_DECIMALS)
+
+
 def get_usdc_balance(address: str) -> Optional[float]:
-    """Get USDC balance for an address on Polygon."""
+    """
+    Get total USDC balance for an address on Polygon.
+    Checks both native USDC (0x3c49...) and bridged USDC.e (0x2791...) and sums them.
+    Most modern exchanges send native USDC; legacy balances may be in USDC.e.
+    """
     try:
         from web3 import Web3
+        w3 = _get_web3()
 
-        w3 = Web3(Web3.HTTPProvider(POLYGON_RPC))
-        contract = w3.eth.contract(
-            address=Web3.to_checksum_address(USDC_CONTRACT),
-            abi=ERC20_ABI
-        )
+        native = 0.0
+        bridged = 0.0
 
-        balance_raw = contract.functions.balanceOf(
-            Web3.to_checksum_address(address)
-        ).call()
+        try:
+            native = _query_erc20_balance(w3, USDC_NATIVE_CONTRACT, address)
+        except Exception as e:
+            log.warning(f"Native USDC balance error for {address[:10]}: {e}")
 
-        return balance_raw / (10 ** USDC_DECIMALS)
+        try:
+            bridged = _query_erc20_balance(w3, USDC_BRIDGED_CONTRACT, address)
+        except Exception as e:
+            log.warning(f"Bridged USDC.e balance error for {address[:10]}: {e}")
+
+        total = native + bridged
+        log.debug(f"USDC balance {address[:10]}: native={native:.4f}, bridged={bridged:.4f}, total={total:.4f}")
+        return total
     except Exception as e:
         log.error(f"Balance check error: {e}")
         return None
+
+
+def get_usdc_balance_breakdown(address: str) -> dict:
+    """Get native USDC and USDC.e balances separately."""
+    native_ok = False
+    bridged_ok = False
+    native, bridged = 0.0, 0.0
+    try:
+        from web3 import Web3
+        w3 = _get_web3()
+
+        try:
+            native = _query_erc20_balance(w3, USDC_NATIVE_CONTRACT, address)
+            native_ok = True
+        except Exception as e:
+            log.warning(f"Native USDC query failed for {address[:10]}: {e}")
+
+        try:
+            bridged = _query_erc20_balance(w3, USDC_BRIDGED_CONTRACT, address)
+            bridged_ok = True
+        except Exception as e:
+            log.warning(f"Bridged USDC.e query failed for {address[:10]}: {e}")
+
+    except Exception as e:
+        log.error(f"USDC breakdown error: {e}")
+
+    return {
+        "native": native,
+        "bridged": bridged,
+        "total": native + bridged,
+        "error": not native_ok and not bridged_ok,  # True only if both failed
+    }
 
 
 def get_matic_balance(address: str) -> Optional[float]:
     """Get MATIC (POL) balance for gas fees."""
     try:
         from web3 import Web3
-
-        w3 = Web3(Web3.HTTPProvider(POLYGON_RPC))
+        w3 = _get_web3()
         balance_wei = w3.eth.get_balance(Web3.to_checksum_address(address))
-        return w3.from_wei(balance_wei, "ether")
+        return float(w3.from_wei(balance_wei, "ether"))
     except Exception as e:
         log.error(f"MATIC balance error: {e}")
         return None
@@ -337,12 +405,15 @@ def get_matic_balance(address: str) -> Optional[float]:
 
 def get_full_balance(address: str) -> dict:
     """Get complete balance info for an address."""
-    usdc = get_usdc_balance(address)
+    breakdown = get_usdc_balance_breakdown(address)
+    # breakdown["error"] is True if both queries failed
+    usdc = None if breakdown.get("error") else breakdown["total"]
     matic = get_matic_balance(address)
 
     return {
         "address": address,
         "usdc": usdc,
+        "usdc_breakdown": breakdown,
         "matic": float(matic) if matic is not None else None,
         "has_gas": (matic or 0) > 0.01,  # Need some MATIC for gas
     }
@@ -512,13 +583,25 @@ def format_balance(balance_info: dict) -> str:
     short = f"{addr[:6]}...{addr[-4:]}"
     usdc = balance_info.get("usdc")
     matic = balance_info.get("matic")
+    breakdown = balance_info.get("usdc_breakdown")
 
     lines = [
         f"💰 <b>Balance</b> — {short}",
         "",
-        f"💵 USDC: <b>${usdc:.2f}</b>" if usdc is not None else "💵 USDC: <i>loading...</i>",
-        f"⛽ MATIC: <b>{matic:.4f}</b>" if matic is not None else "⛽ MATIC: <i>loading...</i>",
     ]
+
+    if usdc is not None:
+        lines.append(f"💵 USDC: <b>${usdc:.2f}</b>")
+        # Show breakdown if both types are present
+        if breakdown and breakdown.get("native", 0) > 0 and breakdown.get("bridged", 0) > 0:
+            lines.append(f"  ↳ Native USDC: ${breakdown['native']:.2f}")
+            lines.append(f"  ↳ USDC.e (bridged): ${breakdown['bridged']:.2f}")
+        elif breakdown and breakdown.get("bridged", 0) > 0 and breakdown.get("native", 0) == 0:
+            lines.append(f"  ↳ USDC.e (bridged)")
+    else:
+        lines.append("💵 USDC: <i>unavailable</i>")
+
+    lines.append(f"⛽ MATIC: <b>{matic:.4f}</b>" if matic is not None else "⛽ MATIC: <i>unavailable</i>")
 
     if not balance_info.get("has_gas"):
         lines.append("\n⚠️ Low MATIC — you need gas to trade!")

@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><link rel="icon" type="image/x-icon" href="/favicon.ico"><link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png"><link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Learn how to track whale wallets on Polymarket. Discover on-chain analysis, what whale activity signals, and how to gain an edge in prediction markets.">
+<link rel="canonical" href="https://polytragent.com/blog/polymarket-whale-tracking">
+  <meta name="keywords" content="polymarket whale tracking, smart money, on-chain analysis, whale wallets, prediction markets">
+  <meta name="author" content="Polytragent">
+
+  <!-- OG Tags -->
+  <meta property="og:title" content="Polymarket Whale Tracking: Follow Smart Money in Prediction Markets">
+  <meta property="og:description" content="Master whale tracking on Polymarket. Learn on-chain analysis, spot smart money moves, and gain edge in prediction markets.">
+  <meta property="og:type" content="article">
+  <meta property="og:url" content="https://polytragent.com/blog/polymarket-whale-tracking">
+  <meta property="og:image" content="https://polytragent.com/og-image.jpg">
+
+  <!-- Schema Markup -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "BlogPosting",
+    "headline": "Polymarket Whale Tracking: Follow Smart Money in Prediction Markets",
+    "description": "Complete guide to tracking whale wallets on Polymarket, analyzing large position changes, and using on-chain data for edge detection.",
+    "image": "https://polytragent.com/og-image.jpg",
+    "datePublished": "2026-03-14",
+    "dateModified": "2026-03-14",
+    "author": {
+      "@type": "Organization",
+      "name": "Polytragent",
+      "url": "https://polytragent.com"
+    }
+  }
+  </script>
+
+  <title>Polymarket Whale Tracking: Follow Smart Money in Prediction Markets</title>
+  <!-- Twitter Card -->
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Polymarket Whale Tracking: Follow Smart Money in Prediction Markets">
+<meta name="twitter:description" content="Learn how to track whale wallets on Polymarket. Discover on-chain analysis, what whale activity signals, and how to gain an edge in prediction markets.">
+<meta name="twitter:image" content="https://polytragent.com/og-image.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+  
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Home","item":"https://polytragent.com/"},{"@type":"ListItem","position":2,"name":"Blog","item":"https://polytragent.com/blog"},{"@type":"ListItem","position":3,"name":"Polymarket Whale Tracking"}]}
+</script>
+
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"Article","headline":"Polymarket Whale Tracking: Follow Smart Money in Prediction Markets","description":"Learn how to track whale wallets on Polymarket. Discover on-chain analysis, what whale activity signals, and how to gain an edge in prediction markets.","url":"https://polytragent.com/blog/polymarket-whale-tracking","datePublished":"2026-03-16","dateModified":"2026-03-23","author":{"@type":"Organization","name":"Polytragent","url":"https://polytragent.com"},"publisher":{"@type":"Organization","name":"Polytragent","logo":{"@type":"ImageObject","url":"https://polytragent.com/favicon-512x512.png"}}}
+</script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{
+  --black:#000;--white:#fff;--gray:#888;--gray2:#444;--gray3:#222;
+  --border:#1a1a1a;--font-sans:'Inter',sans-serif;--font-mono:'JetBrains Mono',monospace;
+  --green:#6ee7b7;--red:#fca5a5;--blue:#93c5fd;--yellow:#fde68a;
+  --code-bg:#080808;--code-border:#141414;
+}
+html{scroll-behavior:smooth;}
+body{background:var(--black);color:var(--white);font-family:var(--font-sans);font-size:16px;line-height:1.6;overflow-x:hidden;}
+a{color:inherit;text-decoration:none;}
+
+nav{position:fixed;top:0;left:0;right:0;z-index:200;display:flex;align-items:center;justify-content:space-between;padding:0 48px;height:64px;border-bottom:1px solid var(--border);background:rgba(0,0,0,0.92);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);}
+.nav-links{display:flex;gap:32px;list-style:none;}
+.nav-links a{font-size:14px;color:var(--gray);transition:color .15s;}
+.nav-links a:hover{color:var(--white);}
+.nav-links li{position:relative;}
+.nav-dropdown{display:none;position:absolute;top:100%;left:-16px;padding-top:12px;z-index:300;}
+.nav-links li:hover .nav-dropdown{display:block;}
+.nav-dropdown-inner{background:rgba(0,0,0,0.96);border:1px solid var(--border);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);padding:12px 0;min-width:260px;}
+.nav-dropdown a{display:block;padding:8px 20px;font-size:13px;color:var(--gray);transition:color .15s,background .15s;white-space:nowrap;}
+.nav-dropdown a:hover{color:var(--white);background:rgba(255,255,255,.04);}
+.ndrop-label{padding:6px 20px 4px;font-family:var(--font-mono);font-size:9px;color:var(--gray2);letter-spacing:2px;text-transform:uppercase;}
+.ndrop-label:not(:first-child){margin-top:8px;border-top:1px solid var(--border);padding-top:10px;}
+.nav-ctas{display:flex;gap:12px;align-items:center;}
+.btn-solid{display:inline-flex;align-items:center;gap:6px;padding:9px 20px;background:var(--white);color:var(--black);font-size:13px;font-weight:500;font-family:var(--font-sans);border:none;cursor:pointer;transition:opacity .15s;}
+.btn-solid:hover{opacity:.85;}
+.btn-outline{display:inline-flex;align-items:center;gap:6px;padding:8px 20px;background:transparent;color:var(--white);font-size:13px;border:1px dashed var(--gray2);cursor:pointer;transition:border-color .15s;}
+.btn-outline:hover{border-color:var(--white);}
+
+footer{border-top:1px solid var(--border);padding:28px 48px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:20px;position:relative;z-index:1;}
+.fcopy{font-family:var(--font-mono);font-size:10px;color:var(--gray2);}
+.flinks{display:flex;gap:28px;list-style:none;}
+.flinks a{font-size:13px;color:var(--gray2);transition:color .15s;}.flinks a:hover{color:var(--white);}
+.disc{border-top:1px solid var(--border);padding:18px 48px;position:relative;z-index:1;}
+.disc p{font-size:10px;color:#2a2a2a;font-family:var(--font-mono);line-height:1.6;}
+
+.rev2{opacity:0;transform:translateY(16px);transition:opacity .55s,transform .55s;}
+.rev2.in{opacity:1;transform:none;}
+
+.breadcrumb{font-family:var(--font-mono);font-size:11px;color:var(--gray2);margin-bottom:24px;}
+.breadcrumb a{color:var(--gray);transition:color .15s;}
+.breadcrumb a:hover{color:var(--white);}
+.article-wrap{max-width:720px;margin:0 auto;padding:120px 48px 80px;}
+.article-meta{font-family:var(--font-mono);font-size:11px;color:var(--gray2);margin-bottom:32px;display:flex;gap:20px;}
+.article-wrap h1{font-size:clamp(32px,4vw,48px);font-weight:600;line-height:1.1;letter-spacing:-1.5px;margin-bottom:16px;}
+.article-wrap h2{font-size:24px;font-weight:600;letter-spacing:-0.5px;margin:48px 0 16px;padding-top:32px;border-top:1px solid var(--border);}
+.article-wrap h3{font-size:18px;font-weight:500;margin:32px 0 12px;}
+.article-wrap p{font-size:16px;color:var(--gray);line-height:1.8;margin-bottom:20px;font-weight:300;}
+.article-wrap ul,.article-wrap ol{margin:0 0 20px 24px;color:var(--gray);}
+.article-wrap li{font-size:15px;line-height:1.8;margin-bottom:8px;font-weight:300;}
+.article-wrap strong{color:var(--white);font-weight:500;}
+.article-wrap a{color:var(--white);border-bottom:1px dashed var(--gray2);transition:border-color .15s;}
+.article-wrap a:hover{border-color:var(--white);}
+.article-cta{margin:48px 0;padding:32px;border:1px solid var(--border);background:var(--code-bg);}
+.article-cta h3{margin:0 0 8px;font-size:16px;}
+.article-cta p{font-size:14px;margin-bottom:16px;}
+.code-block{background:var(--code-bg);border:1px solid var(--code-border);padding:20px;margin:20px 0;font-family:var(--font-mono);font-size:12px;color:var(--gray);line-height:1.7;overflow-x:auto;}
+.takeaway{border-left:2px solid var(--green);padding:16px 20px;margin:24px 0;background:rgba(110,231,183,.03);}
+.takeaway p{font-size:14px;margin:0;}
+
+@media(max-width:900px){
+  nav{padding:0 20px;}
+  .nav-links{display:none;}
+  footer,.disc{padding:24px;}
+  .article-wrap{padding:80px 24px 60px;}
+}
+  </style>
+</head>
+<body>
+
+<nav>
+  <a href="/"><svg height="22" viewBox="0 0 340 40" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 33 L20 5 L36 33" stroke="white" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/><text x="52" y="29" font-family="Inter,sans-serif" font-size="19" font-weight="600" letter-spacing="4" fill="white">POLYTRAGENT</text></svg></a>
+  <ul class="nav-links">
+    <li><a href="/#features">Features</a></li>
+    <li><a href="/#how-it-works">How it works</a></li>
+    <li><a href="/#pricing">Pricing</a></li>
+    <li>
+      <a href="/resources">Resources ▾</a>
+      <div class="nav-dropdown"><div class="nav-dropdown-inner">
+        <div class="ndrop-label">Compare</div>
+        <a href="/compare">All Comparisons</a>
+        <a href="/compare/polytragent-vs-polycop">Polytragent vs PolyCop</a>
+        <a href="/compare/polytragent-vs-polysight">Polytragent vs Polysight</a>
+        <a href="/compare/copy-trading-bots">Copy Trading Bots</a>
+        <a href="/compare/polycop-alternative">PolyCop Alternative</a>
+        <a href="/compare/polysight-alternative">Polysight Alternative</a>
+        <div class="ndrop-label">Landing Pages</div>
+        <a href="/resources/polymarket-strategies">Polymarket Strategies 2026</a>
+        <a href="/resources/how-to-make-money-polymarket">How to Make Money</a>
+        <a href="/resources/prediction-market-strategies">Prediction Market Strategies</a>
+        <a href="/resources/polymarket-telegram-bots">Telegram Bots</a>
+        <a href="/resources/polymarket-automated-trading">Automated Trading</a>
+        <a href="/resources/polymarket-whale-tracking">Whale Tracking</a>
+        <a href="/resources/polymarket-market-making">Market Making</a>
+        <a href="/resources/polymarket-poly-token">POLY Token Airdrop</a>
+        <div class="ndrop-label">Blog</div>
+        <a href="/blog">All Articles</a>
+        <a href="/blog/polymarket-prediction-bot">Polymarket Prediction Bot</a>
+        <a href="/blog/polymarket-tools-guide">Polymarket Tools Guide</a>
+        <a href="/blog/best-polymarket-bots-2026">Best Polymarket Bots 2026</a>
+        <a href="/blog/polymarket-trading-bot">Polymarket Trading Bot</a>
+        <a href="/blog/copy-trade-bot">Copy Trade Bot Guide</a>
+        <a href="/blog/copy-trading-guide">Copy Trading Guide</a>
+        <a href="/blog/polymarket-strategies-2026">Polymarket Strategies 2026</a>
+        <a href="/blog/how-to-make-money-polymarket">How to Make Money on Polymarket</a>
+        <a href="/blog/prediction-market-strategies">Prediction Market Strategies</a>
+        <a href="/blog/polymarket-telegram-bots">Polymarket Telegram Bots</a>
+        <a href="/blog/polymarket-automated-trading">Automated Trading Guide</a>
+        <a href="/blog/polymarket-whale-tracking">Whale Tracking Guide</a>
+        <a href="/blog/polymarket-market-making">Market Making Guide</a>
+        <a href="/blog/polymarket-poly-token">POLY Token Airdrop Guide</a>
+      </div></div>
+    </li>
+    <li><a href="/#faq">FAQ</a></li>
+  </ul>
+  <div class="nav-ctas"><a href="/#pricing" class="btn-outline">See plans</a><a href="https://t.me/bmpolybot" target="_blank" class="btn-solid">Get started →</a></div>
+</nav>
+
+<div class="article-wrap">
+  <div class="breadcrumb"><a href="/">Home</a> / <a href="/blog">Blog</a> / Polymarket Whale Tracking</div>
+  <div class="article-meta">
+    <span>Published Mar 14, 2026</span>
+    <span>6 min read</span>
+  </div>
+
+  <h1>Polymarket Whale Tracking: Follow Smart Money in Prediction Markets</h1>
+
+  <p>In prediction markets, like in traditional finance, large institutional and wealthy individual traders—whales—often know something before the crowd. Their position changes, especially sudden accumulations or exits, can signal impending price moves. By tracking whale wallets on Polymarket, you gain visibility into where smart money is positioning, giving you a strategic edge.</p>
+
+  <p>Whale tracking is not about copying trades blindly. It's about understanding the signals: <strong>What does a large position reveal about a whale's thesis? Is the market already pricing it in, or are we early?</strong> This guide teaches you how to track, analyze, and act on whale activity.</p>
+
+  <h2>What Is Whale Tracking and Why It Matters</h2>
+
+  <p>A "whale" is a wallet or entity controlling significant capital—typically $1M+ in prediction market positions. When whales move, they move the needle. Their trades have impact because:</p>
+
+  <ul>
+    <li><strong>Information Edge:</strong> Whales often have superior research, insider market knowledge, or longer track records of predictive accuracy.</li>
+    <li><strong>Capital Concentration:</strong> A single $10M position can shift market prices dramatically, especially in less-liquid outcome markets.</li>
+    <li><strong>Visibility:</strong> Every trade is on-chain and public. You can see accumulation, distribution, and profit-taking in real time.</li>
+    <li><strong>Reputational Incentives:</strong> Known smart traders care about their track record. They don't make random bets.</li>
+  </ul>
+
+  <p>That doesn't mean whales are always right. But their positioning is a high-signal data point worth monitoring.</p>
+
+  <h2>How to Identify Major Whale Wallets</h2>
+
+  <p>Not every large wallet is a whale trader. Some are exchange reserves, liquidity pools, or community treasuries. The goal is finding <strong>active traders with capital allocation decisions to make</strong>.</p>
+
+  <h3>Manual Identification Methods</h3>
+
+  <ul>
+    <li><strong>Leaderboards:</strong> Polymarket shows top traders by performance. Cross-reference with wallet addresses. These are often proven whales with track records.</li>
+    <li><strong>Twitter/Discord Research:</strong> Influential traders often announce positions publicly or are mentioned by community researchers. Track these addresses.</li>
+    <li><strong>Telegram Bot Communities:</strong> Several Polymarket tracking communities maintain curated lists of known whale wallets. Join these groups to stay in the loop.</li>
+    <li><strong>On-chain Explorers:</strong> Etherscan and similar tools let you browse wallet activity. Look for wallets with consistent, high-volume trading across multiple markets.</li>
+  </ul>
+
+  <h3>Distinguishing Real Whales from Noise</h3>
+
+  <p>A wallet with $50M total traded volume over 3 years is a whale. A wallet with $100M traded in one week is often a bot or arbitrageur, not a conviction whale. Real whales:</p>
+
+  <ul>
+    <li>Trade consistently across many markets (diversification of edge)</li>
+    <li>Hold positions for weeks or months (conviction, not noise trading)</li>
+    <li>Exit gradually, not in panic dumps</li>
+    <li>Have positive long-term P&L</li>
+  </ul>
+
+  <div class="takeaway">
+    <p><strong>Takeaway:</strong> Focus on whales with proven track records and long-term positioning. Ignore high-frequency traders and obvious bots.</p>
+  </div>
+
+  <h2>Key Whale Signals to Monitor</h2>
+
+  <p>Once you've identified whales worth tracking, watch for specific behaviors:</p>
+
+  <h3>Accumulation Phases</h3>
+
+  <p>When a whale starts buying an outcome, they often do it gradually to avoid moving the market against themselves. Signs include:</p>
+
+  <ul>
+    <li>Consistent buy orders day after day at similar prices</li>
+    <li>Building a position over weeks, not hours</li>
+    <li>Buying into price dips (conviction, not panic)</li>
+  </ul>
+
+  <p>Accumulation often precedes price moves. If a whale accumulates Yes shares in a market 3 months out from resolution, they're betting on a shift in probability. Early detection of accumulation lets you position ahead of the move.</p>
+
+  <h3>Distribution and Profit-Taking</h3>
+
+  <p>Whales exit positions for two reasons: (1) they've achieved their profit target, or (2) their thesis has changed. Signals include:</p>
+
+  <ul>
+    <li>Selling into strength (moving limit orders higher and higher)</li>
+    <li>Rapid position reduction over days</li>
+    <li>Exiting a position they held long-term</li>
+  </ul>
+
+  <p>When a previously accumulating whale starts dumping, it often signals a top in that outcome. Markets respect these moves.</p>
+
+  <h3>Sudden Large Moves</h3>
+
+  <p>Occasionally, a whale will execute a large market order—buying or selling millions in minutes. This is rare and usually signals:</p>
+
+  <ul>
+    <li><strong>New Information:</strong> Breaking news or an event they've been waiting for triggered action.</li>
+    <li><strong>Forced Exit:</strong> A position was liquidated or a fund had a redemption.</li>
+    <li><strong>Arb Execution:</strong> They found a massive mispricing and moved to close it before the market corrects.</li>
+  </ul>
+
+  <h3>Cross-Market Positioning</h3>
+
+  <p>Sophisticated whales build diversified positions across related markets. For example, a whale betting on the re-election of a political figure might:</p>
+
+  <ul>
+    <li>Go long on the candidate's win probability</li>
+    <li>Go long on "Economic growth next year"</li>
+    <li>Go short on "Recession predicted"</li>
+  </ul>
+
+  <p>When you see a whale building positions across multiple correlated markets, it signals a strong, multi-dimensional thesis.</p>
+
+  <h2>On-Chain Analysis Tools for Whale Tracking</h2>
+
+  <h3>Etherscan and Blockchain Explorers</h3>
+
+  <p>View transaction history for any wallet address. Look at:</p>
+
+  <ul>
+    <li>Transaction frequency and size</li>
+    <li>Token holdings (positions in multiple markets)</li>
+    <li>Gas spending patterns (high-frequency traders spend more on gas)</li>
+  </ul>
+
+  <h3>Dune Analytics</h3>
+
+  <p>Custom dashboards let you query on-chain data. You can build charts showing:</p>
+
+  <ul>
+    <li>Daily volume per whale wallet</li>
+    <li>Position changes over time</li>
+    <li>Top gainers and losers by whale</li>
+  </ul>
+
+  <h3>Specialized Tracking Tools</h3>
+
+  <p>Several platforms now offer whale tracking specifically for Polymarket:</p>
+
+  <ul>
+    <li><strong>Polytragent:</strong> AI-powered edge detection that factors in whale activity as a signal. Our research automatically flags when major positions shift and what that signals for market moves.</li>
+    <li><strong>Nansen:</strong> On-chain analytics dashboard with whale wallet tracking across DeFi protocols.</li>
+    <li><strong>Glassnode:</strong> Advanced on-chain metrics including whale concentration and movement.</li>
+  </ul>
+
+  <h2>How Polytragent Incorporates Whale Data</h2>
+
+  <p>Manual whale tracking is labor-intensive. Polytragent automates it. Our AI continuously monitors whale wallets and extracts signals:</p>
+
+  <ul>
+    <li><strong>Automatic Detection:</strong> We identify when major whales accumulate or distribute positions in a market.</li>
+    <li><strong>Context Integration:</strong> We combine whale moves with sentiment data, on-chain activity, and market technicals to validate the signal.</li>
+    <li><strong>Real-Time Alerts:</strong> When a significant whale move is detected, you're notified immediately so you can act before the broader market does.</li>
+    <li><strong>Pattern Matching:</strong> We track historical patterns—"When whale A accumulates election markets, what happens 2 weeks later?"—and apply those to current activity.</li>
+  </ul>
+
+  <p>Instead of staring at Etherscan, you get curated whale intelligence automatically.</p>
+
+  <div class="article-cta">
+    <h3>Stop Guessing. See What Whales See.</h3>
+    <p>Polytragent tracks smart money moves and surfaces them as actionable research. Get ahead of whale-driven price moves.</p>
+    <a href="https://t.me/bmpolybot" target="_blank" class="btn-solid">Start Tracking Now →</a>
+  </div>
+
+  <h2>Pitfalls to Avoid</h2>
+
+  <h3>Copying Whale Trades Blindly</h3>
+
+  <p>Just because a whale is accumulating doesn't mean you should too—not yet. They might be positioning for a multi-month thesis that takes weeks to materialize. Understand the thesis first.</p>
+
+  <h3>Mistaking Whale Exits for Reversals</h3>
+
+  <p>A whale taking profits after a 6-month accumulation doesn't mean the move is over. They might be trimming to lock in gains while still maintaining a core position. Don't panic-sell just because they are.</p>
+
+  <h3>Confusing Whales with Bots</h3>
+
+  <p>Automated market makers and arbitrage bots are not whales. They execute thousands of small trades to earn spreads. They're not positioning on outcomes. Exclude them from your analysis.</p>
+
+  <h3>Ignoring Changing Market Regimes</h3>
+
+  <p>A whale's strategy might have worked in 2024 but fail in 2026 as market structure evolves. Don't blindly follow past winners if market conditions have shifted.</p>
+
+  <h2>FAQ</h2>
+
+  <div style="margin-top:40px;">
+    <h3>How long does it take to accumulate a whale-sized position?</h3>
+    <p>Weeks to months, typically. Moving $5M-$10M into a market without sliding the price requires patience. Experienced whales spread buys over weeks to minimize market impact. If you see a position built in days, it's either a bot or an emergency trade.</p>
+
+    <h3>Can I track whale wallets that use multiple addresses?</h3>
+    <p>Yes, but it's harder. Large traders often split positions across addresses for security and tax planning. Cross-referencing transaction patterns and timing can sometimes link addresses to the same entity. Whale-tracking communities often do this detective work and publish findings.</p>
+
+    <h3>What's the minimum position size to be considered a whale?</h3>
+    <p>There's no hard rule, but anything $1M+ in a single market gets attention. In smaller markets, even $500K positions can be significant. In massive markets like presidential elections, $50M+ is the threshold.</p>
+
+    <h3>Should I trade against whales if I disagree with their thesis?</h3>
+    <p>Cautiously. Whales have more information and capital to ride out volatility. If you have a contrary view, build your position carefully and don't over-leverage. If you're early, you could get liquidated before you're proven right. Use whale positioning as one signal, not the only signal.</p>
+  </div>
+
+  <div class="article-cta" style="margin-top:60px;">
+    <h3>Get AI-Powered Whale Intelligence</h3>
+    <p>Polytragent automates whale tracking and surfaces smart money moves as actionable research signals.</p>
+    <a href="https://t.me/bmpolybot" target="_blank" class="btn-solid">Try Polytragent →</a>
+  </div>
+
+</div>
+
+<footer>
+  <div>
+    <svg height="20" viewBox="0 0 340 40" fill="none" xmlns="http://www.w3.org/2000/svg" style="opacity:.35;"><path d="M4 33 L20 5 L36 33" stroke="white" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/><text x="52" y="29" font-family="Inter,sans-serif" font-size="19" font-weight="600" letter-spacing="4" fill="white">POLYTRAGENT</text></svg>
+    <div class="fcopy" style="margin-top:8px;">© 2026 Polytragent. AI Research for Polymarket.</div>
+  </div>
+  <ul class="flinks">
+    <li><a href="/features">Features</a></li>
+    <li><a href="/#pricing">Pricing</a></li>
+    <li><a href="/resources">Resources</a></li>
+    <li><a href="/blog">Blog</a></li>
+    <li><a href="/#faq">FAQ</a></li>
+    <li><a href="https://x.com/polytragent" target="_blank">X / Twitter</a></li>
+    <li><a href="https://polytragent.gitbook.io/polytragent-docs/polytragent-documentation" target="_blank">Docs</a></li>
+  </ul>
+</footer>
+<div class="disc">
+  <p>Risk Disclaimer: Prediction market trading involves significant financial risk. AI-powered research does not guarantee profits. Past performance is not indicative of future results. Polytragent is a research tool, not a financial advisor. Only trade capital you can afford to lose.</p>
+</div>
+
+</body>
+</html>

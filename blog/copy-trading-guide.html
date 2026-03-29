@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><link rel="icon" type="image/x-icon" href="/favicon.ico"><link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png"><link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Polymarket Copy Trading Guide | Mirror Winning Strategies with Polytragent</title>
+  <meta name="description" content="Complete guide to Polymarket copy trading. Learn how wallet mirroring works, track top traders, and automatically execute their strategies.">
+<link rel="canonical" href="https://polytragent.com/blog/copy-trading-guide">
+  <meta name="keywords" content="polymarket copy trading, wallet mirroring, follow trader, polymarket strategy">
+  <meta name="author" content="Polytragent">
+  <meta property="og:title" content="Polymarket Copy Trading Guide">
+  <meta property="og:description" content="Learn how to copy trade on Polymarket with wallet mirroring.">
+  <meta property="og:type" content="article">
+  <meta property="og:url" content="https://polytragent.com/blog/copy-trading-guide">
+
+  <!-- Twitter Card -->
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Polymarket Copy Trading Guide | Mirror Winning Strategies with Polytragent">
+<meta name="twitter:description" content="Complete guide to Polymarket copy trading. Learn how wallet mirroring works, track top traders, and automatically execute their strategies.">
+<meta name="twitter:image" content="https://polytragent.com/og-image.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+
+  <script type="application/ld+json">
+{"@context":"https://schema.org","@type":"Article","headline":"Polymarket Copy Trading Guide | Mirror Winning Strategies with Polytragent","description":"Complete guide to Polymarket copy trading. Learn how wallet mirroring works, track top traders, and automatically execute their strategies.","url":"https://polytragent.com/blog/copy-trading-guide","datePublished":"2026-03-16","dateModified":"2026-03-23","author":{"@type":"Organization","name":"Polytragent","url":"https://polytragent.com"},"publisher":{"@type":"Organization","name":"Polytragent","logo":{"@type":"ImageObject","url":"https://polytragent.com/favicon-512x512.png"}}}
+</script>
+
+  
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Home","item":"https://polytragent.com/"},{"@type":"ListItem","position":2,"name":"Blog","item":"https://polytragent.com/blog"},{"@type":"ListItem","position":3,"name":"Copy Trading Guide"}]}
+</script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{
+  --black:#000;--white:#fff;--gray:#888;--gray2:#444;--gray3:#222;
+  --border:#1a1a1a;--font-sans:'Inter',sans-serif;--font-mono:'JetBrains Mono',monospace;
+  --green:#6ee7b7;--red:#fca5a5;--blue:#93c5fd;--yellow:#fde68a;
+  --code-bg:#080808;--code-border:#141414;
+}
+html{scroll-behavior:smooth;}
+body{background:var(--black);color:var(--white);font-family:var(--font-sans);font-size:16px;line-height:1.6;overflow-x:hidden;}
+a{color:inherit;text-decoration:none;}
+
+.grid-bg{position:fixed;top:0;left:0;right:0;bottom:0;z-index:0;pointer-events:none;opacity:.35;}
+
+nav{position:fixed;top:0;left:0;right:0;z-index:200;display:flex;align-items:center;justify-content:space-between;padding:0 48px;height:64px;border-bottom:1px solid var(--border);background:rgba(0,0,0,0.92);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);}
+.nav-links{display:flex;gap:32px;list-style:none;}
+.nav-links a{font-size:14px;color:var(--gray);transition:color .15s;}
+.nav-links a:hover{color:var(--white);}
+.nav-links li{position:relative;}
+.nav-dropdown{display:none;position:absolute;top:100%;left:-16px;padding-top:12px;z-index:300;}
+.nav-links li:hover .nav-dropdown{display:block;}
+.nav-dropdown-inner{background:rgba(0,0,0,0.96);border:1px solid var(--border);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);padding:12px 0;min-width:260px;}
+.nav-dropdown a{display:block;padding:8px 20px;font-size:13px;color:var(--gray);transition:color .15s,background .15s;white-space:nowrap;}
+.nav-dropdown a:hover{color:var(--white);background:rgba(255,255,255,.04);}
+.ndrop-label{padding:6px 20px 4px;font-family:var(--font-mono);font-size:9px;color:var(--gray2);letter-spacing:2px;text-transform:uppercase;}
+.ndrop-label:not(:first-child){margin-top:8px;border-top:1px solid var(--border);padding-top:10px;}
+.nav-ctas{display:flex;gap:12px;align-items:center;}
+.btn-solid{display:inline-flex;align-items:center;gap:6px;padding:9px 20px;background:var(--white);color:var(--black);font-size:13px;font-weight:500;font-family:var(--font-sans);border:none;cursor:pointer;transition:opacity .15s;}
+.btn-solid:hover{opacity:.85;}
+.btn-outline{display:inline-flex;align-items:center;gap:6px;padding:8px 20px;background:transparent;color:var(--white);font-size:13px;border:1px dashed var(--gray2);cursor:pointer;transition:border-color .15s;}
+.btn-outline:hover{border-color:var(--white);}
+
+.split{display:grid;grid-template-columns:44% 56%;border-top:1px solid var(--border);position:relative;z-index:1;}
+.split.rev{grid-template-columns:56% 44%;}
+.st{padding:100px 48px;display:flex;flex-direction:column;justify-content:center;border-right:1px solid var(--border);}
+.split.rev .st{border-right:none;border-left:1px solid var(--border);}
+.sv{padding:80px 48px;display:flex;flex-direction:column;justify-content:center;background:#000;position:relative;overflow:hidden;}
+.sb{font-size:15px;color:var(--gray);line-height:1.75;max-width:440px;font-weight:300;margin-bottom:36px;}
+
+.sl2{display:flex;flex-direction:column;}
+.si{display:grid;grid-template-columns:44px 1fr;gap:16px;padding:24px 0;border-bottom:1px solid var(--border);align-items:start;}
+.si:first-child{border-top:1px solid var(--border);}
+.sn{font-family:var(--font-mono);font-size:20px;font-weight:300;color:var(--gray2);line-height:1;}
+.sb2 h3{font-size:14px;font-weight:500;margin-bottom:5px;}
+.sb2 p{font-size:13px;color:var(--gray);font-weight:300;line-height:1.65;}
+
+.data-monitor{background:var(--code-bg);border:1px solid var(--code-border);font-family:var(--font-mono);overflow:hidden;}
+.dm-header{padding:10px 16px;border-bottom:1px solid var(--code-border);display:flex;align-items:center;justify-content:space-between;}
+.dm-header-left{display:flex;align-items:center;gap:8px;font-size:9px;color:var(--gray2);letter-spacing:1px;text-transform:uppercase;}
+.dm-live{display:flex;align-items:center;gap:5px;font-size:9px;color:#4a7c59;}
+.dm-live-dot{width:5px;height:5px;border-radius:50%;background:#4a7c59;animation:dm-pulse 2s infinite;}
+@keyframes dm-pulse{0%,100%{opacity:1;}50%{opacity:.3;}}
+.dm-row{display:grid;grid-template-columns:1fr 80px 80px 60px;padding:10px 16px;border-bottom:1px solid var(--code-border);font-size:10px;color:#555;transition:background .2s;align-items:center;}
+.dm-row:hover{background:rgba(255,255,255,.02);}
+.dm-row.header{color:var(--gray2);font-size:9px;letter-spacing:1px;text-transform:uppercase;}
+.dm-market{color:#888;font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.dm-pos{color:#4a7c59;font-size:10px;font-weight:500;}
+.dm-neg{color:#7c4a4a;font-size:10px;font-weight:500;}
+.dm-neutral{color:#555;font-size:10px;}
+
+.faq-section{border-top:1px solid var(--border);display:grid;grid-template-columns:44% 56%;position:relative;z-index:1;}
+.fl2{padding:100px 48px;border-right:1px solid var(--border);display:flex;flex-direction:column;justify-content:flex-start;}
+.fr{padding:100px 48px;}
+.fqi{border-top:1px solid var(--border);padding:22px 0;}
+.fqi:last-child{border-bottom:1px solid var(--border);}
+.fqq{font-size:14px;font-weight:400;margin-bottom:8px;color:var(--white);}
+.fqa{font-size:13px;color:var(--gray);line-height:1.7;font-weight:300;}
+
+.ctas{border-top:1px solid var(--border);display:grid;grid-template-columns:44% 56%;min-height:55vh;position:relative;z-index:1;}
+.ctl{padding:100px 48px;border-right:1px solid var(--border);display:flex;flex-direction:column;justify-content:center;}
+.ctr{padding:80px 48px;display:flex;flex-direction:column;justify-content:center;overflow:hidden;position:relative;}
+.trnote{font-family:var(--font-mono);font-size:11px;color:var(--gray2);margin-top:20px;display:flex;gap:24px;flex-wrap:wrap;}
+.trnote span::before{content:'// ';}
+
+.btn-sl{padding:14px 28px;font-size:14px;font-weight:500;background:var(--white);color:var(--black);border:none;cursor:pointer;font-family:var(--font-sans);display:inline-flex;align-items:center;gap:8px;transition:opacity .15s;}
+.btn-sl:hover{opacity:.85;}
+
+.rev2{opacity:0;transform:translateY(16px);transition:opacity .55s,transform .55s;}
+.rev2.in{opacity:1;transform:none;}
+
+footer{border-top:1px solid var(--border);padding:28px 48px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:20px;position:relative;z-index:1;}
+.fcopy{font-family:var(--font-mono);font-size:10px;color:var(--gray2);}
+.flinks{display:flex;gap:28px;list-style:none;}
+.flinks a{font-size:13px;color:var(--gray2);transition:color .15s;}.flinks a:hover{color:var(--white);}
+.disc{border-top:1px solid var(--border);padding:18px 48px;position:relative;z-index:1;}
+.disc p{font-size:10px;color:#2a2a2a;font-family:var(--font-mono);line-height:1.6;}
+
+.article-content{max-width:720px;padding:120px 48px 80px;margin:0 auto;position:relative;z-index:1;}
+.article-breadcrumb{font-family:var(--font-mono);font-size:11px;color:var(--gray2);margin-bottom:40px;display:flex;align-items:center;gap:8px;}
+.article-breadcrumb a{color:var(--gray);transition:color .15s;}
+.article-breadcrumb a:hover{color:var(--white);}
+.article-breadcrumb span{color:var(--gray2);}
+.article-tag{font-family:var(--font-mono);font-size:11px;color:var(--gray);letter-spacing:2px;text-transform:uppercase;margin-bottom:24px;display:flex;align-items:center;gap:10px;}
+.article-tag::before{content:'';display:inline-block;width:24px;height:1px;background:var(--gray);}
+.article-h1{font-size:clamp(32px,4.5vw,56px);font-weight:600;line-height:1.08;letter-spacing:-2px;margin-bottom:24px;}
+.article-meta{font-size:13px;color:var(--gray);font-weight:300;margin-bottom:48px;padding-bottom:48px;border-bottom:1px solid var(--border);}
+.article-content h2{font-size:clamp(24px,3vw,36px);margin-top:64px;margin-bottom:20px;}
+.article-content h3{font-size:18px;margin-top:40px;margin-bottom:12px;}
+.article-content p{font-size:15px;color:var(--gray);line-height:1.8;font-weight:300;margin-bottom:20px;max-width:none;}
+.article-content ul,.article-content ol{margin:20px 0;padding-left:24px;}
+.article-content li{font-size:14px;color:var(--gray);line-height:1.7;font-weight:300;margin-bottom:10px;}
+.article-content strong{color:var(--white);font-weight:500;}
+.article-cta{margin:60px 0;padding:48px;border:1px solid var(--border);text-align:center;position:relative;overflow:hidden;}
+.article-cta::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(110,231,183,.15),transparent);}
+.article-cta h3{font-size:24px;font-weight:600;letter-spacing:-1px;margin-bottom:12px;}
+.article-cta p{font-size:14px;color:var(--gray);margin-bottom:24px;max-width:400px;margin-left:auto;margin-right:auto;}
+
+.comp-table{width:100%;border-collapse:collapse;margin:32px 0;font-size:13px;}
+.comp-table th{font-family:var(--font-mono);font-size:10px;color:var(--gray2);letter-spacing:1px;text-transform:uppercase;padding:12px 16px;border-bottom:1px solid var(--border);text-align:left;font-weight:400;}
+.comp-table td{padding:12px 16px;border-bottom:1px solid var(--border);color:var(--gray);font-weight:300;}
+.comp-table tr:hover{background:rgba(255,255,255,.02);}
+.comp-table .check{color:#4a7c59;font-weight:500;}
+.comp-table .cross{color:#7c4a4a;font-weight:500;}
+
+@media(max-width:900px){
+  .split,.split.rev,.faq-section,.ctas{grid-template-columns:1fr;}
+  .st{border-right:none;border-bottom:1px solid var(--border);}
+  .split.rev .st{border-left:none;border-bottom:1px solid var(--border);}
+  nav{padding:0 20px;}
+  .st,.sv,.fl2,.fr,.ctl,.ctr,.article-content{padding:60px 24px;}
+  .nav-links{display:none;}
+  footer,.disc{padding:24px;}
+  .faq-section,.ctas{grid-template-columns:1fr;}
+  .fl2{border-right:none;border-bottom:1px solid var(--border);}
+  .article-content{padding:100px 24px 60px;}
+}
+  </style>
+</head>
+<body>
+  <canvas class="grid-bg" id="gridCanvas"></canvas>
+
+  <nav>
+    <a href="/">
+      <svg height="22" viewBox="0 0 340 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M4 33 L20 5 L36 33" stroke="white" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+        <text x="52" y="29" font-family="Inter,sans-serif" font-size="19" font-weight="600" letter-spacing="4" fill="white">POLYTRAGENT</text>
+      </svg>
+    </a>
+  <ul class="nav-links">
+    <li><a href="/#features">Features</a></li>
+    <li><a href="/#how-it-works">How it works</a></li>
+    <li><a href="/#pricing">Pricing</a></li>
+    <li>
+      <a href="/resources">Resources ▾</a>
+      <div class="nav-dropdown"><div class="nav-dropdown-inner">
+        <div class="ndrop-label">Compare</div>
+        <a href="/compare">All Comparisons</a>
+        <a href="/compare/polytragent-vs-polycop">Polytragent vs PolyCop</a>
+        <a href="/compare/polytragent-vs-polysight">Polytragent vs Polysight</a>
+        <a href="/compare/copy-trading-bots">Copy Trading Bots</a>
+        <a href="/compare/polycop-alternative">PolyCop Alternative</a>
+        <a href="/compare/polysight-alternative">Polysight Alternative</a>
+        <div class="ndrop-label">Landing Pages</div>
+        <a href="/resources/polymarket-strategies">Polymarket Strategies 2026</a>
+        <a href="/resources/how-to-make-money-polymarket">How to Make Money</a>
+        <a href="/resources/prediction-market-strategies">Prediction Market Strategies</a>
+        <a href="/resources/polymarket-telegram-bots">Telegram Bots</a>
+        <a href="/resources/polymarket-automated-trading">Automated Trading</a>
+        <a href="/resources/polymarket-whale-tracking">Whale Tracking</a>
+        <a href="/resources/polymarket-market-making">Market Making</a>
+        <a href="/resources/polymarket-poly-token">POLY Token Airdrop</a>
+        <div class="ndrop-label">Blog</div>
+        <a href="/blog">All Articles</a>
+        <a href="/blog/polymarket-prediction-bot">Polymarket Prediction Bot</a>
+        <a href="/blog/polymarket-tools-guide">Polymarket Tools Guide</a>
+        <a href="/blog/best-polymarket-bots-2026">Best Polymarket Bots 2026</a>
+        <a href="/blog/polymarket-trading-bot">Polymarket Trading Bot</a>
+        <a href="/blog/copy-trade-bot">Copy Trade Bot Guide</a>
+        <a href="/blog/copy-trading-guide">Copy Trading Guide</a>
+        <a href="/blog/polymarket-strategies-2026">Polymarket Strategies 2026</a>
+        <a href="/blog/how-to-make-money-polymarket">How to Make Money on Polymarket</a>
+        <a href="/blog/prediction-market-strategies">Prediction Market Strategies</a>
+        <a href="/blog/polymarket-telegram-bots">Polymarket Telegram Bots</a>
+        <a href="/blog/polymarket-automated-trading">Automated Trading Guide</a>
+        <a href="/blog/polymarket-whale-tracking">Whale Tracking Guide</a>
+        <a href="/blog/polymarket-market-making">Market Making Guide</a>
+        <a href="/blog/polymarket-poly-token">POLY Token Airdrop Guide</a>
+      </div></div>
+    </li>
+    <li><a href="/#faq">FAQ</a></li>
+  </ul>
+    <div class="nav-ctas">
+      <a href="/#pricing" class="btn-outline">View pricing</a>
+      <a href="https://t.me/bmpolybot" class="btn-solid" target="_blank">Get started →</a>
+    </div>
+  </nav>
+
+  <article class="article-content">
+    <div class="article-breadcrumb">
+      <a href="/">Home</a>
+      <span>/</span>
+      <a href="/blog">Blog</a>
+      <span>/</span>
+      <span>Copy Trading Guide</span>
+    </div>
+
+    <div class="article-tag">Copy Trading</div>
+
+    <h1 class="article-h1">The Complete Guide to Polymarket Copy Trading</h1>
+
+    <div class="article-meta">
+      Published March 14, 2026 • 10 min read • By Polytragent Team
+    </div>
+
+    <p>What if you could automatically copy the trades of the best Polymarket prediction market traders? Instead of spending hours analyzing markets, you could leverage the expertise of proven winners. Copy trading eliminates guesswork and lets you benefit from strategies that have already been tested in live markets with real capital.</p>
+
+    <h2>What Is Copy Trading on Polymarket?</h2>
+
+    <p>Copy trading is a strategy where you automatically mirror the trades made by other successful traders. Instead of making your own trading decisions, you identify top-performing traders on Polymarket and link your account to theirs. When they make a trade, your account automatically executes the same trade (or a proportional version based on your capital).</p>
+
+    <p>It's like having a co-pilot who's already proven their skill. The trader you copy has real financial skin in the game—their returns are tied to their actual performance. No hype, no false claims. Just results.</p>
+
+    <h3>Key Concepts in Copy Trading</h3>
+
+    <ul>
+      <li><strong>Wallet Mirroring:</strong> Tracking every transaction from a target wallet and replicating it to yours</li>
+      <li><strong>Position Scaling:</strong> Adjusting trade sizes based on your capital relative to the trader's capital</li>
+      <li><strong>Real-time Execution:</strong> Copying trades as they happen, not with a delay</li>
+      <li><strong>Risk Management:</strong> Maintaining diversification across multiple traders to reduce single-point-of-failure risk</li>
+      <li><strong>Performance Tracking:</strong> Monitoring returns and comparing multiple traders' performance metrics</li>
+    </ul>
+
+    <h2>Why Copy Trading Works on Prediction Markets</h2>
+
+    <p>Prediction markets are unique. Unlike stock markets where fundamental analysis dominates, prediction markets reward pattern recognition, sentiment tracking, and reaction speed. The best traders often use proprietary strategies that aren't fully transparent.</p>
+
+    <p>Copy trading lets you benefit from their expertise without needing to understand every nuance of their strategy. You capture their edge while they remain the strategy architect.</p>
+
+    <p>Key advantages:</p>
+
+    <ul>
+      <li>Remove emotional decision-making from trading</li>
+      <li>Access institutional-quality strategies without institution-sized capital</li>
+      <li>Diversify across multiple winning traders</li>
+      <li>Scale your capital efficiency by learning from proven performers</li>
+      <li>Spend less time analyzing and more time growing your portfolio</li>
+    </ul>
+
+    <h2>How Wallet Mirroring Works</h2>
+
+    <p>Wallet mirroring is the technical foundation of copy trading. Here's the step-by-step process:</p>
+
+    <div class="sl2 rev2">
+      <div class="si">
+        <div class="sn">1</div>
+        <div class="sb2">
+          <h3>Identify Target Wallets</h3>
+          <p>You select which traders to follow. Polytragent's discovery engine shows top performers ranked by ROI, win rate, consistency, and risk-adjusted returns. You can see their full trading history and all markets they've traded.</p>
+        </div>
+      </div>
+      <div class="si">
+        <div class="sn">2</div>
+        <div class="sb2">
+          <h3>Permission Setup</h3>
+          <p>Interestingly, copy trading doesn't require the original trader's permission. You only need their public wallet address. Polymarket transactions are public on-chain events. Once you enable mirroring, our system monitors their wallet 24/7.</p>
+        </div>
+      </div>
+      <div class="si">
+        <div class="sn">3</div>
+        <div class="sb2">
+          <h3>Real-time Monitoring</h3>
+          <p>Our servers continuously scan blockchain events for transactions from your selected wallets. The moment a trade executes, we detect it within milliseconds and add it to our execution queue.</p>
+        </div>
+      </div>
+      <div class="si">
+        <div class="sn">4</div>
+        <div class="sb2">
+          <h3>Proportional Sizing</h3>
+          <p>Before execution, we scale the trade to match your capital. If the trader buys 1,000 shares and their total portfolio is $100k while yours is $50k, we buy 500 shares instead. Proportional scaling maintains risk parity.</p>
+        </div>
+      </div>
+      <div class="si">
+        <div class="sn">5</div>
+        <div class="sb2">
+          <h3>Instant Execution</h3>
+          <p>Your account executes the trade within seconds of the original trade. Using smart order routing, we find the best prices and minimize slippage. The trade completes with minimal latency.</p>
+        </div>
+      </div>
+      <div class="si">
+        <div class="sn">6</div>
+        <div class="sb2">
+          <h3>Position Tracking</h3>
+          <p>Your account now holds the position. If the original trader exits, we exit simultaneously. If they add to the position, we mirror that too. Your portfolio stays synchronized with theirs throughout the lifecycle of each trade.</p>
+        </div>
+      </div>
+    </div>
+
+    <h2>Live Wallet Monitoring Dashboard</h2>
+
+    <p>Polytragent provides a real-time dashboard showing all tracked wallets and their current activity. This is what wallet monitoring looks like in practice:</p>
+
+    <div class="data-monitor rev2">
+      <div class="dm-header">
+        <div class="dm-header-left">
+          <span>Wallet Tracker</span>
+        </div>
+        <div class="dm-live">
+          <div class="dm-live-dot"></div>
+          LIVE
+        </div>
+      </div>
+      <div class="dm-row header">
+        <div class="dm-market">Trader / Market</div>
+        <div style="text-align:right;">Position</div>
+        <div style="text-align:right;">Entry</div>
+        <div style="text-align:right;">PnL</div>
+      </div>
+      <div class="dm-row">
+        <div class="dm-market">0x7f2c...8a4d / "Will BTC > $50k?"</div>
+        <div class="dm-pos">+2,450 YES</div>
+        <div>$0.524</div>
+        <div class="dm-pos">+$628</div>
+      </div>
+      <div class="dm-row">
+        <div class="dm-market">0x2e8b...5f1c / "Trump 2024?"</div>
+        <div class="dm-neg">-1,200 NO</div>
+        <div>$0.385</div>
+        <div class="dm-neg">-$84</div>
+      </div>
+      <div class="dm-row">
+        <div class="dm-market">0x9a3c...2b7e / "Fed Rate Cut Q2?"</div>
+        <div class="dm-neutral">Monitoring</div>
+        <div>—</div>
+        <div class="dm-neutral">—</div>
+      </div>
+      <div class="dm-row">
+        <div class="dm-market">0x5d4e...9f2a / "Ethereum > $3000?"</div>
+        <div class="dm-pos">+875 YES</div>
+        <div>$0.687</div>
+        <div class="dm-pos">+$293</div>
+      </div>
+      <div class="dm-row">
+        <div class="dm-market">0x3b8f...6c1a / "Apple Earnings Beat?"</div>
+        <div class="dm-pos">+550 YES</div>
+        <div>$0.612</div>
+        <div class="dm-pos">+$197</div>
+      </div>
+    </div>
+
+    <h2>Selecting Traders to Copy</h2>
+
+    <p>Not all traders are worth copying. Successful copy traders choose carefully. Here's what to evaluate:</p>
+
+    <h3>1. Track Record Consistency</h3>
+    <p>Look for traders with sustained profitability over 6+ months, not just lucky winning streaks. Examine their monthly returns—consistency matters more than peak performance. A trader with steady 8% monthly returns beats one with 50% one month and losses the next.</p>
+
+    <h3>2. Win Rate vs Average Trade Size</h3>
+    <p>A 40% win rate might sound terrible, but if winning trades are 3x larger than losing trades, the math works. Check the average profit per winning trade vs average loss per losing trade. A positive expectancy is what matters.</p>
+
+    <h3>3. Strategy Transparency</h3>
+    <p>The best traders publish commentary about their trades. They explain their thesis for major positions. This helps you understand whether their strategy aligns with your risk tolerance and market outlook.</p>
+
+    <h3>4. Capital Under Management</h3>
+    <p>Traders managing large capital operate differently than those trading small amounts. Large positions move markets. Small traders can be more nimble. Consider your capital size and whether theirs creates similar constraints or advantages.</p>
+
+    <h3>5. Risk-Adjusted Returns</h3>
+    <p>Compare Sharpe ratios or similar risk-adjusted metrics. A trader returning 15% with 45% drawdown is different from one returning 15% with 10% drawdown. The second is more sustainable.</p>
+
+    <h2>Building Your Copy Trading Portfolio</h2>
+
+    <p>Copy trading one trader concentrates your risk. A diversified approach works better:</p>
+
+    <ul>
+      <li><strong>Tier 1 Traders (40% allocation):</strong> Your most conviction picks—traders with proven 12+ month track records and exceptional risk-adjusted returns</li>
+      <li><strong>Tier 2 Traders (35% allocation):</strong> Solid performers with 6-12 month histories. You're confident but less certain than Tier 1</li>
+      <li><strong>Tier 3 Traders (15% allocation):</strong> High-conviction plays—newer traders or niche specialists with lower AUM but impressive recent performance</li>
+      <li><strong>Personal Trading (10% allocation):</strong> Your own trades. Maintains skin in the game and personal learning</li>
+    </ul>
+
+    <h2>Copy Trading Fees and Economics</h2>
+
+    <p>Understanding the cost structure is critical:</p>
+
+    <ul>
+      <li><strong>Polytragent:</strong> $79.99/month — one plan, full access</li>
+      <li><strong>Performance Fee:</strong> None. We don't take a cut of profits, unlike many other platforms</li>
+      <li><strong>Exchange Fees:</strong> Standard Polymarket trading fees apply (typically 2-3% per trade)</li>
+      <li><strong>Total Cost:</strong> Platform fee + exchange costs. On a $10k portfolio trading monthly, expect $150-250 total cost</li>
+    </ul>
+
+    <p>At scale, these fees become negligible. On a $100k portfolio returning 20% annually ($20k profit), $2,400 in annual platform costs is just 1.2% of profits.</p>
+
+    <h2>Common Copy Trading Mistakes</h2>
+
+    <h3>Mistake 1: Following Too Many Traders</h3>
+    <p>Copying 10+ traders dilutes your portfolio and makes it impossible to analyze performance. Start with 3-4 traders maximum. You need enough capital per trader to maintain meaningful position sizes.</p>
+
+    <h3>Mistake 2: Ignoring Correlation</h3>
+    <p>Two traders with correlated strategies won't provide diversification. If both trade the same political prediction markets or crypto events, your risk isn't spread. Mix strategy types—trend following, arbitrage, contrarian, sentiment-based.</p>
+
+    <h3>Mistake 3: Panic Selling After Losses</h3>
+    <p>Copy trading works best over months/years. A trader might have a bad week and still be profitable long-term. Commit to at least 3-month tracking periods before evaluating results.</p>
+
+    <h3>Mistake 4: Not Monitoring Your Copy Settings</h3>
+    <p>Markets change. A trader's edge might disappear. Review your copied traders monthly. If performance degrades, consider reducing allocation or stopping entirely.</p>
+
+    <h3>Mistake 5: Over-Relying on Historical Returns</h3>
+    <p>Past performance doesn't guarantee future results. A trader's strategy might work until it doesn't. Always maintain a personal trading allocation for learning and independent thinking.</p>
+
+    <h2>Setting Up Copy Trading with Polytragent</h2>
+
+    <p>The process is straightforward:</p>
+
+    <ol>
+      <li>Sign up and verify your Polymarket account</li>
+      <li>Browse our Trader Discovery dashboard showing top performers</li>
+      <li>Select up to 10 traders to copy</li>
+      <li>Allocate capital across your selected traders</li>
+      <li>Set risk parameters (max position size, daily loss limits, etc.)</li>
+      <li>Enable automatic mirroring</li>
+      <li>Monitor performance on your dashboard</li>
+    </ol>
+
+    <p>Setup takes 5 minutes. Mirroring begins immediately. Your first trades could execute within hours.</p>
+
+    <div class="article-cta rev2">
+      <h3>Start Copy Trading Today</h3>
+      <p>Join Polytragent and access the most profitable Polymarket traders. Automatically mirror their strategies with smart wallet mirroring and proportional sizing.</p>
+      <a href="https://t.me/bmpolybot" class="btn-sl" target="_blank">Get started →</a>
+    </div>
+  </article>
+
+  <section class="faq-section rev2">
+    <div class="fl2">
+      <h2 style="margin-bottom:48px;">FAQ</h2>
+      <p class="sb">Questions about copy trading, wallet mirroring, and risk management with Polytragent.</p>
+    </div>
+    <div class="fr">
+      <div class="fqi">
+        <div class="fqq">Do traders know I'm copying them?</div>
+        <div class="fqa">No. Copy trading happens at the transaction level. The trader whose transactions you're mirroring sees Polymarket markets moving, but they don't see your specific account. It's completely private.</div>
+      </div>
+      <div class="fqi">
+        <div class="fqq">What if a trader's strategy stops working?</div>
+        <div class="fqa">It can happen. Markets evolve. We recommend reviewing your copied traders quarterly and moving allocations to new high performers if needed. Diversification across 3-4 traders protects you from any single trader's drawdown.</div>
+      </div>
+      <div class="fqi">
+        <div class="fqq">Can I stop copying a trader anytime?</div>
+        <div class="fqa">Yes. You can disable copying immediately, but existing positions stay open. You manage them or wait for exits. Polytragent gives you full control—no locks, no penalties.</div>
+      </div>
+      <div class="fqi">
+        <div class="fqq">How is proportional sizing calculated?</div>
+        <div class="fqa">If a trader with $100k capital buys 1,000 shares and you have $50k, we buy 500 shares. This maintains the same position as a percentage of capital. It's automatic—no manual calculation needed.</div>
+      </div>
+      <div class="fqi">
+        <div class="fqq">Are there tax implications for copy trading?</div>
+        <div class="fqa">Yes. Every trade is a taxable event. Consult a tax professional, but generally you'll owe capital gains tax on your realized gains. Polytragent provides transaction records for easy tax reporting.</div>
+      </div>
+      <div class="fqi">
+        <div class="fqq">What's the minimum capital to start?</div>
+        <div class="fqa">There's no minimum, but we recommend at least $5,000 to have meaningful position sizes. With less, trading fees eat into returns proportionally. With more, you have better diversification.</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="ctas rev2">
+    <div class="ctl">
+      <h2>Ready to copy winning traders?</h2>
+      <p class="sb">Join Polytragent and access the top prediction market traders on Polymarket. Automatic wallet mirroring. No manual execution needed.</p>
+      <div>
+        <a href="https://t.me/bmpolybot" class="btn-sl" target="_blank">Get started →</a>
+        <div class="trnote">
+          <span>Access within 24 hours</span>
+          <span>No credit card required</span>
+        </div>
+      </div>
+    </div>
+    <div class="ctr" style="background:linear-gradient(135deg,rgba(110,231,183,.02),rgba(110,231,183,.01));">
+      <div style="font-family:var(--font-mono);font-size:11px;color:var(--gray2);letter-spacing:2px;margin-bottom:20px;">COPY TRADER NETWORK</div>
+      <div style="font-size:clamp(20px,3vw,32px);font-weight:600;margin-bottom:8px;">847</div>
+      <div style="font-size:13px;color:var(--gray);margin-bottom:24px;">Active traders available to copy in our network</div>
+      <div style="height:1px;background:var(--border);margin:24px 0;"></div>
+      <div style="font-size:clamp(20px,3vw,32px);font-weight:600;margin-bottom:8px;">$18.7M</div>
+      <div style="font-size:13px;color:var(--gray);">Total capital following top traders</div>
+    </div>
+  </section>
+
+  <footer>
+    <div>
+      <svg height="20" viewBox="0 0 340 40" fill="none" xmlns="http://www.w3.org/2000/svg" style="opacity:.35;">
+        <path d="M4 33 L20 5 L36 33" stroke="white" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+        <text x="52" y="29" font-family="Inter,sans-serif" font-size="19" font-weight="600" letter-spacing="4" fill="white">POLYTRAGENT</text>
+      </svg>
+      <div class="fcopy" style="margin-top:8px;">© 2026 Polytragent. Built for Polymarket.</div>
+    </div>
+  <ul class="flinks">
+    <li><a href="/features">Features</a></li>
+    <li><a href="/#pricing">Pricing</a></li>
+    <li><a href="/resources">Resources</a></li>
+    <li><a href="/blog">Blog</a></li>
+    <li><a href="/#faq">FAQ</a></li>
+    <li><a href="https://x.com/polytragent" target="_blank">X / Twitter</a></li>
+    <li><a href="https://polytragent.gitbook.io/polytragent-docs/polytragent-documentation" target="_blank">Docs</a></li>
+  </ul>
+  </footer>
+  <div class="disc">
+    <p>Risk Disclaimer: Prediction market trading involves significant financial risk. Copy trading does not guarantee profits. Past performance of copied traders is not indicative of future results. Only invest capital you can afford to lose. This website does not constitute financial advice.</p>
+  </div>
+
+  <script>
+(function(){
+  const c=document.getElementById('gridCanvas');if(!c)return;
+  const ctx=c.getContext('2d');let w,h;
+  function resize(){w=c.width=window.innerWidth;h=c.height=window.innerHeight*4;}
+  resize();window.addEventListener('resize',()=>{resize();draw();});
+  const sp=60;
+  function draw(){
+    ctx.clearRect(0,0,w,h);ctx.strokeStyle='rgba(255,255,255,.018)';ctx.lineWidth=.5;
+    for(let x=0;x<w;x+=sp){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,h);ctx.stroke();}
+    for(let y=0;y<h;y+=sp){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(w,y);ctx.stroke();}
+    ctx.fillStyle='rgba(255,255,255,.03)';
+    for(let x=0;x<w;x+=sp){for(let y=0;y<h;y+=sp){ctx.beginPath();ctx.arc(x,y,1,0,Math.PI*2);ctx.fill();}}
+  }
+  draw();
+})();
+
+const obs=new IntersectionObserver(es=>{
+  es.forEach(e=>{if(e.isIntersecting)e.target.classList.add('in');});
+},{threshold:0.08});
+document.querySelectorAll('.rev2').forEach(el=>obs.observe(el));
+  </script>
+</body>
+</html>

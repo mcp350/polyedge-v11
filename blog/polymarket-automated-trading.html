@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><link rel="icon" type="image/x-icon" href="/favicon.ico"><link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png"><link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Complete guide to polymarket automated trading. Learn AI tools, bot frameworks, and strategies for automated prediction market trading in 2026.">
+<link rel="canonical" href="https://polytragent.com/blog/polymarket-automated-trading">
+  <meta name="keywords" content="polymarket automated trading, trading bots, prediction market automation, polymarket API">
+  <meta name="author" content="Polytragent">
+
+  <!-- OG Tags -->
+  <meta property="og:title" content="Polymarket Automated Trading: AI Tools and Strategies for 2026">
+  <meta property="og:description" content="Master automated trading on Polymarket with AI research tools. Strategies, bot frameworks, and risk management for 2026.">
+  <meta property="og:type" content="article">
+  <meta property="og:url" content="https://polytragent.com/blog/polymarket-automated-trading">
+  <meta property="og:image" content="https://polytragent.com/og-image.jpg">
+
+  <!-- Schema Markup -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "BlogPosting",
+    "headline": "Polymarket Automated Trading: AI Tools and Strategies for 2026",
+    "description": "Complete guide to automated trading on Polymarket with AI research, bot frameworks, and risk management strategies.",
+    "image": "https://polytragent.com/og-image.jpg",
+    "datePublished": "2026-03-14",
+    "dateModified": "2026-03-14",
+    "author": {
+      "@type": "Organization",
+      "name": "Polytragent",
+      "url": "https://polytragent.com"
+    }
+  }
+  </script>
+
+  <title>Polymarket Automated Trading: AI Tools and Strategies for 2026</title>
+  <!-- Twitter Card -->
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Polymarket Automated Trading: AI Tools and Strategies for 2026">
+<meta name="twitter:description" content="Complete guide to polymarket automated trading. Learn AI tools, bot frameworks, and strategies for automated prediction market trading in 2026.">
+<meta name="twitter:image" content="https://polytragent.com/og-image.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+  
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Home","item":"https://polytragent.com/"},{"@type":"ListItem","position":2,"name":"Blog","item":"https://polytragent.com/blog"},{"@type":"ListItem","position":3,"name":"Polymarket Automated Trading"}]}
+</script>
+
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"Article","headline":"Polymarket Automated Trading: AI Tools and Strategies for 2026","description":"Complete guide to polymarket automated trading. Learn AI tools, bot frameworks, and strategies for automated prediction market trading in 2026.","url":"https://polytragent.com/blog/polymarket-automated-trading","datePublished":"2026-03-16","dateModified":"2026-03-23","author":{"@type":"Organization","name":"Polytragent","url":"https://polytragent.com"},"publisher":{"@type":"Organization","name":"Polytragent","logo":{"@type":"ImageObject","url":"https://polytragent.com/favicon-512x512.png"}}}
+</script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{
+  --black:#000;--white:#fff;--gray:#888;--gray2:#444;--gray3:#222;
+  --border:#1a1a1a;--font-sans:'Inter',sans-serif;--font-mono:'JetBrains Mono',monospace;
+  --green:#6ee7b7;--red:#fca5a5;--blue:#93c5fd;--yellow:#fde68a;
+  --code-bg:#080808;--code-border:#141414;
+}
+html{scroll-behavior:smooth;}
+body{background:var(--black);color:var(--white);font-family:var(--font-sans);font-size:16px;line-height:1.6;overflow-x:hidden;}
+a{color:inherit;text-decoration:none;}
+
+nav{position:fixed;top:0;left:0;right:0;z-index:200;display:flex;align-items:center;justify-content:space-between;padding:0 48px;height:64px;border-bottom:1px solid var(--border);background:rgba(0,0,0,0.92);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);}
+.nav-links{display:flex;gap:32px;list-style:none;}
+.nav-links a{font-size:14px;color:var(--gray);transition:color .15s;}
+.nav-links a:hover{color:var(--white);}
+.nav-links li{position:relative;}
+.nav-dropdown{display:none;position:absolute;top:100%;left:-16px;padding-top:12px;z-index:300;}
+.nav-links li:hover .nav-dropdown{display:block;}
+.nav-dropdown-inner{background:rgba(0,0,0,0.96);border:1px solid var(--border);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);padding:12px 0;min-width:260px;}
+.nav-dropdown a{display:block;padding:8px 20px;font-size:13px;color:var(--gray);transition:color .15s,background .15s;white-space:nowrap;}
+.nav-dropdown a:hover{color:var(--white);background:rgba(255,255,255,.04);}
+.ndrop-label{padding:6px 20px 4px;font-family:var(--font-mono);font-size:9px;color:var(--gray2);letter-spacing:2px;text-transform:uppercase;}
+.ndrop-label:not(:first-child){margin-top:8px;border-top:1px solid var(--border);padding-top:10px;}
+.nav-ctas{display:flex;gap:12px;align-items:center;}
+.btn-solid{display:inline-flex;align-items:center;gap:6px;padding:9px 20px;background:var(--white);color:var(--black);font-size:13px;font-weight:500;font-family:var(--font-sans);border:none;cursor:pointer;transition:opacity .15s;}
+.btn-solid:hover{opacity:.85;}
+.btn-outline{display:inline-flex;align-items:center;gap:6px;padding:8px 20px;background:transparent;color:var(--white);font-size:13px;border:1px dashed var(--gray2);cursor:pointer;transition:border-color .15s;}
+.btn-outline:hover{border-color:var(--white);}
+
+footer{border-top:1px solid var(--border);padding:28px 48px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:20px;position:relative;z-index:1;}
+.fcopy{font-family:var(--font-mono);font-size:10px;color:var(--gray2);}
+.flinks{display:flex;gap:28px;list-style:none;}
+.flinks a{font-size:13px;color:var(--gray2);transition:color .15s;}.flinks a:hover{color:var(--white);}
+.disc{border-top:1px solid var(--border);padding:18px 48px;position:relative;z-index:1;}
+.disc p{font-size:10px;color:#2a2a2a;font-family:var(--font-mono);line-height:1.6;}
+
+.rev2{opacity:0;transform:translateY(16px);transition:opacity .55s,transform .55s;}
+.rev2.in{opacity:1;transform:none;}
+
+.breadcrumb{font-family:var(--font-mono);font-size:11px;color:var(--gray2);margin-bottom:24px;}
+.breadcrumb a{color:var(--gray);transition:color .15s;}
+.breadcrumb a:hover{color:var(--white);}
+.article-wrap{max-width:720px;margin:0 auto;padding:120px 48px 80px;}
+.article-meta{font-family:var(--font-mono);font-size:11px;color:var(--gray2);margin-bottom:32px;display:flex;gap:20px;}
+.article-wrap h1{font-size:clamp(32px,4vw,48px);font-weight:600;line-height:1.1;letter-spacing:-1.5px;margin-bottom:16px;}
+.article-wrap h2{font-size:24px;font-weight:600;letter-spacing:-0.5px;margin:48px 0 16px;padding-top:32px;border-top:1px solid var(--border);}
+.article-wrap h3{font-size:18px;font-weight:500;margin:32px 0 12px;}
+.article-wrap p{font-size:16px;color:var(--gray);line-height:1.8;margin-bottom:20px;font-weight:300;}
+.article-wrap ul,.article-wrap ol{margin:0 0 20px 24px;color:var(--gray);}
+.article-wrap li{font-size:15px;line-height:1.8;margin-bottom:8px;font-weight:300;}
+.article-wrap strong{color:var(--white);font-weight:500;}
+.article-wrap a{color:var(--white);border-bottom:1px dashed var(--gray2);transition:border-color .15s;}
+.article-wrap a:hover{border-color:var(--white);}
+.article-cta{margin:48px 0;padding:32px;border:1px solid var(--border);background:var(--code-bg);}
+.article-cta h3{margin:0 0 8px;font-size:16px;}
+.article-cta p{font-size:14px;margin-bottom:16px;}
+.code-block{background:var(--code-bg);border:1px solid var(--code-border);padding:20px;margin:20px 0;font-family:var(--font-mono);font-size:12px;color:var(--gray);line-height:1.7;overflow-x:auto;}
+.takeaway{border-left:2px solid var(--green);padding:16px 20px;margin:24px 0;background:rgba(110,231,183,.03);}
+.takeaway p{font-size:14px;margin:0;}
+
+@media(max-width:900px){
+  nav{padding:0 20px;}
+  .nav-links{display:none;}
+  footer,.disc{padding:24px;}
+  .article-wrap{padding:80px 24px 60px;}
+}
+  </style>
+</head>
+<body>
+
+<nav>
+  <a href="/"><svg height="22" viewBox="0 0 340 40" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 33 L20 5 L36 33" stroke="white" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/><text x="52" y="29" font-family="Inter,sans-serif" font-size="19" font-weight="600" letter-spacing="4" fill="white">POLYTRAGENT</text></svg></a>
+  <ul class="nav-links">
+    <li><a href="/#features">Features</a></li>
+    <li><a href="/#how-it-works">How it works</a></li>
+    <li><a href="/#pricing">Pricing</a></li>
+    <li>
+      <a href="/resources">Resources ▾</a>
+      <div class="nav-dropdown"><div class="nav-dropdown-inner">
+        <div class="ndrop-label">Compare</div>
+        <a href="/compare">All Comparisons</a>
+        <a href="/compare/polytragent-vs-polycop">Polytragent vs PolyCop</a>
+        <a href="/compare/polytragent-vs-polysight">Polytragent vs Polysight</a>
+        <a href="/compare/copy-trading-bots">Copy Trading Bots</a>
+        <a href="/compare/polycop-alternative">PolyCop Alternative</a>
+        <a href="/compare/polysight-alternative">Polysight Alternative</a>
+        <div class="ndrop-label">Landing Pages</div>
+        <a href="/resources/polymarket-strategies">Polymarket Strategies 2026</a>
+        <a href="/resources/how-to-make-money-polymarket">How to Make Money</a>
+        <a href="/resources/prediction-market-strategies">Prediction Market Strategies</a>
+        <a href="/resources/polymarket-telegram-bots">Telegram Bots</a>
+        <a href="/resources/polymarket-automated-trading">Automated Trading</a>
+        <a href="/resources/polymarket-whale-tracking">Whale Tracking</a>
+        <a href="/resources/polymarket-market-making">Market Making</a>
+        <a href="/resources/polymarket-poly-token">POLY Token Airdrop</a>
+        <div class="ndrop-label">Blog</div>
+        <a href="/blog">All Articles</a>
+        <a href="/blog/polymarket-prediction-bot">Polymarket Prediction Bot</a>
+        <a href="/blog/polymarket-tools-guide">Polymarket Tools Guide</a>
+        <a href="/blog/best-polymarket-bots-2026">Best Polymarket Bots 2026</a>
+        <a href="/blog/polymarket-trading-bot">Polymarket Trading Bot</a>
+        <a href="/blog/copy-trade-bot">Copy Trade Bot Guide</a>
+        <a href="/blog/copy-trading-guide">Copy Trading Guide</a>
+        <a href="/blog/polymarket-strategies-2026">Polymarket Strategies 2026</a>
+        <a href="/blog/how-to-make-money-polymarket">How to Make Money on Polymarket</a>
+        <a href="/blog/prediction-market-strategies">Prediction Market Strategies</a>
+        <a href="/blog/polymarket-telegram-bots">Polymarket Telegram Bots</a>
+        <a href="/blog/polymarket-automated-trading">Automated Trading Guide</a>
+        <a href="/blog/polymarket-whale-tracking">Whale Tracking Guide</a>
+        <a href="/blog/polymarket-market-making">Market Making Guide</a>
+        <a href="/blog/polymarket-poly-token">POLY Token Airdrop Guide</a>
+      </div></div>
+    </li>
+    <li><a href="/#faq">FAQ</a></li>
+  </ul>
+  <div class="nav-ctas"><a href="/#pricing" class="btn-outline">See plans</a><a href="https://t.me/bmpolybot" target="_blank" class="btn-solid">Get started →</a></div>
+</nav>
+
+<div class="article-wrap">
+  <div class="breadcrumb"><a href="/">Home</a> / <a href="/blog">Blog</a> / Polymarket Automated Trading</div>
+  <div class="article-meta">
+    <span>Published Mar 14, 2026</span>
+    <span>7 min read</span>
+  </div>
+
+  <h1>Polymarket Automated Trading: AI Tools and Strategies for 2026</h1>
+
+  <p>Prediction markets have transformed from niche trading venues into multi-billion dollar ecosystems. Polymarket, as the largest prediction market platform, attracts sophisticated traders who use automation to execute strategies at scale, reduce emotional bias, and capture fleeting market inefficiencies. In 2026, automated trading on Polymarket requires a blend of technical infrastructure, AI-powered research, and disciplined risk management.</p>
+
+  <p>This guide walks you through the landscape of automated trading, from API access and bot frameworks to the role of AI research in generating edge. Whether you're building your own system or using existing platforms, understanding these tools will help you automate more effectively.</p>
+
+  <h2>Understanding Polymarket Automated Trading</h2>
+
+  <p>Automated trading means executing orders without manual intervention. On Polymarket, this includes placing limit orders, adjusting positions in response to price moves, monitoring multiple markets simultaneously, and reacting to on-chain events in real time. The advantage is speed—bots can respond to market shifts microseconds faster than human traders.</p>
+
+  <p>But automation without intelligence is just noise. The real edge comes from <strong>research-driven automation</strong>: using data analysis, sentiment tracking, and predictive models to inform which orders your bots actually place.</p>
+
+  <h3>Why Automate Trading on Polymarket?</h3>
+
+  <ul>
+    <li><strong>Speed:</strong> React to sentiment shifts and volume spikes in milliseconds, not minutes.</li>
+    <li><strong>Scale:</strong> Monitor hundreds of markets simultaneously. No human can track that many positions.</li>
+    <li><strong>Discipline:</strong> Remove emotion from position management. Your bot follows the rules every single time.</li>
+    <li><strong>24/7 Operations:</strong> Polymarket never sleeps. Your bots shouldn't either.</li>
+    <li><strong>Efficiency:</strong> Deploy capital across multiple strategies without manual rebalancing overhead.</li>
+  </ul>
+
+  <h2>API Access and Bot Frameworks</h2>
+
+  <p>To automate on Polymarket, you need programmatic access. Polymarket provides REST and WebSocket APIs that allow you to query market data, place orders, and monitor fills in real time.</p>
+
+  <h3>Getting Started with the Polymarket API</h3>
+
+  <p>The Polymarket API supports:</p>
+
+  <ul>
+    <li>Market and order book data (historical and live)</li>
+    <li>Order placement and cancellation</li>
+    <li>Position tracking and P&L reporting</li>
+    <li>User balance and wallet data</li>
+  </ul>
+
+  <p>Most traders build bots in Python using libraries like <strong>requests</strong> for HTTP calls and <strong>websocket-client</strong> for real-time feeds. Authentication uses API keys and signatures—keep your keys secure and rotate them regularly.</p>
+
+  <div class="code-block">
+# Example: Fetch live order book
+import requests
+response = requests.get(
+    'https://api.polymarket.com/markets/{market_id}/order-book'
+)
+order_book = response.json()
+bid_price = order_book['bids'][0]['price']
+  </div>
+
+  <p>Popular frameworks for building trading bots include:</p>
+
+  <ul>
+    <li><strong>CCXT:</strong> A universal crypto exchange connector that abstracts API differences across platforms.</li>
+    <li><strong>Backtrader:</strong> Designed for backtesting strategies before deploying live.</li>
+    <li><strong>VectorBT:</strong> Fast vectorized backtesting for high-frequency strategy research.</li>
+    <li><strong>Custom Python:</strong> Many advanced traders build proprietary systems from scratch using asyncio for concurrent order management.</li>
+  </ul>
+
+  <div class="takeaway">
+    <p><strong>Takeaway:</strong> Start with the Polymarket API documentation and a simple bot that monitors one market and places limit orders. Once you have a working skeleton, layer in research logic and risk controls.</p>
+  </div>
+
+  <h2>AI Research Automation: Finding Edge Before You Execute</h2>
+
+  <p>A bot without good signals is just a noise maker. The real power of automation emerges when you combine it with <strong>AI-driven research</strong> that continuously scans for market-moving insights.</p>
+
+  <p>Polytragent's core strength is automating the research layer—identifying which markets are about to shift, which outcomes are mispriced, and where smart money is positioning. This research then feeds into your trading automation.</p>
+
+  <h3>Key Research Signals for Automated Trading</h3>
+
+  <ul>
+    <li><strong>Sentiment Shift Detection:</strong> AI analyzes Twitter, Reddit, Telegram, and news feeds to catch shifts in narrative before markets price them in. A sudden spike in mentions of a candidate or outcome is often a leading indicator.</li>
+    <li><strong>On-Chain Whale Tracking:</strong> Large wallet movements often precede price moves. Automated systems that flag when major participants accumulate or dump positions can inform your order placement timing.</li>
+    <li><strong>Implied vs. Real Probability:</strong> Markets sometimes misprice outcomes. AI models compare market odds against independent probability estimates (via polling, historical track records, or prediction models) to flag arbitrage opportunities.</li>
+    <li><strong>Volume and Liquidity Analysis:</strong> Markets with dropping volume signal declining interest. Markets with surging volume often indicate incoming liquidity or major position changes. Automated systems track these patterns in real time.</li>
+  </ul>
+
+  <p>When your bot receives a signal from your research engine, it can:</p>
+
+  <ul>
+    <li>Place aggressive bids to accumulate before a predicted move</li>
+    <li>Tighten bid-ask spreads to capture more flow</li>
+    <li>Execute partial exits when research flags a reversal</li>
+    <li>Size positions based on confidence scores from your models</li>
+  </ul>
+
+  <h2>Risk Management in Automated Systems</h2>
+
+  <p>Automation can amplify losses as quickly as it amplifies gains. Robust risk controls are non-negotiable.</p>
+
+  <h3>Essential Risk Controls</h3>
+
+  <ul>
+    <li><strong>Position Limits:</strong> Cap your exposure per market, per outcome, and per strategy. Never let a single bad call wipe out a week of gains.</li>
+    <li><strong>Volatility Halts:</strong> If a market's price moves more than X% in Y seconds, pause new orders. Human-driven market volatility often indicates missing information.</li>
+    <li><strong>Drawdown Stops:</strong> If your bot loses more than Z% in a day or week, shut it down and investigate. Something has changed in market conditions.</li>
+    <li><strong>Order Size Scaling:</strong> Start small and scale up only after your research signal has proven reliable over many trials.</li>
+    <li><strong>API Rate Limiting:</strong> Respect the Polymarket API's rate limits. Aggressive bots that get throttled lose their edge.</li>
+  </ul>
+
+  <p>The goal is to <strong>fail small and fast</strong>. Test new strategies on paper first, deploy with minimal capital, and scale only when you have statistical evidence that the edge is real.</p>
+
+  <div class="article-cta">
+    <h3>Ready to Automate Your Research?</h3>
+    <p>Polytragent handles the intelligence layer—continuous market scanning, signal generation, and edge detection. Feed those signals into your bot and watch your alpha compound.</p>
+    <a href="https://t.me/bmpolybot" target="_blank" class="btn-solid">Start with Polytragent →</a>
+  </div>
+
+  <h2>Common Automated Trading Strategies on Polymarket</h2>
+
+  <h3>Arbitrage</h3>
+
+  <p>Buy an outcome on one exchange or AMM, sell it on another when there's a price discrepancy. Liquidity fragmentation across DEXs and smart contract prediction markets creates frequent arb windows. Automated systems can spot and exploit these in milliseconds.</p>
+
+  <h3>Market Making</h3>
+
+  <p>Place simultaneous bids and asks around a fair price. As you get filled, replenish orders to maintain a constant spread. Volume drives profitability—automated market makers can process thousands of small fills that humans never could.</p>
+
+  <h3>Momentum Following</h3>
+
+  <p>Detect when a market is trending up or down, ride the momentum with sized position increases, and exit when the trend stalls. This works especially well in the hours before major decision deadlines when uncertainty collapses quickly.</p>
+
+  <h3>Mean Reversion</h3>
+
+  <p>When a market's price deviates sharply from your research-based fair value, bet on reversion. Automated systems excel at catching these brief mispricing windows and scaling into them systematically.</p>
+
+  <h2>Building vs. Using: DIY or Platforms</h2>
+
+  <p><strong>Building your own bot</strong> gives you full control and no platform fees. You own the research, the execution, the risk rules. The downside is development time and operational overhead—you need to monitor, debug, and update your system continuously.</p>
+
+  <p><strong>Using platforms like Polytragent</strong> gives you research and execution as a service. You maintain independence in how you trade while leveraging institutional-quality AI research to inform your decisions. The tradeoff is that you're paying for the research layer.</p>
+
+  <p>Many sophisticated traders use a hybrid approach: they build their own execution infrastructure but layer in research from specialized platforms. This lets them benefit from dedicated research teams without building everything from scratch.</p>
+
+  <h2>Monitoring and Optimization</h2>
+
+  <p>Deploy your bot, but don't forget it. Automated systems require continuous monitoring.</p>
+
+  <p><strong>Track these metrics:</strong></p>
+
+  <ul>
+    <li>Total P&L and Sharpe ratio</li>
+    <li>Win rate and average winner/loser size</li>
+    <li>Drawdown (peak-to-trough losses)</li>
+    <li>API uptime and order fill rates</li>
+    <li>Market regime changes (is your strategy still working?)</li>
+  </ul>
+
+  <p>Every month, review your logs. What strategies worked? Which flopped? Markets change—your automation should too. A strategy that crushed in January might underperform by June as positions shift and new information emerges.</p>
+
+  <div class="takeaway">
+    <p><strong>Takeaway:</strong> Automation is not "set and forget." It's a continuous feedback loop of testing, deploying, monitoring, and optimizing.</p>
+  </div>
+
+  <h2>FAQ</h2>
+
+  <div style="margin-top:40px;">
+    <h3>How much capital do I need to start automated trading?</h3>
+    <p>You can start small—even $100 to $500. Use paper trading first to validate your strategy. Once you have statistical evidence of edge, scale gradually. Most institutional traders allocate 1-5% of their capital to new automated strategies until they prove reliable.</p>
+
+    <h3>What's the difference between a bot and a research tool?</h3>
+    <p>A bot executes orders automatically. A research tool identifies which orders are worth placing. Polytragent is primarily research—it finds edge. Your bot is what acts on that edge. Together, they're powerful. Separately, each is incomplete.</p>
+
+    <h3>Can I automate on Polymarket without an API key?</h3>
+    <p>Not for live trading. You can backtest strategies using historical data without an API key, but to execute trades, you need programmatic access via the Polymarket API and authentication credentials.</p>
+
+    <h3>How do I avoid losing money to slippage and fees?</h3>
+    <p>Place limit orders instead of market orders (slower execution, better prices). Batch orders to reduce transaction frequency. Monitor your spread—if you're consistently losing to slippage, your fair-value estimates are stale. And use research to pick high-conviction trades where the edge is large enough to absorb fees.</p>
+  </div>
+
+  <div class="article-cta" style="margin-top:60px;">
+    <h3>Get AI Research for Your Bots Today</h3>
+    <p>Polytragent's AI-driven market intelligence finds edge before you execute. Integrate our signals into your automation and watch your alpha multiply.</p>
+    <a href="https://t.me/bmpolybot" target="_blank" class="btn-solid">Join Now →</a>
+  </div>
+
+</div>
+
+<footer>
+  <div>
+    <svg height="20" viewBox="0 0 340 40" fill="none" xmlns="http://www.w3.org/2000/svg" style="opacity:.35;"><path d="M4 33 L20 5 L36 33" stroke="white" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/><text x="52" y="29" font-family="Inter,sans-serif" font-size="19" font-weight="600" letter-spacing="4" fill="white">POLYTRAGENT</text></svg>
+    <div class="fcopy" style="margin-top:8px;">© 2026 Polytragent. AI Research for Polymarket.</div>
+  </div>
+  <ul class="flinks">
+    <li><a href="/features">Features</a></li>
+    <li><a href="/#pricing">Pricing</a></li>
+    <li><a href="/resources">Resources</a></li>
+    <li><a href="/blog">Blog</a></li>
+    <li><a href="/#faq">FAQ</a></li>
+    <li><a href="https://x.com/polytragent" target="_blank">X / Twitter</a></li>
+    <li><a href="https://polytragent.gitbook.io/polytragent-docs/polytragent-documentation" target="_blank">Docs</a></li>
+  </ul>
+</footer>
+<div class="disc">
+  <p>Risk Disclaimer: Prediction market trading involves significant financial risk. AI-powered research does not guarantee profits. Past performance is not indicative of future results. Polytragent is a research tool, not a financial advisor. Only trade capital you can afford to lose.</p>
+</div>
+
+</body>
+</html>
