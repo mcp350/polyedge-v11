@@ -11,6 +11,33 @@ from datetime import datetime, timezone
 log = logging.getLogger("polytragent.trading")
 
 # ═══════════════════════════════════════════════
+# PROXY SUPPORT (bypass Polymarket geoblock)
+# Set CLOB_PROXY_URL env var to route Polymarket API calls
+# through a proxy in a non-blocked country.
+# Example: socks5://user:pass@proxy.example.com:1080
+#          http://user:pass@proxy.example.com:8080
+# Only proxies requests to clob.polymarket.com and
+# gamma-api.polymarket.com — all other traffic is direct.
+# ═══════════════════════════════════════════════
+
+_CLOB_PROXY = os.environ.get("CLOB_PROXY_URL", "")
+
+if _CLOB_PROXY:
+    import requests as _req
+    _original_send = _req.Session.send
+
+    def _proxied_send(self, request, **kwargs):
+        """Intercept requests — add proxy ONLY for Polymarket domains."""
+        url = getattr(request, "url", "") or ""
+        if "polymarket.com" in url:
+            if "proxies" not in kwargs or not kwargs["proxies"]:
+                kwargs["proxies"] = {"http": _CLOB_PROXY, "https": _CLOB_PROXY}
+        return _original_send(self, request, **kwargs)
+
+    _req.Session.send = _proxied_send
+    log.info(f"CLOB proxy configured (polymarket.com only): {_CLOB_PROXY[:40]}...")
+
+# ═══════════════════════════════════════════════
 # FEE CALCULATION & TRACKING
 # ═══════════════════════════════════════════════
 
