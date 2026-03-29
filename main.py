@@ -1470,46 +1470,74 @@ def show_account(chat_id):
 
 _trending_cache = {"markets": [], "ts": 0}
 
-def _fetch_trending_markets(limit=30):
-    """Fetch trending markets from Polymarket using events API, with 60s cache.
-    The events API returns properly sorted high-volume events.
-    Falls back to markets API with client-side numeric sort.
+def _fetch_trending_markets(limit=20):
+    """Fetch top trending markets from Polymarket events API.
+    Gets top events by volume, picks the main market from each event,
+    filters out expired/resolved ones, returns top 20.
+    Cached for 2 minutes.
     """
     import time as _time
+    import json as _json
     now = _time.time()
-    if _trending_cache["markets"] and now - _trending_cache["ts"] < 60:
+    if _trending_cache["markets"] and now - _trending_cache["ts"] < 120:
         return _trending_cache["markets"]
     try:
         markets = []
+        seen_slugs = set()
 
-        # Strategy 1: Use events API (better volume sorting)
-        events = polymarket_api.get_events(limit=30, offset=0)
-        if events:
+        # Fetch top 50 events by volume from Gamma API
+        try:
+            r = requests.get("https://gamma-api.polymarket.com/events", params={
+                "limit": 50, "active": "true", "closed": "false",
+                "order": "volume", "ascending": "false"
+            }, headers={"User-Agent": "PolymarketBot/1.0"}, timeout=15)
+            events = r.json() if r.ok else []
+        except Exception as e:
+            print(f"[TRADE] Events API error: {e}")
+            events = []
+
+        if isinstance(events, list):
             for ev in events:
                 ev_markets = ev.get("markets", [])
-                # Pick the top market from each event (usually the main question)
-                for m in ev_markets[:2]:  # max 2 markets per event
-                    parsed = polymarket_api.parse_market(m)
-                    if parsed and parsed["volume"] > 500:
+                if not ev_markets:
+                    continue
+
+                # Pick the highest-volume market from each event
+                best = None
+                best_vol = 0
+                for m in ev_markets:
+                    vol = float(m.get("volume", 0) or 0)
+                    op = m.get("outcomePrices", "[]")
+                    if isinstance(op, str):
+                        try: prices = _json.loads(op)
+                        except: prices = []
+                    else:
+                        prices = op or []
+
+                    # Must have valid prices and some volume
+                    if len(prices) >= 2 and vol > 0:
+                        slug = m.get("slug", "")
+                        if slug and slug not in seen_slugs and vol > best_vol:
+                            best = m
+                            best_vol = vol
+
+                if best:
+                    parsed = polymarket_api.parse_market(best)
+                    if parsed:
+                        seen_slugs.add(parsed["slug"])
                         markets.append(parsed)
 
-        # Strategy 2: Also fetch from markets API and merge
-        raw = polymarket_api.get_markets(limit=100, active=True)
-        if raw:
-            for m in raw:
-                parsed = polymarket_api.parse_market(m)
-                if parsed and parsed["volume"] > 500:
-                    # Avoid duplicates by slug
-                    existing_slugs = {mk["slug"] for mk in markets}
-                    if parsed["slug"] not in existing_slugs:
-                        markets.append(parsed)
-
-        # Sort by volume (numeric) — critical since API sorts lexicographically
+        # Sort by volume descending and take top N
         markets.sort(key=lambda x: x["volume"], reverse=True)
         _trending_cache["markets"] = markets[:limit]
         _trending_cache["ts"] = now
-        print(f"[TRADE] Fetched {len(markets)} trending markets, top vol: "
-              f"${markets[0]['volume']:,.0f}" if markets else "[TRADE] No markets")
+
+        if markets:
+            print(f"[TRADE] Fetched {len(markets)} trending markets, showing top {limit}. "
+                  f"Top: ${markets[0]['volume']:,.0f} — {markets[0]['question'][:50]}")
+        else:
+            print("[TRADE] No trending markets found")
+
     except Exception as e:
         print(f"[TRADE] Trending fetch error: {e}")
     return _trending_cache["markets"]
@@ -1635,7 +1663,7 @@ def _handle_quick_buy(chat_id, data):
               {"text": "← Main Menu", "callback_data": "main_menu"}]])
         return
 
-    # Store trade state — user needs to enter amount
+    # Store trade state — user enters amount manually
     _waiting_for_trade[str(chat_id)] = {
         "action": "buy",
         "step": "amount_quick",
@@ -1645,19 +1673,16 @@ def _handle_quick_buy(chat_id, data):
         "price": price,
     }
 
-    # Pre-set amount options
+    ts = user_store.get_trade_settings(str(chat_id))
+    default_amt = ts["buy"]["default_amount"]
+
     onboarding.send_inline(chat_id,
         f"🟩 <b>Buy {outcome}</b>\n\n"
         f"📌 <b>{question}</b>\n"
         f"💰 Price: <b>{price}¢</b> per share\n\n"
-        "Select amount or type a custom amount:",
-        [[{"text": "$5", "callback_data": "qamt_5"},
-          {"text": "$10", "callback_data": "qamt_10"},
-          {"text": "$25", "callback_data": "qamt_25"}],
-         [{"text": "$50", "callback_data": "qamt_50"},
-          {"text": "$100", "callback_data": "qamt_100"},
-          {"text": "$250", "callback_data": "qamt_250"}],
-         [{"text": "← Cancel", "callback_data": "trending_0"}]]
+        f"💵 Enter the amount you want to bet (in $):\n"
+        f"<i>Your default: ${default_amt}</i>",
+        [[{"text": "← Cancel", "callback_data": "trending_0"}]]
     )
 
 
@@ -3066,15 +3091,13 @@ def _extended_handle_callback(callback_query):
                     "slug": slug, "question": slug.replace("-", " ")[:60],
                     "outcome": outcome, "price": 0,
                 }
+                ts = user_store.get_trade_settings(str(chat_id))
+                default_amt = ts["buy"]["default_amount"]
                 onboarding.send_inline(chat_id,
-                    f"🟩 <b>Buy {outcome}</b> on this event\n\nSelect amount:",
-                    [[{"text": "$5", "callback_data": "qamt_5"},
-                      {"text": "$10", "callback_data": "qamt_10"},
-                      {"text": "$25", "callback_data": "qamt_25"}],
-                     [{"text": "$50", "callback_data": "qamt_50"},
-                      {"text": "$100", "callback_data": "qamt_100"},
-                      {"text": "$250", "callback_data": "qamt_250"}],
-                     [{"text": "← Cancel", "callback_data": "menu_trading"}]])
+                    f"🟩 <b>Buy {outcome}</b> on this event\n\n"
+                    f"💵 Enter the amount you want to bet (in $):\n"
+                    f"<i>Your default: ${default_amt}</i>",
+                    [[{"text": "← Cancel", "callback_data": "menu_trading"}]])
     elif data.startswith("qamt_"):
         try:
             amount = float(data.replace("qamt_", ""))
