@@ -259,3 +259,7 @@ def start_server(port=8080):
     t = threading.Thread(target=run, daemon=True)
     t.start()
     print(f"[WEB] Server started on port {port}")
+
+@app.route('/health')
+def health_check():
+    return {"status": "ok"}, 200
