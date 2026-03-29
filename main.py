@@ -199,9 +199,18 @@ def handle_research_link(chat_id, link):
             yes_pct = int(parsed.get("yes_price", 0) * 100)
             no_pct = int(parsed.get("no_price", 0) * 100)
             if slug:
+                # Cache full market data with a short key (avoids slug truncation)
+                global _research_market_counter
+                _research_market_counter += 1
+                rkey = str(_research_market_counter)
+                _research_market_cache[rkey] = {
+                    "slug": slug,
+                    "question": parsed.get("question", slug.replace("-", " ")),
+                    "parsed": parsed,
+                }
                 action_buttons.append([
-                    {"text": f"🟩 Buy YES ({yes_pct}¢)", "callback_data": f"rbuy_{slug[:40]}_Yes"},
-                    {"text": f"🟥 Buy NO ({no_pct}¢)", "callback_data": f"rbuy_{slug[:40]}_No"},
+                    {"text": f"🟩 Buy YES ({yes_pct}¢)", "callback_data": f"rbuy_{rkey}_Yes"},
+                    {"text": f"🟥 Buy NO ({no_pct}¢)", "callback_data": f"rbuy_{rkey}_No"},
                 ])
                 action_buttons.append([{"text": "🔗 View on Polymarket", "url": parsed.get("url", "https://polymarket.com")}])
         action_buttons.append([{"text": "🔬 Research Event", "callback_data": "quick_research"}])
@@ -1469,6 +1478,8 @@ def show_account(chat_id):
 # ═══════════════════════════════════════════════
 
 _trending_cache = {"markets": [], "ts": 0}
+_research_market_cache = {}  # short_key -> {slug, question, parsed_data}
+_research_market_counter = 0
 
 def _fetch_trending_markets(limit=20):
     """Fetch top trending markets from Polymarket events API.
@@ -3073,10 +3084,19 @@ def _extended_handle_callback(callback_query):
     elif data.startswith("qbuy_"):
         _handle_quick_buy(chat_id, data)
     elif data.startswith("rbuy_"):
-        # Research page buy: rbuy_{slug}_{Yes|No}
+        # Research page buy: rbuy_{cache_key}_{Yes|No}
         parts = data.replace("rbuy_", "").rsplit("_", 1)
         if len(parts) == 2:
-            slug, outcome = parts[0], parts[1]
+            rkey, outcome = parts[0], parts[1]
+            # Look up full market data from cache
+            cached = _research_market_cache.get(rkey)
+            if cached:
+                slug = cached["slug"]
+                question = cached["question"]
+            else:
+                # Fallback: treat rkey as a (possibly truncated) slug
+                slug = rkey
+                question = rkey.replace("-", " ")[:60]
             ts = user_store.get_trade_settings(str(chat_id))
             default_amt = ts["buy"]["default_amount"]
             if not trading.is_user_trading_ready(chat_id):
@@ -3089,13 +3109,14 @@ def _extended_handle_callback(callback_query):
             else:
                 _waiting_for_trade[str(chat_id)] = {
                     "action": "buy", "step": "amount_quick",
-                    "slug": slug, "question": slug.replace("-", " ")[:60],
+                    "slug": slug, "question": question,
                     "outcome": outcome, "price": 0,
                 }
                 ts = user_store.get_trade_settings(str(chat_id))
                 default_amt = ts["buy"]["default_amount"]
                 onboarding.send_inline(chat_id,
                     f"🟩 <b>Buy {outcome}</b> on this event\n\n"
+                    f"📌 <b>{question}</b>\n\n"
                     f"💵 Enter the amount you want to bet (in $):\n"
                     f"<i>Your default: ${default_amt}</i>",
                     [[{"text": "← Cancel", "callback_data": "menu_trading"}]])
