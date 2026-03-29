@@ -230,15 +230,16 @@ def execute_copy_trade(chat_id: str, signal: dict) -> dict:
         token_id = signal.get("token_id", "")
 
         if token_id:
-            # Direct token trade
+            # Direct token trade from user's own wallet
             result = trading.market_buy(
                 token_id=token_id,
                 amount=trade_amount,
                 neg_risk=signal.get("neg_risk", False),
+                chat_id=chat_str,
             )
         else:
-            # Resolve via slug/URL
-            result = trading.quick_buy(market_ref, outcome, trade_amount)
+            # Resolve via slug/URL — trade from user's wallet
+            result = trading.quick_buy(market_ref, outcome, trade_amount, chat_id=chat_str)
 
         if result.get("success"):
             # Update spending
@@ -275,8 +276,8 @@ def execute_copy_trade(chat_id: str, signal: dict) -> dict:
         # We need to know how many shares we have to sell
         # For now, try to sell all shares we hold in this token
         if token_id:
-            # Get our positions to find share count
-            positions = trading.get_positions()
+            # Get user's positions to find share count
+            positions = trading.get_positions(chat_id=chat_str)
             our_shares = 0
             for pos in positions:
                 if pos.get("asset", pos.get("token_id", "")) == token_id:
@@ -288,6 +289,7 @@ def execute_copy_trade(chat_id: str, signal: dict) -> dict:
                     token_id=token_id,
                     amount=our_shares,
                     neg_risk=signal.get("neg_risk", False),
+                    chat_id=chat_str,
                 )
 
                 if result.get("success"):
@@ -312,7 +314,7 @@ def execute_copy_trade(chat_id: str, signal: dict) -> dict:
             else:
                 return {"success": False, "error": "No position to close", "skipped": True}
         else:
-            result = trading.quick_sell(market_ref, outcome, 0)  # Will need share count
+            result = trading.quick_sell(market_ref, outcome, 0, chat_id=chat_str)  # Will need share count
             return result
 
     return {"success": False, "error": f"Unknown action: {action}", "skipped": True}

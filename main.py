@@ -241,8 +241,8 @@ def send_main_menu(chat_id):
         name = user.get("first_name") or user.get("username") or ""
     greeting = f", {name}" if name else ""
 
-    # Trading engine status
-    trade_status = "🟢 Live" if trading.is_trading_enabled() else "⚪ Signals Only"
+    # Trading engine status (per-user: check if this user has a wallet)
+    trade_status = "🟢 Live" if trading.is_user_trading_ready(chat_id) else "⚪ Deposit to trade"
 
     # Degen Mode status
     is_degen = user_store.is_degen(chat_id) if hasattr(user_store, 'is_degen') else False
@@ -1646,21 +1646,20 @@ def _handle_quick_buy(chat_id, data):
     no_pct = int(m["no_price"] * 100)
     price = yes_pct if outcome == "Yes" else no_pct
 
-    # Check if trading engine is configured
-    if not trading.is_trading_enabled():
+    # Check if user has a wallet and balance
+    if not trading.is_user_trading_ready(chat_id):
         onboarding.send_inline(chat_id,
             f"🟩 <b>Buy {outcome}</b> on:\n"
             f"📌 {question}\n\n"
             f"💰 Price: <b>{price}¢</b> per share\n\n"
-            "⚠️ <b>Trading not configured yet.</b>\n\n"
-            "To enable live trading, the admin needs to set:\n"
-            "• <code>POLY_API_KEY</code>\n"
-            "• <code>POLY_API_SECRET</code>\n"
-            "• <code>POLY_API_PASSPHRASE</code>\n"
-            "• <code>POLY_PRIVATE_KEY</code>\n\n"
-            "Get your API keys at <a href='https://builders.polymarket.com'>builders.polymarket.com</a>",
-            [[{"text": "🔥 Back to Events", "callback_data": "trending_0"},
-              {"text": "← Main Menu", "callback_data": "main_menu"}]])
+            "⚠️ <b>Wallet not ready.</b>\n\n"
+            "You need to deposit funds to start trading:\n"
+            "1️⃣ Send <b>USDC</b> on <b>Polygon</b> to your wallet\n"
+            "2️⃣ Send a small amount of <b>MATIC</b> for gas fees\n\n"
+            "Tap 💰 Wallet below to see your deposit address.",
+            [[{"text": "💰 Wallet", "callback_data": "wallet_main"},
+              {"text": "🔥 Back to Events", "callback_data": "trending_0"}],
+             [{"text": "← Main Menu", "callback_data": "main_menu"}]])
         return
 
     # Store trade state — user enters amount manually
@@ -1758,7 +1757,7 @@ def show_buy_prompt(chat_id):
 
 def show_sell_prompt(chat_id):
     """Show positions to sell from"""
-    positions = trading.get_positions()
+    positions = trading.get_positions(chat_id=str(chat_id))
     if not positions:
         tg.send("📭 No open positions to sell.", chat_id)
         show_trading_menu(chat_id)
@@ -1877,9 +1876,9 @@ def handle_trade_input(chat_id, text):
 
 
 def show_trading_positions(chat_id):
-    """Show live positions from the trading wallet"""
+    """Show live positions from the user's wallet"""
     tg.send("📊 Loading positions...", chat_id)
-    positions = trading.get_positions()
+    positions = trading.get_positions(chat_id=str(chat_id))
     msg = trading.format_positions(positions)
     onboarding.send_inline(chat_id, msg,
         [[{"text": "🔄 Refresh", "callback_data": "trading_positions"},
@@ -1888,8 +1887,8 @@ def show_trading_positions(chat_id):
 
 
 def show_trading_orders(chat_id):
-    """Show open orders"""
-    orders = trading.get_open_orders()
+    """Show open orders for this user"""
+    orders = trading.get_open_orders(chat_id=str(chat_id))
     msg = trading.format_open_orders(orders)
     onboarding.send_inline(chat_id, msg,
         [[{"text": "🔄 Refresh", "callback_data": "trading_orders"},
@@ -1898,8 +1897,8 @@ def show_trading_orders(chat_id):
 
 
 def show_trade_history(chat_id):
-    """Show recent trade history"""
-    trades = trading.get_trade_history(20)
+    """Show recent trade history for this user"""
+    trades = trading.get_trade_history(20, chat_id=str(chat_id))
     if not trades:
         msg = "📭 No recent trades."
     else:
@@ -2412,11 +2411,11 @@ def _handle(cmd, chat_id):
         if len(parts) < 2:
             tg.send("Usage: /cancel_order &lt;order_id&gt;", chat_id)
             return
-        result = trading.cancel_order(parts[1])
+        result = trading.cancel_order(parts[1], chat_id=str(chat_id))
         tg.send("✅ Order cancelled." if result["success"] else f"❌ {result['error']}", chat_id)
 
     elif cmd == "/cancel_all":
-        result = trading.cancel_all_orders()
+        result = trading.cancel_all_orders(chat_id=str(chat_id))
         tg.send("✅ All orders cancelled." if result["success"] else f"❌ {result['error']}", chat_id)
 
     elif cmd == "/limit_buy":
@@ -3080,11 +3079,13 @@ def _extended_handle_callback(callback_query):
             slug, outcome = parts[0], parts[1]
             ts = user_store.get_trade_settings(str(chat_id))
             default_amt = ts["buy"]["default_amount"]
-            if not trading.is_trading_enabled():
+            if not trading.is_user_trading_ready(chat_id):
                 onboarding.send_inline(chat_id,
-                    f"⚠️ <b>Trading not configured.</b>\n\n"
-                    "Admin needs to set POLY_API_KEY, POLY_API_SECRET, POLY_API_PASSPHRASE, POLY_PRIVATE_KEY.",
-                    [[{"text": "← Main Menu", "callback_data": "main_menu"}]])
+                    f"⚠️ <b>Wallet not ready.</b>\n\n"
+                    "Deposit USDC (Polygon) to your wallet to start trading.\n"
+                    "Tap 💰 Wallet to see your deposit address.",
+                    [[{"text": "💰 Wallet", "callback_data": "wallet_main"},
+                      {"text": "← Main Menu", "callback_data": "main_menu"}]])
             else:
                 _waiting_for_trade[str(chat_id)] = {
                     "action": "buy", "step": "amount_quick",
@@ -3118,7 +3119,7 @@ def _extended_handle_callback(callback_query):
     elif data == "trading_history":
         show_trade_history(chat_id)
     elif data == "trading_cancel_all":
-        result = trading.cancel_all_orders()
+        result = trading.cancel_all_orders(chat_id=str(chat_id))
         tg.send("✅ All orders cancelled." if result["success"] else f"❌ {result['error']}", chat_id)
         show_trading_orders(chat_id)
     elif data == "trading_cancel_flow":
@@ -3579,9 +3580,9 @@ def main():
     except Exception as e:
         print(f"[BOOT] Leaderboard init error: {e}")
 
-    # Initialize trading engine
-    trade_status = "🟢 LIVE" if trading.is_trading_enabled() else "⚪ Disabled (set POLY_* env vars)"
-    trade_addr = trading.get_wallet_address() or "N/A"
+    # Initialize trading engine (per-user wallets — no admin key required)
+    trade_status = "🟢 Per-user wallets" if trading.is_trading_enabled() else "⚪ py-clob-client not installed"
+    trade_addr = trading.get_wallet_address() or "Per-user mode"
     print(f"[BOOT] Trading engine: {trade_status}")
     if trade_addr != "N/A":
         print(f"[BOOT] Trading wallet: {trade_addr}")

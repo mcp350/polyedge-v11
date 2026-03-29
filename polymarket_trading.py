@@ -87,17 +87,31 @@ CLOB_HOST = "https://clob.polymarket.com"
 CHAIN_ID = 137  # Polygon mainnet
 
 # ═══════════════════════════════════════════════
-# CLIENT SINGLETON
+# PER-USER CLIENT MANAGEMENT
+# Each user trades from their own wallet.
+# API keys are auto-derived from the user's private key
+# via py-clob-client's create_or_derive_api_creds().
+# No manual API key setup needed per user.
 # ═══════════════════════════════════════════════
 
-_client = None
-_initialized = False
+# Cache: chat_id -> {"client": ClobClient, "address": str, "ts": float}
+_user_clients = {}
+_USER_CLIENT_TTL = 3600  # Re-derive API creds every 1 hour
 
-def _get_client():
-    """Lazy-init the CLOB client with API credentials."""
-    global _client, _initialized
-    if _initialized:
-        return _client
+# Legacy admin client (for read-only operations like orderbook, midpoint)
+_admin_client = None
+_admin_initialized = False
+
+
+def _get_admin_client():
+    """
+    Lazy-init an admin CLOB client for read-only market data.
+    Uses env var credentials (POLY_API_KEY etc.) if available,
+    otherwise returns None (market data fetched via REST fallback).
+    """
+    global _admin_client, _admin_initialized
+    if _admin_initialized:
+        return _admin_client
 
     try:
         from py_clob_client.client import ClobClient
@@ -109,109 +123,166 @@ def _get_client():
         private_key = os.environ.get("POLY_PRIVATE_KEY", "")
 
         if not all([api_key, api_secret, api_passphrase, private_key]):
-            log.warning("Missing Polymarket trading credentials — trading disabled")
-            _initialized = True
-            _client = None
+            log.info("No admin CLOB credentials — market data via REST only")
+            _admin_initialized = True
+            _admin_client = None
             return None
 
-        # Ensure private key has 0x prefix
         if not private_key.startswith("0x"):
             private_key = "0x" + private_key
 
         client = ClobClient(
-            CLOB_HOST,
-            key=private_key,
-            chain_id=CHAIN_ID,
-            signature_type=0,  # EOA wallet
+            CLOB_HOST, key=private_key, chain_id=CHAIN_ID, signature_type=0,
         )
-
-        # Set pre-existing API credentials from Polymarket Builders portal
-        creds = ApiCreds(
-            api_key=api_key,
-            api_secret=api_secret,
-            api_passphrase=api_passphrase,
-        )
+        creds = ApiCreds(api_key=api_key, api_secret=api_secret, api_passphrase=api_passphrase)
         client.set_api_creds(creds)
 
-        _client = client
-        _initialized = True
-        log.info("Trading engine initialized successfully")
+        _admin_client = client
+        _admin_initialized = True
+        log.info("Admin CLOB client initialized (read-only market data)")
+        return client
+
+    except Exception as e:
+        log.error(f"Admin client init failed: {e}")
+        _admin_initialized = True
+        _admin_client = None
+        return None
+
+
+def _get_client():
+    """Legacy alias — returns admin client for read-only operations."""
+    return _get_admin_client()
+
+
+def _get_client_for_user(chat_id: str):
+    """
+    Get or create a ClobClient for a specific user.
+    Loads the user's private key from wallet_manager,
+    then auto-derives Polymarket CLOB API keys.
+
+    Args:
+        chat_id: The user's Telegram chat ID
+
+    Returns:
+        ClobClient instance or None if user has no wallet
+    """
+    import wallet_manager
+
+    chat_str = str(chat_id)
+
+    # Check cache
+    cached = _user_clients.get(chat_str)
+    if cached and (time.time() - cached["ts"]) < _USER_CLIENT_TTL:
+        return cached["client"]
+
+    # Get user's private key from wallet storage
+    pk = wallet_manager.get_private_key(chat_str)
+    if not pk:
+        log.warning(f"No wallet found for user {chat_str}")
+        return None
+
+    if not pk.startswith("0x"):
+        pk = "0x" + pk
+
+    try:
+        from py_clob_client.client import ClobClient
+
+        # Step 1: Create client with user's private key (Level 1 auth)
+        client = ClobClient(
+            CLOB_HOST, key=pk, chain_id=CHAIN_ID, signature_type=0,
+        )
+
+        # Step 2: Auto-derive API credentials from their private key
+        # This calls Polymarket's /auth/api-key or /auth/derive-api-key
+        # No manual API key setup needed!
+        creds = client.create_or_derive_api_creds()
+        client.set_api_creds(creds)
+
+        # Get wallet address for logging
+        from eth_account import Account
+        address = Account.from_key(pk).address
+
+        # Cache the client
+        _user_clients[chat_str] = {
+            "client": client,
+            "address": address,
+            "ts": time.time(),
+        }
+
+        log.info(f"User client ready: {chat_str} -> {address[:10]}...")
         return client
 
     except ImportError:
         log.error("py-clob-client not installed. Run: pip install py-clob-client")
-        _initialized = True
-        _client = None
         return None
     except Exception as e:
-        log.error(f"Trading engine init failed: {e}")
-        _initialized = True
-        _client = None
+        log.error(f"User client init failed for {chat_str}: {e}")
         return None
+
+
+def get_user_address(chat_id: str) -> Optional[str]:
+    """Get cached wallet address for a user, or derive it."""
+    chat_str = str(chat_id)
+    cached = _user_clients.get(chat_str)
+    if cached:
+        return cached.get("address")
+
+    # Derive from wallet_manager
+    import wallet_manager
+    wallet = wallet_manager.get_primary_wallet(chat_str)
+    return wallet["address"] if wallet else None
 
 
 def is_trading_enabled() -> bool:
-    """Check if trading engine is ready."""
-    return _get_client() is not None
+    """Check if trading is possible (py-clob-client installed)."""
+    try:
+        from py_clob_client.client import ClobClient
+        return True
+    except ImportError:
+        return False
+
+
+def is_user_trading_ready(chat_id: str) -> bool:
+    """Check if a specific user can trade (has wallet)."""
+    import wallet_manager
+    return wallet_manager.get_private_key(str(chat_id)) is not None
+
+
+def check_user_balance(chat_id: str) -> dict:
+    """
+    Check if user has sufficient USDC + MATIC for trading.
+    Returns: {ready, usdc, matic, has_gas, error}
+    """
+    import wallet_manager
+
+    wallet = wallet_manager.get_primary_wallet(str(chat_id))
+    if not wallet:
+        return {"ready": False, "error": "No wallet found"}
+
+    balance = wallet_manager.get_full_balance(wallet["address"])
+    usdc = balance.get("usdc") or 0
+    matic = float(balance.get("matic") or 0)
+
+    return {
+        "ready": usdc > 0.5 and matic > 0.005,
+        "usdc": usdc,
+        "matic": matic,
+        "has_gas": matic > 0.005,
+        "address": wallet["address"],
+        "error": None if usdc > 0.5 else "Insufficient USDC balance",
+    }
 
 
 def reset_client():
-    """Force re-initialization (e.g., after credential change)."""
-    global _client, _initialized
-    _client = None
-    _initialized = False
+    """Force re-initialization of admin client."""
+    global _admin_client, _admin_initialized
+    _admin_client = None
+    _admin_initialized = False
 
 
-def get_user_client(private_key: str):
-    """
-    Create a ClobClient for a specific user's wallet.
-
-    Args:
-        private_key: The user's Ethereum private key (with or without 0x prefix)
-
-    Returns:
-        ClobClient instance or None if initialization fails
-    """
-    try:
-        from py_clob_client.client import ClobClient
-        from py_clob_client.clob_types import ApiCreds
-
-        api_key = os.environ.get("POLY_API_KEY", "")
-        api_secret = os.environ.get("POLY_API_SECRET", "")
-        api_passphrase = os.environ.get("POLY_API_PASSPHRASE", "")
-
-        if not all([api_key, api_secret, api_passphrase, private_key]):
-            log.warning("Missing credentials for user client initialization")
-            return None
-
-        # Ensure private key has 0x prefix
-        if not private_key.startswith("0x"):
-            private_key = "0x" + private_key
-
-        user_client = ClobClient(
-            CLOB_HOST,
-            key=private_key,
-            chain_id=CHAIN_ID,
-            signature_type=0,  # EOA wallet
-        )
-
-        # Set API credentials
-        creds = ApiCreds(
-            api_key=api_key,
-            api_secret=api_secret,
-            api_passphrase=api_passphrase,
-        )
-        user_client.set_api_creds(creds)
-
-        log.info("User client initialized successfully")
-        return user_client
-
-    except ImportError:
-        log.error("py-clob-client not installed. Run: pip install py-clob-client")
-        return None
-    except Exception as e:
-        log.error(f"User client init failed: {e}")
-        return None
+def reset_user_client(chat_id: str):
+    """Force re-initialization of a user's client."""
+    _user_clients.pop(str(chat_id), None)
 
 
 # ═══════════════════════════════════════════════
@@ -264,7 +335,7 @@ def market_buy(token_id: str, amount: float, neg_risk: bool = False,
                tick_size: str = "0.01", worst_price: float = None, chat_id: str = None,
                market_question: str = "") -> dict:
     """
-    Execute a market BUY order (Fill-or-Kill).
+    Execute a market BUY order (Fill-or-Kill) from the user's own wallet.
 
     Args:
         token_id: The token to buy (YES or NO outcome token)
@@ -272,15 +343,27 @@ def market_buy(token_id: str, amount: float, neg_risk: bool = False,
         neg_risk: True for multi-outcome markets
         tick_size: Price precision ("0.01" or "0.001")
         worst_price: Max price willing to pay (slippage protection)
-        chat_id: Optional chat ID for fee tracking
+        chat_id: User's chat ID — REQUIRED for per-user trading
         market_question: Optional market question for fee tracking
 
     Returns:
         dict with keys: success, order_id, error, details, fee, net_amount
     """
-    client = _get_client()
+    if not chat_id:
+        return {"success": False, "error": "chat_id required for trading"}
+
+    # Check user balance first
+    bal = check_user_balance(chat_id)
+    if not bal["ready"]:
+        if not bal.get("has_gas"):
+            return {"success": False, "error": f"Need MATIC for gas. Your balance: {bal.get('matic', 0):.4f} MATIC. Send at least 0.01 MATIC to your wallet."}
+        return {"success": False, "error": f"Insufficient USDC. Balance: ${bal.get('usdc', 0):.2f}, needed: ${amount:.2f}"}
+    if bal["usdc"] < amount:
+        return {"success": False, "error": f"Insufficient USDC. Balance: ${bal['usdc']:.2f}, needed: ${amount:.2f}"}
+
+    client = _get_client_for_user(chat_id)
     if not client:
-        return {"success": False, "error": "Trading engine not initialized"}
+        return {"success": False, "error": "Wallet not ready. Use /start to create a wallet."}
 
     try:
         from py_clob_client.clob_types import MarketOrderArgs, OrderType
@@ -331,7 +414,7 @@ def market_sell(token_id: str, amount: float, neg_risk: bool = False,
                 tick_size: str = "0.01", worst_price: float = None, chat_id: str = None,
                 market_question: str = "") -> dict:
     """
-    Execute a market SELL order (Fill-or-Kill).
+    Execute a market SELL order (Fill-or-Kill) from the user's own wallet.
 
     Args:
         token_id: The token to sell
@@ -339,15 +422,18 @@ def market_sell(token_id: str, amount: float, neg_risk: bool = False,
         neg_risk: True for multi-outcome markets
         tick_size: Price precision
         worst_price: Min price willing to accept
-        chat_id: Optional chat ID for fee tracking
+        chat_id: User's chat ID — REQUIRED for per-user trading
         market_question: Optional market question for fee tracking
 
     Returns:
         dict with keys: success, order_id, error, details, fee, proceeds
     """
-    client = _get_client()
+    if not chat_id:
+        return {"success": False, "error": "chat_id required for trading"}
+
+    client = _get_client_for_user(chat_id)
     if not client:
-        return {"success": False, "error": "Trading engine not initialized"}
+        return {"success": False, "error": "Wallet not ready. Use /start to create a wallet."}
 
     try:
         from py_clob_client.clob_types import MarketOrderArgs, OrderType
@@ -397,9 +483,9 @@ def market_sell(token_id: str, amount: float, neg_risk: bool = False,
 
 
 def limit_buy(token_id: str, price: float, size: float, neg_risk: bool = False,
-              tick_size: str = "0.01", expiration: int = None) -> dict:
+              tick_size: str = "0.01", expiration: int = None, chat_id: str = None) -> dict:
     """
-    Place a limit BUY order (GTC or GTD).
+    Place a limit BUY order (GTC or GTD) from user's wallet.
 
     Args:
         token_id: The token to buy
@@ -408,13 +494,17 @@ def limit_buy(token_id: str, price: float, size: float, neg_risk: bool = False,
         neg_risk: True for multi-outcome markets
         tick_size: Price precision
         expiration: Unix timestamp for GTD orders (None = GTC)
+        chat_id: User's chat ID — REQUIRED
 
     Returns:
         dict with keys: success, order_id, error, details
     """
-    client = _get_client()
+    if not chat_id:
+        return {"success": False, "error": "chat_id required for trading"}
+
+    client = _get_client_for_user(chat_id)
     if not client:
-        return {"success": False, "error": "Trading engine not initialized"}
+        return {"success": False, "error": "Wallet not ready. Use /start to create a wallet."}
 
     try:
         from py_clob_client.clob_types import OrderArgs, OrderType
@@ -450,13 +540,16 @@ def limit_buy(token_id: str, price: float, size: float, neg_risk: bool = False,
 
 
 def limit_sell(token_id: str, price: float, size: float, neg_risk: bool = False,
-               tick_size: str = "0.01", expiration: int = None) -> dict:
+               tick_size: str = "0.01", expiration: int = None, chat_id: str = None) -> dict:
     """
-    Place a limit SELL order (GTC or GTD).
+    Place a limit SELL order (GTC or GTD) from user's wallet.
     """
-    client = _get_client()
+    if not chat_id:
+        return {"success": False, "error": "chat_id required for trading"}
+
+    client = _get_client_for_user(chat_id)
     if not client:
-        return {"success": False, "error": "Trading engine not initialized"}
+        return {"success": False, "error": "Wallet not ready. Use /start to create a wallet."}
 
     try:
         from py_clob_client.clob_types import OrderArgs, OrderType
@@ -495,9 +588,9 @@ def limit_sell(token_id: str, price: float, size: float, neg_risk: bool = False,
 # ORDER MANAGEMENT
 # ═══════════════════════════════════════════════
 
-def get_open_orders(market_id: str = None) -> list:
-    """Get all open orders, optionally filtered by market."""
-    client = _get_client()
+def get_open_orders(market_id: str = None, chat_id: str = None) -> list:
+    """Get all open orders for a user, optionally filtered by market."""
+    client = _get_client_for_user(chat_id) if chat_id else _get_client()
     if not client:
         return []
     try:
@@ -510,11 +603,11 @@ def get_open_orders(market_id: str = None) -> list:
         return []
 
 
-def cancel_order(order_id: str) -> dict:
+def cancel_order(order_id: str, chat_id: str = None) -> dict:
     """Cancel a specific order by ID."""
-    client = _get_client()
+    client = _get_client_for_user(chat_id) if chat_id else _get_client()
     if not client:
-        return {"success": False, "error": "Trading engine not initialized"}
+        return {"success": False, "error": "Wallet not ready"}
     try:
         resp = client.cancel(order_id)
         return {"success": True, "details": resp}
@@ -523,11 +616,11 @@ def cancel_order(order_id: str) -> dict:
         return {"success": False, "error": str(e)}
 
 
-def cancel_all_orders() -> dict:
-    """Cancel all open orders."""
-    client = _get_client()
+def cancel_all_orders(chat_id: str = None) -> dict:
+    """Cancel all open orders for a user."""
+    client = _get_client_for_user(chat_id) if chat_id else _get_client()
     if not client:
-        return {"success": False, "error": "Trading engine not initialized"}
+        return {"success": False, "error": "Wallet not ready"}
     try:
         resp = client.cancel_all()
         return {"success": True, "details": resp}
@@ -540,23 +633,27 @@ def cancel_all_orders() -> dict:
 # POSITIONS & BALANCE
 # ═══════════════════════════════════════════════
 
-def get_positions() -> list:
-    """Get all current positions for the trading wallet."""
-    client = _get_client()
-    if not client:
+def get_positions(chat_id: str = None) -> list:
+    """Get all current positions for a user's wallet."""
+    address = get_user_address(chat_id) if chat_id else None
+
+    # Fallback to admin wallet if no chat_id
+    if not address:
+        try:
+            from eth_account import Account
+            pk = os.environ.get("POLY_PRIVATE_KEY", "")
+            if pk:
+                if not pk.startswith("0x"):
+                    pk = "0x" + pk
+                address = Account.from_key(pk).address
+        except:
+            pass
+
+    if not address:
         return []
+
     try:
-        # The CLOB client doesn't have a direct positions method,
-        # so we use the REST API with our wallet address
         import requests as req
-        from eth_account import Account
-
-        pk = os.environ.get("POLY_PRIVATE_KEY", "")
-        if not pk.startswith("0x"):
-            pk = "0x" + pk
-        acct = Account.from_key(pk)
-        address = acct.address
-
         r = req.get(f"https://data-api.polymarket.com/positions",
                      params={"user": address.lower()},
                      timeout=15)
@@ -571,21 +668,26 @@ def get_positions() -> list:
         return []
 
 
-def get_trade_history(limit: int = 20) -> list:
-    """Get recent trade history for the trading wallet."""
-    client = _get_client()
-    if not client:
+def get_trade_history(limit: int = 20, chat_id: str = None) -> list:
+    """Get recent trade history for a user's wallet."""
+    address = get_user_address(chat_id) if chat_id else None
+
+    if not address:
+        try:
+            from eth_account import Account
+            pk = os.environ.get("POLY_PRIVATE_KEY", "")
+            if pk:
+                if not pk.startswith("0x"):
+                    pk = "0x" + pk
+                address = Account.from_key(pk).address
+        except:
+            pass
+
+    if not address:
         return []
+
     try:
         import requests as req
-        from eth_account import Account
-
-        pk = os.environ.get("POLY_PRIVATE_KEY", "")
-        if not pk.startswith("0x"):
-            pk = "0x" + pk
-        acct = Account.from_key(pk)
-        address = acct.address
-
         r = req.get(f"https://data-api.polymarket.com/trades",
                      params={"maker": address.lower(), "limit": limit},
                      timeout=15)
@@ -600,8 +702,10 @@ def get_trade_history(limit: int = 20) -> list:
         return []
 
 
-def get_wallet_address() -> Optional[str]:
-    """Get the wallet address for the configured private key."""
+def get_wallet_address(chat_id: str = None) -> Optional[str]:
+    """Get wallet address for a user, or the admin wallet."""
+    if chat_id:
+        return get_user_address(chat_id)
     try:
         from eth_account import Account
         pk = os.environ.get("POLY_PRIVATE_KEY", "")
@@ -756,18 +860,16 @@ def get_market_price_summary(token_id: str) -> Optional[dict]:
 # ALLOWANCE HELPERS
 # ═══════════════════════════════════════════════
 
-def check_and_set_allowances() -> dict:
+def check_and_set_allowances(chat_id: str = None) -> dict:
     """
     Check and set token allowances for Polymarket exchange contracts.
     Required for EOA wallets before trading.
     Returns status dict.
     """
-    client = _get_client()
+    client = _get_client_for_user(chat_id) if chat_id else _get_client()
     if not client:
-        return {"success": False, "error": "Trading engine not initialized"}
+        return {"success": False, "error": "Wallet not ready"}
     try:
-        # py-clob-client handles allowances internally for most operations
-        # But we can verify by attempting a small health check
         ok = client.get_ok()
         return {"success": True, "status": "connected", "health": ok}
     except Exception as e:
