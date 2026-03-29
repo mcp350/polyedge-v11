@@ -289,7 +289,8 @@ def market_buy(token_id: str, amount: float, neg_risk: bool = False,
         # Calculate fee (1% of requested amount)
         net_amount, fee_amount = calculate_fee(amount, side="BUY")
 
-        options = {"tick_size": tick_size, "neg_risk": neg_risk}
+        from py_clob_client.clob_types import PartialCreateOrderOptions
+        options = PartialCreateOrderOptions(tick_size=tick_size, neg_risk=neg_risk)
 
         # Build market order args with net amount
         kwargs = {
@@ -352,7 +353,8 @@ def market_sell(token_id: str, amount: float, neg_risk: bool = False,
         from py_clob_client.clob_types import MarketOrderArgs, OrderType
         from py_clob_client.order_builder.constants import SELL
 
-        options = {"tick_size": tick_size, "neg_risk": neg_risk}
+        from py_clob_client.clob_types import PartialCreateOrderOptions
+        options = PartialCreateOrderOptions(tick_size=tick_size, neg_risk=neg_risk)
 
         kwargs = {
             "token_id": token_id,
@@ -418,7 +420,8 @@ def limit_buy(token_id: str, price: float, size: float, neg_risk: bool = False,
         from py_clob_client.clob_types import OrderArgs, OrderType
         from py_clob_client.order_builder.constants import BUY
 
-        options = {"tick_size": tick_size, "neg_risk": neg_risk}
+        from py_clob_client.clob_types import PartialCreateOrderOptions
+        options = PartialCreateOrderOptions(tick_size=tick_size, neg_risk=neg_risk)
 
         kwargs = {
             "token_id": token_id,
@@ -459,7 +462,8 @@ def limit_sell(token_id: str, price: float, size: float, neg_risk: bool = False,
         from py_clob_client.clob_types import OrderArgs, OrderType
         from py_clob_client.order_builder.constants import SELL
 
-        options = {"tick_size": tick_size, "neg_risk": neg_risk}
+        from py_clob_client.clob_types import PartialCreateOrderOptions
+        options = PartialCreateOrderOptions(tick_size=tick_size, neg_risk=neg_risk)
 
         kwargs = {
             "token_id": token_id,
