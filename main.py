@@ -192,21 +192,31 @@ def handle_research_link(chat_id, link):
         except Exception as e:
             print(f"[RESEARCH] Enrichment error: {e}")
 
-        # Send results with action buttons
+        # Build action buttons — include trade buttons if we have market data
+        action_buttons = []
+        if m and parsed:
+            slug = parsed.get("slug", "")
+            yes_pct = int(parsed.get("yes_price", 0) * 100)
+            no_pct = int(parsed.get("no_price", 0) * 100)
+            if slug:
+                action_buttons.append([
+                    {"text": f"🟩 Buy YES ({yes_pct}¢)", "callback_data": f"rbuy_{slug[:40]}_Yes"},
+                    {"text": f"🟥 Buy NO ({no_pct}¢)", "callback_data": f"rbuy_{slug[:40]}_No"},
+                ])
+                action_buttons.append([{"text": "🔗 View on Polymarket", "url": parsed.get("url", "https://polymarket.com")}])
+        action_buttons.append([{"text": "🔬 Research Event", "callback_data": "quick_research"}])
+        action_buttons.append([{"text": "📊 Portfolio", "callback_data": "menu_portfolio"},
+                               {"text": "💰 Trade", "callback_data": "menu_trade"}])
+        action_buttons.append([{"text": "← Main Menu", "callback_data": "main_menu"}])
+
+        # Send results
         if len(result) > 4000:
             _send_long(result, chat_id)
             onboarding.send_inline(chat_id,
                 "👆 <b>Full analysis above</b>\n\nWhat would you like to do?",
-                [[{"text": "🔬 Research Event", "callback_data": "quick_research"}],
-                 [{"text": "📊 Portfolio", "callback_data": "menu_portfolio"},
-                  {"text": "💰 Trade", "callback_data": "menu_trade"}],
-                 [{"text": "← Main Menu", "callback_data": "main_menu"}]])
+                action_buttons)
         else:
-            onboarding.send_inline(chat_id, result,
-                [[{"text": "🔬 Research Event", "callback_data": "quick_research"}],
-                 [{"text": "📊 Portfolio", "callback_data": "menu_portfolio"},
-                  {"text": "💰 Trade", "callback_data": "menu_trade"}],
-                 [{"text": "← Main Menu", "callback_data": "main_menu"}]])
+            onboarding.send_inline(chat_id, result, action_buttons)
 
     except Exception as e:
         print(f"[RESEARCH] Error: {e}")
@@ -1460,22 +1470,46 @@ def show_account(chat_id):
 
 _trending_cache = {"markets": [], "ts": 0}
 
-def _fetch_trending_markets(limit=20):
-    """Fetch trending markets from Polymarket, with 60s cache"""
+def _fetch_trending_markets(limit=30):
+    """Fetch trending markets from Polymarket using events API, with 60s cache.
+    The events API returns properly sorted high-volume events.
+    Falls back to markets API with client-side numeric sort.
+    """
     import time as _time
     now = _time.time()
     if _trending_cache["markets"] and now - _trending_cache["ts"] < 60:
         return _trending_cache["markets"]
     try:
-        raw = polymarket_api.get_markets(limit=limit, active=True)
         markets = []
-        for m in raw:
-            parsed = polymarket_api.parse_market(m)
-            if parsed and parsed["volume"] > 1000:
-                markets.append(parsed)
+
+        # Strategy 1: Use events API (better volume sorting)
+        events = polymarket_api.get_events(limit=30, offset=0)
+        if events:
+            for ev in events:
+                ev_markets = ev.get("markets", [])
+                # Pick the top market from each event (usually the main question)
+                for m in ev_markets[:2]:  # max 2 markets per event
+                    parsed = polymarket_api.parse_market(m)
+                    if parsed and parsed["volume"] > 500:
+                        markets.append(parsed)
+
+        # Strategy 2: Also fetch from markets API and merge
+        raw = polymarket_api.get_markets(limit=100, active=True)
+        if raw:
+            for m in raw:
+                parsed = polymarket_api.parse_market(m)
+                if parsed and parsed["volume"] > 500:
+                    # Avoid duplicates by slug
+                    existing_slugs = {mk["slug"] for mk in markets}
+                    if parsed["slug"] not in existing_slugs:
+                        markets.append(parsed)
+
+        # Sort by volume (numeric) — critical since API sorts lexicographically
         markets.sort(key=lambda x: x["volume"], reverse=True)
         _trending_cache["markets"] = markets[:limit]
         _trending_cache["ts"] = now
+        print(f"[TRADE] Fetched {len(markets)} trending markets, top vol: "
+              f"${markets[0]['volume']:,.0f}" if markets else "[TRADE] No markets")
     except Exception as e:
         print(f"[TRADE] Trending fetch error: {e}")
     return _trending_cache["markets"]
@@ -3014,6 +3048,33 @@ def _extended_handle_callback(callback_query):
         show_trending_markets(chat_id, page=page)
     elif data.startswith("qbuy_"):
         _handle_quick_buy(chat_id, data)
+    elif data.startswith("rbuy_"):
+        # Research page buy: rbuy_{slug}_{Yes|No}
+        parts = data.replace("rbuy_", "").rsplit("_", 1)
+        if len(parts) == 2:
+            slug, outcome = parts[0], parts[1]
+            ts = user_store.get_trade_settings(str(chat_id))
+            default_amt = ts["buy"]["default_amount"]
+            if not trading.is_trading_enabled():
+                onboarding.send_inline(chat_id,
+                    f"⚠️ <b>Trading not configured.</b>\n\n"
+                    "Admin needs to set POLY_API_KEY, POLY_API_SECRET, POLY_API_PASSPHRASE, POLY_PRIVATE_KEY.",
+                    [[{"text": "← Main Menu", "callback_data": "main_menu"}]])
+            else:
+                _waiting_for_trade[str(chat_id)] = {
+                    "action": "buy", "step": "amount_quick",
+                    "slug": slug, "question": slug.replace("-", " ")[:60],
+                    "outcome": outcome, "price": 0,
+                }
+                onboarding.send_inline(chat_id,
+                    f"🟩 <b>Buy {outcome}</b> on this event\n\nSelect amount:",
+                    [[{"text": "$5", "callback_data": "qamt_5"},
+                      {"text": "$10", "callback_data": "qamt_10"},
+                      {"text": "$25", "callback_data": "qamt_25"}],
+                     [{"text": "$50", "callback_data": "qamt_50"},
+                      {"text": "$100", "callback_data": "qamt_100"},
+                      {"text": "$250", "callback_data": "qamt_250"}],
+                     [{"text": "← Cancel", "callback_data": "menu_trading"}]])
     elif data.startswith("qamt_"):
         try:
             amount = float(data.replace("qamt_", ""))
