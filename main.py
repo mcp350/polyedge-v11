@@ -1458,37 +1458,230 @@ def show_account(chat_id):
 # SECTION: LIVE TRADING
 # ═══════════════════════════════════════════════
 
+_trending_cache = {"markets": [], "ts": 0}
+
+def _fetch_trending_markets(limit=20):
+    """Fetch trending markets from Polymarket, with 60s cache"""
+    import time as _time
+    now = _time.time()
+    if _trending_cache["markets"] and now - _trending_cache["ts"] < 60:
+        return _trending_cache["markets"]
+    try:
+        raw = polymarket_api.get_markets(limit=limit, active=True)
+        markets = []
+        for m in raw:
+            parsed = polymarket_api.parse_market(m)
+            if parsed and parsed["volume"] > 1000:
+                markets.append(parsed)
+        markets.sort(key=lambda x: x["volume"], reverse=True)
+        _trending_cache["markets"] = markets[:limit]
+        _trending_cache["ts"] = now
+    except Exception as e:
+        print(f"[TRADE] Trending fetch error: {e}")
+    return _trending_cache["markets"]
+
+
 def show_trading_menu(chat_id):
-    """Trading hub — buy, sell, positions, orders"""
-    enabled = trading.is_trading_enabled()
-    if not enabled:
-        onboarding.send_inline(chat_id,
-            "💰 <b>Live Trading</b>\n\n"
-            "⚠️ Trading engine not configured.\n\n"
-            "Admin needs to set these env vars:\n"
-            "• POLY_API_KEY\n"
-            "• POLY_API_SECRET\n"
-            "• POLY_API_PASSPHRASE\n"
-            "• POLY_PRIVATE_KEY\n\n"
-            "Get keys at builders.polymarket.com",
-            [[{"text": "← Main Menu", "callback_data": "main_menu"}]])
-        return
-
-    addr = trading.get_wallet_address() or "Not connected"
-    short = f"{addr[:6]}...{addr[-4:]}" if addr and addr.startswith("0x") else addr
-
+    """Trading hub — shows trending markets to trade on"""
     onboarding.send_inline(chat_id,
-        f"💰 <b>Live Trading</b>\n\n"
-        f"🔗 Wallet: <code>{short}</code>\n\n"
-        "Buy or sell on any Polymarket event.\n"
-        "Send a Polymarket link to start.",
-        [[{"text": "🟩 Quick Buy", "callback_data": "trading_buy_prompt"},
-          {"text": "🟥 Quick Sell", "callback_data": "trading_sell_prompt"}],
+        "💰 <b>Polytragent Trading</b>\n\n"
+        "Browse trending events and trade directly.\n"
+        "Top up your wallet and start trading!",
+        [[{"text": "🔥 Trending Events", "callback_data": "trending_0"}],
+         [{"text": "🔍 Search Market", "callback_data": "trading_buy_prompt"}],
          [{"text": "📊 My Positions", "callback_data": "trading_positions"},
           {"text": "📋 Open Orders", "callback_data": "trading_orders"}],
-         [{"text": "📜 Trade History", "callback_data": "trading_history"}],
-         [{"text": "❌ Cancel All Orders", "callback_data": "trading_cancel_all"}],
+         [{"text": "📜 Trade History", "callback_data": "trading_history"},
+          {"text": "👛 Wallet", "callback_data": "menu_wallet"}],
+         [{"text": "⚙️ Trade Settings", "callback_data": "ts_main"}],
          [{"text": "← Main Menu", "callback_data": "main_menu"}]])
+
+
+def show_trending_markets(chat_id, page=0, per_page=5):
+    """Show paginated trending Polymarket events with trade buttons"""
+    tg.send("🔥 Loading trending events...", chat_id) if page == 0 else None
+    markets = _fetch_trending_markets(30)
+
+    if not markets:
+        onboarding.send_inline(chat_id,
+            "❌ Could not load markets. Try again later.",
+            [[{"text": "🔄 Retry", "callback_data": "trending_0"},
+              {"text": "← Back", "callback_data": "menu_trading"}]])
+        return
+
+    start = page * per_page
+    end = start + per_page
+    page_markets = markets[start:end]
+    total_pages = (len(markets) + per_page - 1) // per_page
+
+    for i, m in enumerate(page_markets):
+        idx = start + i
+        q = m["question"]
+        if len(q) > 80:
+            q = q[:77] + "..."
+        vol_str = f"${m['volume']:,.0f}" if m["volume"] < 1_000_000 else f"${m['volume']/1_000_000:.1f}M"
+        yes_pct = int(m["yes_price"] * 100)
+        no_pct = int(m["no_price"] * 100)
+        slug = m.get("slug", "")
+
+        msg = (
+            f"📌 <b>{q}</b>\n\n"
+            f"🟩 YES: {yes_pct}¢  |  🟥 NO: {no_pct}¢\n"
+            f"📊 Volume: {vol_str}"
+        )
+        if m.get("days_left") is not None:
+            msg += f"  •  ⏳ {m['days_left']}d left"
+
+        buttons = [
+            [{"text": f"🟩 Buy YES ({yes_pct}¢)", "callback_data": f"qbuy_{idx}_yes"},
+             {"text": f"🟥 Buy NO ({no_pct}¢)", "callback_data": f"qbuy_{idx}_no"}],
+            [{"text": "🔗 View on Polymarket", "url": m.get("url", "https://polymarket.com")}]
+        ]
+        onboarding.send_inline(chat_id, msg, buttons)
+
+    # Pagination buttons
+    nav_buttons = []
+    if page > 0:
+        nav_buttons.append({"text": "⬅️ Previous", "callback_data": f"trending_{page-1}"})
+    if end < len(markets):
+        nav_buttons.append({"text": "➡️ Next", "callback_data": f"trending_{page+1}"})
+
+    footer_buttons = []
+    if nav_buttons:
+        footer_buttons.append(nav_buttons)
+    footer_buttons.append([{"text": f"📄 Page {page+1}/{total_pages}", "callback_data": "noop"}])
+    footer_buttons.append([{"text": "🔍 Search Market", "callback_data": "trading_buy_prompt"},
+                           {"text": "💰 Trading Menu", "callback_data": "menu_trading"}])
+
+    onboarding.send_inline(chat_id,
+        f"📊 <b>Trending Events</b> — Page {page+1}/{total_pages}",
+        footer_buttons)
+
+
+def _handle_quick_buy(chat_id, data):
+    """Handle qbuy_{idx}_{outcome} callback — start quick trade flow"""
+    parts = data.replace("qbuy_", "").rsplit("_", 1)
+    if len(parts) != 2:
+        tg.send("❌ Invalid trade action.", chat_id)
+        return
+
+    idx_str, outcome = parts[0], parts[1].capitalize()
+    try:
+        idx = int(idx_str)
+    except ValueError:
+        tg.send("❌ Invalid market index.", chat_id)
+        return
+
+    markets = _trending_cache.get("markets", [])
+    if idx >= len(markets):
+        tg.send("❌ Market expired from cache. Tap 🔥 Trending to refresh.", chat_id)
+        return
+
+    m = markets[idx]
+    slug = m.get("slug", "")
+    question = m.get("question", "Unknown")
+    yes_pct = int(m["yes_price"] * 100)
+    no_pct = int(m["no_price"] * 100)
+    price = yes_pct if outcome == "Yes" else no_pct
+
+    # Check if trading engine is configured
+    if not trading.is_trading_enabled():
+        onboarding.send_inline(chat_id,
+            f"🟩 <b>Buy {outcome}</b> on:\n"
+            f"📌 {question}\n\n"
+            f"💰 Price: <b>{price}¢</b> per share\n\n"
+            "⚠️ <b>Trading not configured yet.</b>\n\n"
+            "To enable live trading, the admin needs to set:\n"
+            "• <code>POLY_API_KEY</code>\n"
+            "• <code>POLY_API_SECRET</code>\n"
+            "• <code>POLY_API_PASSPHRASE</code>\n"
+            "• <code>POLY_PRIVATE_KEY</code>\n\n"
+            "Get your API keys at <a href='https://builders.polymarket.com'>builders.polymarket.com</a>",
+            [[{"text": "🔥 Back to Events", "callback_data": "trending_0"},
+              {"text": "← Main Menu", "callback_data": "main_menu"}]])
+        return
+
+    # Store trade state — user needs to enter amount
+    _waiting_for_trade[str(chat_id)] = {
+        "action": "buy",
+        "step": "amount_quick",
+        "slug": slug,
+        "question": question,
+        "outcome": outcome,
+        "price": price,
+    }
+
+    # Pre-set amount options
+    onboarding.send_inline(chat_id,
+        f"🟩 <b>Buy {outcome}</b>\n\n"
+        f"📌 <b>{question}</b>\n"
+        f"💰 Price: <b>{price}¢</b> per share\n\n"
+        "Select amount or type a custom amount:",
+        [[{"text": "$5", "callback_data": "qamt_5"},
+          {"text": "$10", "callback_data": "qamt_10"},
+          {"text": "$25", "callback_data": "qamt_25"}],
+         [{"text": "$50", "callback_data": "qamt_50"},
+          {"text": "$100", "callback_data": "qamt_100"},
+          {"text": "$250", "callback_data": "qamt_250"}],
+         [{"text": "← Cancel", "callback_data": "trending_0"}]]
+    )
+
+
+def _execute_quick_trade(chat_id, amount):
+    """Execute a quick trade from the trending markets flow (uses user settings)"""
+    chat_str = str(chat_id)
+    state = _waiting_for_trade.get(chat_str)
+    if not state or state.get("step") != "amount_quick":
+        tg.send("❌ Trade session expired. Start again from Trending Events.", chat_id)
+        return
+
+    slug = state["slug"]
+    outcome = state["outcome"]
+    question = state["question"]
+    _waiting_for_trade.pop(chat_str, None)
+
+    # Load user's trade settings
+    ts = user_store.get_trade_settings(str(chat_id))
+    slippage = ts["buy"]["slippage"]
+    max_pos = ts["safety"]["max_position"]
+
+    # Safety check: max position size
+    if amount > max_pos:
+        tg.send(f"⚠️ Amount ${amount:.0f} exceeds your max position size (${max_pos}).\n"
+                f"Change it in ⚙️ Trade Settings.", chat_id)
+        return
+
+    tg.send(f"⏳ Executing BUY ${amount:.2f} of <b>{outcome}</b>...\n"
+            f"📌 {question}\n📉 Slippage: {slippage}%", chat_id)
+
+    try:
+        result = trading.quick_buy(
+            market_slug_or_url=slug,
+            outcome=outcome,
+            amount=amount,
+            chat_id=str(chat_id)
+        )
+        if result and result.get("success"):
+            shares = amount / (state["price"] / 100) if state["price"] > 0 else 0
+            msg = (
+                f"✅ <b>Trade Executed!</b>\n\n"
+                f"📌 {question}\n"
+                f"🎯 {outcome} @ {state['price']}¢\n"
+                f"💰 Amount: ${amount:.2f}\n"
+                f"📊 ~{shares:.0f} shares\n\n"
+                f"🧾 Order ID: <code>{result.get('order_id', 'N/A')[:12]}...</code>"
+            )
+        else:
+            error = result.get("error", "Unknown error") if result else "No response"
+            msg = f"❌ <b>Trade Failed</b>\n\n📌 {question}\n\nError: {error}"
+    except Exception as e:
+        msg = f"❌ <b>Trade Error</b>\n\n{e}"
+
+    onboarding.send_inline(chat_id, msg,
+        [[{"text": "🔥 More Events", "callback_data": "trending_0"},
+          {"text": "📊 Positions", "callback_data": "trading_positions"}],
+         [{"text": "💰 Trade Again", "callback_data": "menu_trading"},
+          {"text": "← Main Menu", "callback_data": "main_menu"}]])
 
 
 _waiting_for_trade = {}  # chat_id -> {"action": "buy"|"sell", "step": ...}
@@ -1552,6 +1745,22 @@ def handle_trade_input(chat_id, text):
             f"📊 <b>{market['question']}</b>\n\n"
             "Select outcome:",
             buttons)
+        return True
+
+    elif step == "amount_quick":
+        # User typed a custom amount for quick trade
+        try:
+            amount = float(text.strip().replace("$", "").replace(",", ""))
+            if amount < 1:
+                tg.send("❌ Minimum trade is $1.00", chat_id)
+                return True
+            if amount > 10000:
+                tg.send("❌ Maximum trade is $10,000", chat_id)
+                return True
+        except ValueError:
+            tg.send("❌ Enter a valid number (e.g., 25 or 100.50)", chat_id)
+            return True
+        _execute_quick_trade(chat_id, amount)
         return True
 
     elif step == "amount":
@@ -1648,6 +1857,192 @@ def show_trade_history(chat_id):
     onboarding.send_inline(chat_id, msg,
         [[{"text": "🔄 Refresh", "callback_data": "trading_history"}],
          [{"text": "← Trading", "callback_data": "menu_trading"}]])
+
+
+# ═══════════════════════════════════════════════
+# SECTION: TRADE SETTINGS (Buy / Sell / Safety)
+# ═══════════════════════════════════════════════
+
+def show_trade_settings(chat_id):
+    """Main trade settings hub with 3 tabs"""
+    s = user_store.get_trade_settings(str(chat_id))
+    buy = s["buy"]
+    sell = s["sell"]
+    safety = s["safety"]
+
+    msg = (
+        "⚙️ <b>Trade Settings</b>\n\n"
+        f"<b>Buy:</b> ${buy['default_amount']} | {buy['slippage']}% slip | "
+        f"{'GTC' if buy['expiration'] == 0 else str(buy['expiration']) + 's'}\n"
+        f"<b>Sell:</b> TP {sell['take_profit']}% | SL {sell['stop_loss']}% | "
+        f"Sell {sell['sell_amount']}%\n"
+        f"<b>Safety:</b> Max ${safety['max_position']} | "
+        f"Daily ${safety['daily_limit']}\n\n"
+        "Tap a category to configure:"
+    )
+    onboarding.send_inline(chat_id, msg,
+        [[{"text": "🟩 Buy Settings", "callback_data": "ts_buy"},
+          {"text": "🟥 Sell Settings", "callback_data": "ts_sell"}],
+         [{"text": "🛡️ Safety Settings", "callback_data": "ts_safety"}],
+         [{"text": "🔄 Reset to Defaults", "callback_data": "ts_reset"},
+          {"text": "← Trading", "callback_data": "menu_trading"}]])
+
+
+def show_buy_settings(chat_id):
+    """Show buy settings with edit buttons"""
+    s = user_store.get_trade_settings(str(chat_id))["buy"]
+    exp_str = "GTC (no expiry)" if s["expiration"] == 0 else f"{s['expiration']}s"
+    msg = (
+        "🟩 <b>Buy Settings</b>\n\n"
+        f"💰 <b>Default Amount:</b> ${s['default_amount']}\n"
+        f"📉 <b>Slippage Tolerance:</b> {s['slippage']}%\n"
+        f"⏱ <b>Order Expiration:</b> {exp_str}\n"
+        f"⚡ <b>Auto-Confirm:</b> {'ON' if s['auto_confirm'] else 'OFF'}\n"
+    )
+    onboarding.send_inline(chat_id, msg,
+        [[{"text": f"💰 Amount: ${s['default_amount']}", "callback_data": "tse_buy_default_amount"}],
+         [{"text": f"📉 Slippage: {s['slippage']}%", "callback_data": "tse_buy_slippage"}],
+         [{"text": f"⏱ Expiry: {exp_str}", "callback_data": "tse_buy_expiration"}],
+         [{"text": f"⚡ Auto-Confirm: {'ON' if s['auto_confirm'] else 'OFF'}", "callback_data": "ts_toggle_auto_confirm"}],
+         [{"text": "← Settings", "callback_data": "ts_main"},
+          {"text": "← Trading", "callback_data": "menu_trading"}]])
+
+
+def show_sell_settings(chat_id):
+    """Show sell settings with edit buttons"""
+    s = user_store.get_trade_settings(str(chat_id))["sell"]
+    tp_str = f"{s['take_profit']}%" if s['take_profit'] > 0 else "OFF"
+    sl_str = f"{s['stop_loss']}%" if s['stop_loss'] > 0 else "OFF"
+    ts_str = f"{s['trailing_stop']}%" if s['trailing_stop'] > 0 else "OFF"
+    msg = (
+        "🟥 <b>Sell Settings</b>\n\n"
+        f"🎯 <b>Take Profit:</b> {tp_str}\n"
+        f"🛑 <b>Stop Loss:</b> {sl_str}\n"
+        f"📊 <b>Sell Amount:</b> {s['sell_amount']}% of position\n"
+        f"📈 <b>Trailing Stop:</b> {ts_str}\n"
+    )
+    onboarding.send_inline(chat_id, msg,
+        [[{"text": f"🎯 TP: {tp_str}", "callback_data": "tse_sell_take_profit"},
+          {"text": f"🛑 SL: {sl_str}", "callback_data": "tse_sell_stop_loss"}],
+         [{"text": f"📊 Sell: {s['sell_amount']}%", "callback_data": "tse_sell_sell_amount"},
+          {"text": f"📈 Trail: {ts_str}", "callback_data": "tse_sell_trailing_stop"}],
+         [{"text": "← Settings", "callback_data": "ts_main"},
+          {"text": "← Trading", "callback_data": "menu_trading"}]])
+
+
+def show_safety_settings(chat_id):
+    """Show safety/risk settings"""
+    s = user_store.get_trade_settings(str(chat_id))["safety"]
+    msg = (
+        "🛡️ <b>Safety Settings</b>\n\n"
+        f"📦 <b>Max Position Size:</b> ${s['max_position']}\n"
+        f"📅 <b>Daily Limit:</b> ${s['daily_limit']}\n"
+        f"📊 <b>Min Market Volume:</b> ${s['min_volume']:,}\n"
+        f"💧 <b>Min Liquidity:</b> ${s['min_liquidity']:,}\n"
+    )
+    onboarding.send_inline(chat_id, msg,
+        [[{"text": f"📦 Max Pos: ${s['max_position']}", "callback_data": "tse_safety_max_position"},
+          {"text": f"📅 Daily: ${s['daily_limit']}", "callback_data": "tse_safety_daily_limit"}],
+         [{"text": f"📊 Vol: ${s['min_volume']:,}", "callback_data": "tse_safety_min_volume"},
+          {"text": f"💧 Liq: ${s['min_liquidity']:,}", "callback_data": "tse_safety_min_liquidity"}],
+         [{"text": "← Settings", "callback_data": "ts_main"},
+          {"text": "← Trading", "callback_data": "menu_trading"}]])
+
+
+# ── Quick-set value pickers ──
+
+_SETTING_OPTIONS = {
+    "buy_default_amount": {"label": "Default Buy Amount", "unit": "$", "options": [5, 10, 25, 50, 100, 250, 500, 1000]},
+    "buy_slippage":       {"label": "Slippage Tolerance", "unit": "%", "options": [0.5, 1, 2, 3, 5, 10]},
+    "buy_expiration":     {"label": "Order Expiration", "unit": "s", "options": [0, 30, 60, 120, 300, 600],
+                           "display": {0: "GTC", 30: "30s", 60: "1m", 120: "2m", 300: "5m", 600: "10m"}},
+    "sell_take_profit":   {"label": "Take Profit", "unit": "%", "options": [0, 5, 10, 15, 25, 50, 100],
+                           "display": {0: "OFF"}},
+    "sell_stop_loss":     {"label": "Stop Loss", "unit": "%", "options": [0, 5, 10, 15, 25, 50],
+                           "display": {0: "OFF"}},
+    "sell_sell_amount":   {"label": "Sell Amount", "unit": "%", "options": [25, 50, 75, 100]},
+    "sell_trailing_stop": {"label": "Trailing Stop", "unit": "%", "options": [0, 3, 5, 10, 15, 25],
+                           "display": {0: "OFF"}},
+    "safety_max_position":{"label": "Max Position Size", "unit": "$", "options": [100, 250, 500, 1000, 2500, 5000]},
+    "safety_daily_limit": {"label": "Daily Trade Limit", "unit": "$", "options": [500, 1000, 2000, 5000, 10000]},
+    "safety_min_volume":  {"label": "Min Market Volume", "unit": "$", "options": [1000, 5000, 10000, 50000, 100000]},
+    "safety_min_liquidity":{"label": "Min Liquidity", "unit": "$", "options": [500, 1000, 5000, 10000, 50000]},
+}
+
+
+def show_setting_picker(chat_id, setting_key):
+    """Show value picker for a specific setting"""
+    cfg = _SETTING_OPTIONS.get(setting_key)
+    if not cfg:
+        tg.send("❌ Unknown setting.", chat_id)
+        return
+
+    section, key = setting_key.split("_", 1)
+    current = user_store.get_trade_settings(str(chat_id))[section].get(key, 0)
+    display_map = cfg.get("display", {})
+
+    label = cfg["label"]
+    unit = cfg["unit"]
+    cur_display = display_map.get(current, f"{unit}{current}" if unit == "$" else f"{current}{unit}")
+
+    msg = f"⚙️ <b>{label}</b>\n\nCurrent: <b>{cur_display}</b>\n\nSelect new value:"
+
+    # Build option buttons, 3 per row
+    buttons = []
+    row = []
+    for val in cfg["options"]:
+        disp = display_map.get(val, f"{unit}{val}" if unit == "$" else f"{val}{unit}")
+        check = " ✓" if val == current else ""
+        row.append({"text": f"{disp}{check}", "callback_data": f"tsv_{setting_key}_{val}"})
+        if len(row) == 3:
+            buttons.append(row)
+            row = []
+    if row:
+        buttons.append(row)
+
+    # Custom input option + back
+    back_cb = f"ts_{section}"
+    buttons.append([{"text": "✏️ Custom Value", "callback_data": f"tsc_{setting_key}"}])
+    buttons.append([{"text": "← Back", "callback_data": back_cb}])
+
+    onboarding.send_inline(chat_id, msg, buttons)
+
+
+_waiting_for_setting = {}  # chat_id -> {"setting_key": "buy_default_amount"}
+
+def handle_setting_input(chat_id, text):
+    """Handle custom value input for trade settings"""
+    chat_str = str(chat_id)
+    state = _waiting_for_setting.get(chat_str)
+    if not state:
+        return False
+
+    setting_key = state["setting_key"]
+    _waiting_for_setting.pop(chat_str, None)
+
+    section, key = setting_key.split("_", 1)
+    try:
+        value = float(text.strip().replace("$", "").replace("%", "").replace(",", ""))
+    except ValueError:
+        tg.send("❌ Enter a valid number.", chat_id)
+        return True
+
+    ok = user_store.update_trade_setting(str(chat_id), section, key, value)
+    if ok:
+        cfg = _SETTING_OPTIONS.get(setting_key, {})
+        label = cfg.get("label", key)
+        tg.send(f"✅ <b>{label}</b> updated to <b>{value}</b>", chat_id)
+    else:
+        tg.send("❌ Could not update setting.", chat_id)
+
+    # Return to the section
+    if section == "buy":
+        show_buy_settings(chat_id)
+    elif section == "sell":
+        show_sell_settings(chat_id)
+    else:
+        show_safety_settings(chat_id)
+    return True
 
 
 # ═══════════════════════════════════════════════
@@ -2457,7 +2852,7 @@ def _extended_handle_callback(callback_query):
 
     # ── TRADE SECTION ──
     elif data == "menu_trade":
-        show_trade_menu(chat_id)
+        show_trading_menu(chat_id)
     elif data == "trade_no_theta":
         show_no_theta_signals(chat_id)
     elif data == "trade_scalp_signals":
@@ -2611,6 +3006,23 @@ def _extended_handle_callback(callback_query):
     # ── LIVE TRADING CALLBACKS ──
     elif data == "menu_trading":
         show_trading_menu(chat_id)
+    elif data.startswith("trending_"):
+        try:
+            page = int(data.replace("trending_", ""))
+        except ValueError:
+            page = 0
+        show_trending_markets(chat_id, page=page)
+    elif data.startswith("qbuy_"):
+        _handle_quick_buy(chat_id, data)
+    elif data.startswith("qamt_"):
+        try:
+            amount = float(data.replace("qamt_", ""))
+        except ValueError:
+            tg.send("❌ Invalid amount.", chat_id)
+            return
+        _execute_quick_trade(chat_id, amount)
+    elif data == "noop":
+        pass  # do nothing for info-only buttons
     elif data == "trading_buy_prompt":
         show_buy_prompt(chat_id)
     elif data == "trading_sell_prompt":
@@ -2628,6 +3040,58 @@ def _extended_handle_callback(callback_query):
     elif data == "trading_cancel_flow":
         _waiting_for_trade.pop(str(chat_id), None)
         show_trading_menu(chat_id)
+
+    # ── TRADE SETTINGS CALLBACKS ──
+    elif data == "ts_main":
+        show_trade_settings(chat_id)
+    elif data == "ts_buy":
+        show_buy_settings(chat_id)
+    elif data == "ts_sell":
+        show_sell_settings(chat_id)
+    elif data == "ts_safety":
+        show_safety_settings(chat_id)
+    elif data == "ts_reset":
+        user_store.reset_trade_settings(str(chat_id))
+        tg.send("🔄 Trade settings reset to defaults.", chat_id)
+        show_trade_settings(chat_id)
+    elif data == "ts_toggle_auto_confirm":
+        s = user_store.get_trade_settings(str(chat_id))
+        new_val = not s["buy"]["auto_confirm"]
+        user_store.update_trade_setting(str(chat_id), "buy", "auto_confirm", new_val)
+        tg.send(f"⚡ Auto-confirm {'enabled' if new_val else 'disabled'}.", chat_id)
+        show_buy_settings(chat_id)
+    elif data.startswith("tse_"):
+        # Open value picker: tse_buy_default_amount, tse_sell_take_profit, etc.
+        setting_key = data.replace("tse_", "")
+        show_setting_picker(chat_id, setting_key)
+    elif data.startswith("tsv_"):
+        # Set value: tsv_buy_default_amount_25
+        parts = data.replace("tsv_", "")
+        # Split off the last _ segment as the value
+        last_underscore = parts.rfind("_")
+        if last_underscore > 0:
+            setting_key = parts[:last_underscore]
+            val_str = parts[last_underscore + 1:]
+            section, key = setting_key.split("_", 1)
+            try:
+                value = float(val_str)
+                user_store.update_trade_setting(str(chat_id), section, key, value)
+                cfg = _SETTING_OPTIONS.get(setting_key, {})
+                label = cfg.get("label", key)
+                tg.send(f"✅ <b>{label}</b> updated!", chat_id)
+            except ValueError:
+                tg.send("❌ Invalid value.", chat_id)
+            # Return to section settings
+            if section == "buy": show_buy_settings(chat_id)
+            elif section == "sell": show_sell_settings(chat_id)
+            else: show_safety_settings(chat_id)
+    elif data.startswith("tsc_"):
+        # Custom value input: tsc_buy_default_amount
+        setting_key = data.replace("tsc_", "")
+        cfg = _SETTING_OPTIONS.get(setting_key, {})
+        label = cfg.get("label", setting_key)
+        _waiting_for_setting[str(chat_id)] = {"setting_key": setting_key}
+        tg.send(f"✏️ Enter a custom value for <b>{label}</b>:", chat_id)
     elif data.startswith("trade_outcome_"):
         outcome = data.replace("trade_outcome_", "")
         state = _waiting_for_trade.get(str(chat_id))
@@ -2692,6 +3156,31 @@ def _extended_handle_callback(callback_query):
     elif data == "auto_copy_stats":
         stats = ce.get_auto_copy_stats(str(chat_id))
         tg.send(ce.format_auto_copy_stats(stats), chat_id)
+
+    # ── ONE-TAP COPY TRADE ──
+    elif data.startswith("copy_buy_"):
+        # copy_buy_{wallet10}_{slug30}_{outcome}
+        parts = data.replace("copy_buy_", "").rsplit("_", 1)
+        if len(parts) == 2:
+            slug_part, outcome = parts[0], parts[1]
+            # Strip the wallet prefix (first 10 chars + underscore)
+            slug = slug_part[11:] if len(slug_part) > 11 else slug_part
+            ts = user_store.get_trade_settings(str(chat_id))
+            amount = ts["buy"]["default_amount"]
+            tg.send(f"⏳ Copying trade: BUY ${amount} on <b>{outcome}</b>...", chat_id)
+            try:
+                result = trading.quick_buy(slug, outcome, amount, str(chat_id))
+                if result and result.get("success"):
+                    tg.send(f"✅ <b>Copy Trade Executed!</b>\n\n"
+                            f"💰 ${amount} → {outcome}\n"
+                            f"🧾 Order: <code>{result.get('order_id', 'N/A')[:12]}</code>", chat_id)
+                else:
+                    err = result.get("error", "Unknown") if result else "No response"
+                    tg.send(f"❌ Copy trade failed: {err}", chat_id)
+            except Exception as e:
+                tg.send(f"❌ Copy trade error: {e}", chat_id)
+        else:
+            tg.send("❌ Invalid copy trade action.", chat_id)
 
     # ── WHALE DIRECTORY CALLBACKS (Phase 2) ──
     elif data == "menu_whales":
@@ -2876,6 +3365,16 @@ def _polling_loop():
                             updates["first_name"] = from_user["first_name"]
                         if updates:
                             user_store.update_user(cid, updates)
+
+                    # Trade settings custom input
+                    if not text.startswith("/") and str(cid) in _waiting_for_setting:
+                        try:
+                            handle_setting_input(cid, text)
+                        except Exception as e:
+                            print(f"[BOT] setting input error: {e}")
+                            tg.send(f"❌ Settings error: {e}", cid)
+                            _waiting_for_setting.pop(str(cid), None)
+                        continue
 
                     # Trade flow input (multi-step buy/sell)
                     if not text.startswith("/") and str(cid) in _waiting_for_trade:

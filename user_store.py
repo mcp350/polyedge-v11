@@ -556,3 +556,72 @@ def is_admin(chat_id: str) -> bool:
     """Check if user is admin (your chat ID from config)."""
     from config import TELEGRAM_CHAT_ID
     return str(chat_id) == str(TELEGRAM_CHAT_ID)
+
+
+# ═══════════════════════════════════════════════
+# TRADE SETTINGS — per-user buy/sell configuration
+# ═══════════════════════════════════════════════
+
+DEFAULT_TRADE_SETTINGS = {
+    "buy": {
+        "default_amount": 25,       # $ per trade
+        "slippage": 2.0,            # % slippage tolerance
+        "expiration": 60,           # seconds until order expires (0=GTC)
+        "auto_confirm": False,      # skip confirmation step
+    },
+    "sell": {
+        "take_profit": 0,           # % gain to auto-sell (0=off)
+        "stop_loss": 0,             # % loss to auto-sell (0=off)
+        "sell_amount": 100,         # % of position to sell
+        "trailing_stop": 0,         # % trailing stop (0=off)
+    },
+    "safety": {
+        "max_position": 500,        # max $ in single market
+        "daily_limit": 2000,        # max $ per day
+        "min_volume": 5000,         # min market volume to trade
+        "min_liquidity": 1000,      # min market liquidity
+    },
+}
+
+def get_trade_settings(chat_id: str) -> dict:
+    """Get user's trade settings, creating defaults if needed."""
+    user = get_user(str(chat_id))
+    if not user:
+        return dict(DEFAULT_TRADE_SETTINGS)
+    settings = user.get("trade_settings")
+    if not settings:
+        settings = dict(DEFAULT_TRADE_SETTINGS)
+        update_user(chat_id, {"trade_settings": settings})
+    # Ensure all keys exist (in case new fields added)
+    for section in DEFAULT_TRADE_SETTINGS:
+        if section not in settings:
+            settings[section] = dict(DEFAULT_TRADE_SETTINGS[section])
+        else:
+            for key, default_val in DEFAULT_TRADE_SETTINGS[section].items():
+                if key not in settings[section]:
+                    settings[section][key] = default_val
+    return settings
+
+def update_trade_setting(chat_id: str, section: str, key: str, value):
+    """Update a single trade setting. section = buy|sell|safety"""
+    settings = get_trade_settings(str(chat_id))
+    if section not in settings:
+        return False
+    if key not in settings[section]:
+        return False
+    # Type-cast to match default type
+    default_val = DEFAULT_TRADE_SETTINGS[section][key]
+    if isinstance(default_val, float):
+        value = float(value)
+    elif isinstance(default_val, int):
+        value = int(float(value))
+    elif isinstance(default_val, bool):
+        value = bool(value)
+    settings[section][key] = value
+    update_user(str(chat_id), {"trade_settings": settings})
+    return True
+
+def reset_trade_settings(chat_id: str):
+    """Reset user's trade settings to defaults."""
+    update_user(str(chat_id), {"trade_settings": dict(DEFAULT_TRADE_SETTINGS)})
+    return DEFAULT_TRADE_SETTINGS

@@ -10,6 +10,7 @@ import copy_trading as ct
 import telegram_client as tg
 import onboarding
 import user_store
+import copy_executor as ce
 
 # ═══════════════════════════════════════════════
 # SIGNAL DISPATCHER
@@ -45,6 +46,13 @@ def dispatch_signals(signals: list):
         sig_type = signal.get("type", "")
 
         if sig_type in ("NEW_POSITION", "INCREASED"):
+            # Add one-tap copy trade button with market slug
+            slug = signal.get("market", signal.get("slug", ""))
+            outcome = signal.get("outcome", signal.get("side", "yes")).capitalize()
+            if slug:
+                buttons.append([
+                    {"text": f"🟩 Copy Buy {outcome}", "callback_data": f"copy_buy_{wallet_addr[:10]}_{slug[:30]}_{outcome}"},
+                ])
             buttons.append([
                 {"text": f"📊 View Trader", "callback_data": f"ct_detail_{wallet_addr[:20]}"},
             ])
@@ -67,6 +75,30 @@ def dispatch_signals(signals: list):
                 time.sleep(0.05)  # Rate limiting
             except Exception as e:
                 print(f"[COPY-SIG] Send error to {chat_id}: {e}")
+
+            # ── AUTO COPY-TRADE EXECUTION ──
+            # If user has auto-copy enabled, execute the trade automatically
+            try:
+                if ce.is_auto_copy_enabled(chat_id):
+                    result = ce.execute_copy_trade(chat_id, signal)
+                    if result.get("success"):
+                        amt = result.get("trade_amount", 0)
+                        onboarding.send_inline(chat_id,
+                            f"🤖 <b>Auto-Copy Executed!</b>\n\n"
+                            f"💰 ${amt:.2f} → {signal.get('outcome', '?')} "
+                            f"on {signal.get('market_title', 'Unknown')[:50]}\n"
+                            f"📋 Copying: {signal.get('wallet', '')[:10]}...",
+                            [[{"text": "📊 My Positions", "callback_data": "trading_positions"},
+                              {"text": "⚙️ Auto-Copy", "callback_data": "menu_auto_copy"}]])
+                        print(f"[COPY-SIG] Auto-copy executed for {chat_id}: ${amt:.2f}")
+                    elif not result.get("skipped"):
+                        onboarding.send_inline(chat_id,
+                            f"⚠️ <b>Auto-Copy Failed</b>\n\n"
+                            f"Error: {result.get('error', 'Unknown')}\n"
+                            f"Market: {signal.get('market_title', 'Unknown')[:50]}",
+                            [[{"text": "⚙️ Auto-Copy Settings", "callback_data": "auto_copy_settings_menu"}]])
+            except Exception as e:
+                print(f"[COPY-SIG] Auto-copy error for {chat_id}: {e}")
 
     print(f"[COPY-SIG] Dispatched {sent_count} signal notifications")
     return sent_count
