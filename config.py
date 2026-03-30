@@ -7,11 +7,11 @@ TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN", "")
 TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "")
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
 
-# ── Polymarket CLOB Reverse Proxy (EU) ──
-# When set, all direct clob.polymarket.com calls go through this URL instead.
-# Example: http://13.49.25.66  (nginx reverse proxy in EU)
-CLOB_PROXY_URL = os.environ.get("CLOB_PROXY_URL", "")
-CLOB_BASE = CLOB_PROXY_URL.rstrip("/") if CLOB_PROXY_URL else "https://clob.polymarket.com"
+# ── Polymarket CLOB API ──
+# Always use the direct endpoint — the EU proxy (http://13.49.25.66) was
+# mangling L1 auth headers and causing 401 "Invalid L1 Request headers".
+CLOB_PROXY_URL = os.environ.get("CLOB_PROXY_URL", "")  # kept for reference, no longer used
+CLOB_BASE = "https://clob.polymarket.com"
 
 # ── Polymarket Trading API (builders.polymarket.com) ──
 POLY_API_KEY = os.environ.get("POLY_API_KEY", "")

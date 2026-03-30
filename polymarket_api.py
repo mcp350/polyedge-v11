@@ -55,7 +55,9 @@ def gamma_get(path: str, params: dict = None, timeout: int = 15) -> Optional[lis
             if json_start > 0:
                 print(f"[GAMMA_GET] Skipping {json_start} chars of non-JSON prefix: {raw[:json_start]!r}")
                 raw = raw[json_start:]
-            return _json.loads(raw)
+            # Use raw_decode to handle trailing garbage after valid JSON
+            result, _ = _json.JSONDecoder().raw_decode(raw)
+            return result
         else:
             print(f"[GAMMA_GET] curl failed: rc={proc.returncode} stderr={proc.stderr[:200]}")
             return None
