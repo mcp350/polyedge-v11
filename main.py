@@ -10,6 +10,7 @@ from datetime import datetime, timezone
 import pytz
 from config import TELEGRAM_TOKEN, TELEGRAM_CHAT_ID, TIMEZONE
 import telegram_client as tg
+import polymarket_api as papi
 import portfolio_store as store
 import scanner, monitor, researcher, whale, news, swing
 import gdelt, kalshi_api, acled, rss_intel, unsc
@@ -168,10 +169,8 @@ def handle_research_link(chat_id, link):
                 except (ValueError, IndexError):
                     event_slug = last_slug
                 print(f"[RESEARCH] Enrichment: fetching event slug='{event_slug}'")
-                r = requests.get(f"https://gamma-api.polymarket.com/events",
-                    params={"slug": event_slug}, timeout=15)
-                if r.ok:
-                    events = r.json()
+                events = papi.gamma_get("/events", params={"slug": event_slug})
+                if events:
                     if isinstance(events, list) and events and events[0].get("markets"):
                         m = events[0]["markets"][0]
             if not m:
@@ -603,19 +602,16 @@ def show_trending_events(chat_id):
     tg.send("📈 <b>Loading trending events by 24h volume...</b>", chat_id)
     try:
         print(f"[TRENDING] Fetching trending events for chat_id={chat_id}")
-        r = requests.get("https://gamma-api.polymarket.com/events",
+        events = papi.gamma_get("/events",
             params={"active": "true", "closed": "false", "order": "volume24hr",
-                     "ascending": "false", "limit": 10}, timeout=15)
-        print(f"[TRENDING] Response status={r.status_code}, length={len(r.text)}")
-        if r.ok:
-            events = r.json()
-            print(f"[TRENDING] Got {len(events) if isinstance(events, list) else 'non-list'} events")
+                     "ascending": "false", "limit": 10})
+        print(f"[TRENDING] Got {len(events) if isinstance(events, list) else 'non-list'} events")
+        if events:
             if not events:
                 # Fallback to volume order if volume24hr returns empty
-                r2 = requests.get("https://gamma-api.polymarket.com/events",
+                events = papi.gamma_get("/events",
                     params={"active": "true", "closed": "false", "order": "volume",
-                             "ascending": "false", "limit": 10}, timeout=15)
-                events = r2.json() if r2.ok else []
+                             "ascending": "false", "limit": 10}) or []
 
             if not events:
                 tg.send("❌ No trending events found. Try again later.", chat_id)
@@ -672,11 +668,10 @@ def show_new_markets(chat_id):
     try:
         from datetime import timedelta
         cutoff = (datetime.now(timezone.utc) - timedelta(hours=24)).isoformat()
-        r = requests.get("https://gamma-api.polymarket.com/events",
+        events = papi.gamma_get("/events",
             params={"active": "true", "closed": "false", "order": "startDate",
-                     "ascending": "false", "limit": 50}, timeout=15)
-        if r.ok:
-            events = r.json()
+                     "ascending": "false", "limit": 50})
+        if events:
             # Filter to events created in past 24h
             new_events = []
             for ev in events:
@@ -718,10 +713,9 @@ def show_global_stats(chat_id):
         total_volume = 0
         active_markets = 0
         try:
-            r = requests.get("https://gamma-api.polymarket.com/events",
-                params={"active": "true", "closed": "false", "limit": 100}, timeout=15)
-            if r.ok:
-                events = r.json()
+            events = papi.gamma_get("/events",
+                params={"active": "true", "closed": "false", "limit": 100})
+            if events:
                 active_markets = len(events)
                 for ev in events:
                     for m in (ev.get("markets") or []):
@@ -767,13 +761,11 @@ def show_breaking_news(chat_id):
     """Breaking News — pulls latest from Polymarket breaking news"""
     tg.send("📰 <b>Loading Breaking News...</b>", chat_id)
     try:
-        import polymarket_api as papi
         # Fetch trending/breaking events from Polymarket
-        r = requests.get("https://gamma-api.polymarket.com/events",
+        events = papi.gamma_get("/events",
             params={"active": "true", "closed": "false", "order": "volume24hr",
-                     "ascending": "false", "limit": 10}, timeout=15)
-        if r.ok:
-            events = r.json()
+                     "ascending": "false", "limit": 10})
+        if events:
             msg = "📰 <b>Polytragent — Breaking News</b>\n"
             msg += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
             msg += "<i>Latest high-volume events from Polymarket</i>\n\n"
@@ -1547,11 +1539,10 @@ def _fetch_trending_markets(limit=20):
 
         # Fetch top 50 events by volume from Gamma API
         try:
-            r = requests.get("https://gamma-api.polymarket.com/events", params={
+            events = papi.gamma_get("/events", params={
                 "limit": 50, "active": "true", "closed": "false",
                 "order": "volume", "ascending": "false"
-            }, headers={"User-Agent": "PolymarketBot/1.0"}, timeout=15)
-            events = r.json() if r.ok else []
+            }) or []
         except Exception as e:
             print(f"[TRADE] Events API error: {e}")
             events = []
@@ -2677,14 +2668,12 @@ def _handle(cmd, chat_id):
         try:
             result = researcher.research_market(parts[1])
             try:
-                import polymarket_api as papi
                 slug = parts[1].rstrip("/").split("/")[-1] if "polymarket.com" in parts[1] else parts[1]
                 m = None
                 if "/event/" in parts[1]:
-                    r = requests.get(f"https://gamma-api.polymarket.com/events",
-                        params={"slug": slug}, timeout=15)
-                    if r.ok:
-                        events = r.json()
+                    events = papi.gamma_get("/events",
+                        params={"slug": slug})
+                    if events:
                         if isinstance(events, list) and events and events[0].get("markets"):
                             m = events[0]["markets"][0]
                 if not m:

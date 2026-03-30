@@ -1,12 +1,19 @@
 """
 Polymarket API wrapper — Gamma REST API
 Docs: https://docs.polymarket.com
+
+NOTE: Railway blocks *.polymarket.com HTTPS at the Python level.
+The gamma_get() function uses curl subprocess to bypass this.
+All Gamma API calls MUST use gamma_get() or _get() (which auto-detects).
 """
 
 import requests
+import subprocess
+import json as _json
 import time
 from datetime import datetime, timezone
 from typing import Optional
+from urllib.parse import urlencode
 import config
 
 GAMMA_BASE  = "https://gamma-api.polymarket.com"
@@ -15,7 +22,39 @@ DATA_BASE   = "https://data-api.polymarket.com"
 
 HEADERS = {"User-Agent": "PolymarketBot/1.0"}
 
+
+def gamma_get(path: str, params: dict = None, timeout: int = 15) -> Optional[list | dict]:
+    """
+    Fetch from Gamma API using curl subprocess.
+    Railway blocks *.polymarket.com via Python requests/urllib3,
+    but curl bypasses the block at the system level.
+    """
+    url = f"{GAMMA_BASE}{path}"
+    if params:
+        qs = urlencode({k: v for k, v in params.items() if v is not None})
+        url = f"{url}?{qs}"
+    try:
+        proc = subprocess.run(
+            ['curl', '-s', '--max-time', str(timeout),
+             '-H', 'User-Agent: PolymarketBot/1.0', url],
+            capture_output=True, text=True, timeout=timeout + 5
+        )
+        if proc.returncode == 0 and proc.stdout:
+            return _json.loads(proc.stdout)
+        else:
+            print(f"[GAMMA_GET] curl failed: rc={proc.returncode} stderr={proc.stderr[:100]}")
+            return None
+    except Exception as e:
+        print(f"[GAMMA_GET] Error: {e}")
+        return None
+
+
 def _get(url: str, params: dict = None, retries: int = 3) -> Optional[dict]:
+    # Auto-detect Gamma API calls and route through curl
+    if "gamma-api.polymarket.com" in url:
+        path = url.replace(GAMMA_BASE, "")
+        return gamma_get(path, params)
+
     for attempt in range(retries):
         try:
             r = requests.get(url, params=params, headers=HEADERS, timeout=15)

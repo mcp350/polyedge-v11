@@ -7,6 +7,7 @@ Supports market orders, limit orders, position management.
 import os, json, time, logging
 from typing import Optional, Tuple
 from datetime import datetime, timezone
+from polymarket_api import gamma_get
 
 log = logging.getLogger("polytragent.trading")
 
@@ -755,8 +756,6 @@ def resolve_market_tokens(market_slug_or_id: str) -> Optional[dict]:
     Returns dict with: question, condition_id, tokens [{token_id, outcome}], neg_risk, tick_size
     """
     try:
-        import requests as req
-
         # Clean input — handle full URLs
         slug = market_slug_or_id.strip()
         if "polymarket.com" in slug:
@@ -767,27 +766,21 @@ def resolve_market_tokens(market_slug_or_id: str) -> Optional[dict]:
             slug = slug.split("?")[0]
 
         # Try as slug first
-        r = req.get(f"https://gamma-api.polymarket.com/markets",
-                     params={"slug": slug}, timeout=15)
+        data = gamma_get("/markets", params={"slug": slug})
         markets = []
-        if r.ok:
-            data = r.json()
+        if data:
             markets = data if isinstance(data, list) else []
 
         # If no results, try as condition_id
         if not markets:
-            r = req.get(f"https://gamma-api.polymarket.com/markets/{slug}", timeout=15)
-            if r.ok:
-                m = r.json()
-                if m:
-                    markets = [m]
+            m = gamma_get(f"/markets/{slug}")
+            if m:
+                markets = [m]
 
         # Try as event slug (returns multiple markets)
         if not markets:
-            r = req.get(f"https://gamma-api.polymarket.com/events",
-                         params={"slug": slug}, timeout=15)
-            if r.ok:
-                events = r.json()
+            events = gamma_get("/events", params={"slug": slug})
+            if events:
                 if isinstance(events, list) and events:
                     event = events[0]
                     markets = event.get("markets", [])

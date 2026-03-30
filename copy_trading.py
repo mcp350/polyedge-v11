@@ -16,6 +16,7 @@ Polymarket API: https://gamma-api.polymarket.com + CLOB API
 import json, os, time, requests, hashlib
 from datetime import datetime, timezone, timedelta
 import user_store
+from polymarket_api import gamma_get
 
 FILE = os.path.join(os.path.dirname(__file__), "copy_trading.json")
 
@@ -76,9 +77,9 @@ def fetch_wallet_profile(address: str) -> dict:
     """Fetch a wallet's Polymarket profile (PnL, volume, positions)."""
     try:
         # Try gamma API profile endpoint
-        r = requests.get(f"{GAMMA_BASE}/profiles/{address}", headers=HEADERS, timeout=15)
-        if r.ok:
-            return r.json()
+        data = gamma_get(f"/profiles/{address}")
+        if data:
+            return data
     except Exception as e:
         print(f"[COPY] Profile fetch error for {address[:10]}: {e}")
     return {}
@@ -102,11 +103,9 @@ def fetch_wallet_positions(address: str) -> list:
     # Fallback: try gamma API
     if not positions:
         try:
-            r = requests.get(f"{GAMMA_BASE}/positions",
-                params={"user": address, "sizeThreshold": "0.1"},
-                headers=HEADERS, timeout=15)
-            if r.ok:
-                data = r.json()
+            data = gamma_get("/positions",
+                params={"user": address, "sizeThreshold": "0.1"})
+            if data:
                 positions = data if isinstance(data, list) else data.get("positions", [])
         except:
             pass
@@ -205,17 +204,16 @@ def discover_top_wallets(limit: int = 25) -> list:
 def fetch_market_info(condition_id: str) -> dict:
     """Fetch market info for a given condition/token."""
     try:
-        r = requests.get(f"{GAMMA_BASE}/markets/{condition_id}", headers=HEADERS, timeout=10)
-        if r.ok:
-            return r.json()
+        data = gamma_get(f"/markets/{condition_id}")
+        if data:
+            return data
     except:
         pass
     # Try as token
     try:
-        r = requests.get(f"{GAMMA_BASE}/markets",
-            params={"condition_id": condition_id}, headers=HEADERS, timeout=10)
-        if r.ok:
-            data = r.json()
+        data = gamma_get("/markets",
+            params={"condition_id": condition_id})
+        if data:
             if isinstance(data, list) and data:
                 return data[0]
     except:

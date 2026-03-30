@@ -10,6 +10,7 @@ import re
 import requests
 from datetime import datetime, timezone
 from collections import defaultdict
+from polymarket_api import gamma_get
 
 FILE = os.path.join(os.path.dirname(__file__), "predictions.json")
 
@@ -150,22 +151,18 @@ def check_resolutions():
 
         # Check Polymarket API
         try:
-            r = requests.get(f"{GAMMA_BASE}/markets/{mid}",
-                             headers=HEADERS, timeout=10)
-            if not r.ok:
+            market = gamma_get(f"/markets/{mid}")
+            if not market:
                 # Try by conditionId
-                r = requests.get(f"{GAMMA_BASE}/markets",
-                                 params={"id": mid}, headers=HEADERS, timeout=10)
-                if r.ok:
-                    markets = r.json()
+                markets = gamma_get("/markets",
+                                 params={"id": mid})
+                if markets:
                     if isinstance(markets, list) and markets:
                         market = markets[0]
                     else:
                         continue
                 else:
                     continue
-            else:
-                market = r.json()
 
             # Check if resolved
             closed = market.get("closed") in [True, "true"]

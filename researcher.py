@@ -72,10 +72,8 @@ def _keywords(question: str) -> str:
 def _fetch_event_markets(slug):
     """Fetch ALL sub-markets from a Polymarket event."""
     try:
-        r = requests.get(f"{api.GAMMA_BASE}/events", params={"slug": slug},
-                         headers=HEADERS, timeout=15)
-        if r.ok:
-            events = r.json()
+        events = api.gamma_get("/events", params={"slug": slug})
+        if events:
             if isinstance(events, list) and events:
                 event = events[0]
                 event_title = event.get("title", "") or event.get("question", "")
