@@ -45,15 +45,15 @@ _LOGIN_HTML = """<!DOCTYPE html>
 :root{--bg:#0d1117;--bg-card:#161b22;--border:#30363d;--text:#e6edf3;--text-muted:#8b949e;--green:#6ee7b7;--green-dim:#3fb950;--red:#f85149}
 *{box-sizing:border-box;margin:0;padding:0}
 body{background:var(--bg);color:var(--text);font-family:'JetBrains Mono','SF Mono','Fira Code',Consolas,monospace;font-size:13px;display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px}
-.login-wrap{width:100%;max-width:360px}.login-header{text-align:center;margin-bottom:28px}
+.login-wrap{width:100%%;max-width:360px}.login-header{text-align:center;margin-bottom:28px}
 .login-logo{font-size:22px;font-weight:700;color:var(--green);margin-bottom:6px}
 .login-logo span{color:var(--text-muted);font-weight:400}
 .login-sub{color:var(--text-muted);font-size:12px}
 .card{background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:28px}
 .form-group{margin-bottom:16px}.form-label{display:block;font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--text-muted);margin-bottom:6px}
-input{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:9px 12px;color:var(--text);font-family:inherit;font-size:13px;transition:border-color .15s;-webkit-appearance:none}
+input{width:100%%;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:9px 12px;color:var(--text);font-family:inherit;font-size:13px;transition:border-color .15s;-webkit-appearance:none}
 input:focus{outline:none;border-color:var(--green);box-shadow:0 0 0 3px rgba(110,231,183,.08)}
-.btn-submit{width:100%;background:var(--green);color:#0d1117;border:none;border-radius:6px;padding:10px;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;transition:background .15s;margin-top:8px}
+.btn-submit{width:100%%;background:var(--green);color:#0d1117;border:none;border-radius:6px;padding:10px;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;transition:background .15s;margin-top:8px}
 .btn-submit:hover{background:var(--green-dim)}
 .error{background:rgba(248,81,73,.1);border:1px solid rgba(248,81,73,.2);color:var(--red);padding:9px 12px;border-radius:6px;font-size:12px;margin-bottom:16px}
 .footer{text-align:center;margin-top:20px;color:var(--text-muted);font-size:11px}
