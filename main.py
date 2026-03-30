@@ -10,7 +10,6 @@ from datetime import datetime, timezone
 import pytz
 from config import TELEGRAM_TOKEN, TELEGRAM_CHAT_ID, TIMEZONE
 import telegram_client as tg
-import polymarket_api as papi
 import portfolio_store as store
 import scanner, monitor, researcher, whale, news, swing
 import gdelt, kalshi_api, acled, rss_intel, unsc
@@ -135,46 +134,28 @@ def show_quick_research_prompt(chat_id):
 
 def handle_research_link(chat_id, link):
     """Run full research on a Polymarket link"""
-    from urllib.parse import urlparse
     _waiting_for_research_link.pop(str(chat_id), None)
-
-    # Clean the link: strip fragments (#...), query params, whitespace
-    clean_link = link.strip()
-    if "polymarket.com" in clean_link:
-        try:
-            pu = urlparse(clean_link)
-            clean_link = f"{pu.scheme}://{pu.netloc}{pu.path}"
-        except Exception:
-            clean_link = clean_link.split("#")[0].split("?")[0]
-    print(f"[RESEARCH] handle_research_link: original='{link[:100]}' clean='{clean_link[:100]}'")
 
     tg.send("🔬 <b>Researching event...</b>\n\n⏳ Running AI analysis, market data, whale scan, news check...\nThis takes ~30-60 seconds.", chat_id)
 
     try:
         # 1. Core AI research
-        result = researcher.research_market(clean_link)
-        print(f"[RESEARCH] research_market returned {len(result)} chars, starts with: {result[:80]}")
+        result = researcher.research_market(link)
 
         # 2. Get market data for enrichment
         try:
             import polymarket_api as papi
-            parts = clean_link.rstrip("/").split("/")
-            last_slug = parts[-1] if parts else clean_link
+            slug = link.rstrip("/").split("/")[-1] if "polymarket.com" in link else link
             m = None
-            if "/event/" in clean_link:
-                # Extract event slug (segment after /event/)
-                try:
-                    event_idx = parts.index("event")
-                    event_slug = parts[event_idx + 1] if event_idx + 1 < len(parts) else last_slug
-                except (ValueError, IndexError):
-                    event_slug = last_slug
-                print(f"[RESEARCH] Enrichment: fetching event slug='{event_slug}'")
-                events = papi.gamma_get("/events", params={"slug": event_slug})
-                if events:
+            if "/event/" in link:
+                r = requests.get(f"https://gamma-api.polymarket.com/events",
+                    params={"slug": slug}, timeout=15)
+                if r.ok:
+                    events = r.json()
                     if isinstance(events, list) and events and events[0].get("markets"):
                         m = events[0]["markets"][0]
             if not m:
-                m = papi.get_market_by_slug(last_slug) or papi.get_market_by_id(last_slug)
+                m = papi.get_market_by_slug(slug) or papi.get_market_by_id(slug)
 
             if m:
                 parsed = papi.parse_market(m)
@@ -218,18 +199,10 @@ def handle_research_link(chat_id, link):
             yes_pct = int(parsed.get("yes_price", 0) * 100)
             no_pct = int(parsed.get("no_price", 0) * 100)
             if slug:
-                # Cache full market data with a short key (avoids slug truncation)
-                global _research_market_counter
-                _research_market_counter += 1
-                rkey = str(_research_market_counter)
-                _research_market_cache[rkey] = {
-                    "slug": slug,
-                    "question": parsed.get("question", slug.replace("-", " ")),
-                    "parsed": parsed,
-                }
+                ridx = _cache_rbuy_slug(slug)
                 action_buttons.append([
-                    {"text": f"🟩 Buy YES ({yes_pct}¢)", "callback_data": f"rbuy_{rkey}_Yes"},
-                    {"text": f"🟥 Buy NO ({no_pct}¢)", "callback_data": f"rbuy_{rkey}_No"},
+                    {"text": f"🟩 Buy YES ({yes_pct}¢)", "callback_data": f"rbuy_{ridx}_Yes"},
+                    {"text": f"🟥 Buy NO ({no_pct}¢)", "callback_data": f"rbuy_{ridx}_No"},
                 ])
                 action_buttons.append([{"text": "🔗 View on Polymarket", "url": parsed.get("url", "https://polymarket.com")}])
         action_buttons.append([{"text": "🔬 Research Event", "callback_data": "quick_research"}])
@@ -269,8 +242,8 @@ def send_main_menu(chat_id):
         name = user.get("first_name") or user.get("username") or ""
     greeting = f", {name}" if name else ""
 
-    # Trading engine status (per-user: check if this user has a wallet)
-    trade_status = "🟢 Live" if trading.is_user_trading_ready(chat_id) else "⚪ Deposit to trade"
+    # Trading engine status
+    trade_status = "🟢 Live" if trading.is_trading_enabled() else "⚪ Signals Only"
 
     # Degen Mode status
     is_degen = user_store.is_degen(chat_id) if hasattr(user_store, 'is_degen') else False
@@ -601,65 +574,43 @@ def show_trending_events(chat_id):
     """Trending Events — most recent data from Polymarket by 24h volume"""
     tg.send("📈 <b>Loading trending events by 24h volume...</b>", chat_id)
     try:
-        print(f"[TRENDING] Fetching trending events for chat_id={chat_id}")
-        events = papi.gamma_get("/events",
+        r = requests.get("https://gamma-api.polymarket.com/events",
             params={"active": "true", "closed": "false", "order": "volume24hr",
-                     "ascending": "false", "limit": 10})
-        print(f"[TRENDING] Got {len(events) if isinstance(events, list) else 'non-list'} events")
-        if events:
-            if not events:
-                # Fallback to volume order if volume24hr returns empty
-                events = papi.gamma_get("/events",
-                    params={"active": "true", "closed": "false", "order": "volume",
-                             "ascending": "false", "limit": 10}) or []
-
-            if not events:
-                tg.send("❌ No trending events found. Try again later.", chat_id)
-                return
-
+                     "ascending": "false", "limit": 10}, timeout=15)
+        if r.ok:
+            events = r.json()
             msg = "📈 <b>Polytragent — Trending Events</b>\n"
             msg += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-            msg += "<i>Top events by trading volume</i>\n\n"
+            msg += "<i>Top events by 24h trading volume</i>\n\n"
+            event_buttons = []
             for i, ev in enumerate(events[:10], 1):
                 title = (ev.get("title") or "Untitled")[:55]
                 vol24 = float(ev.get("volume24hr", 0) or 0)
-                vol_total = float(ev.get("volume", 0) or 0)
                 slug = ev.get("slug", "")
-                # Get top market yes price from outcomePrices (tokens may be None)
+                # Get top market yes price
                 markets = ev.get("markets") or []
                 yes_price = ""
                 if markets:
                     try:
-                        import json as _json
-                        op = markets[0].get("outcomePrices", "[]")
-                        if isinstance(op, str):
-                            prices = _json.loads(op)
-                        else:
-                            prices = op or []
-                        if len(prices) >= 2:
-                            yes_price = f" | YES: ${float(prices[0]):.2f}"
+                        tokens = markets[0].get("tokens") or []
+                        for t in tokens:
+                            if t.get("outcome", "").lower() == "yes":
+                                yes_price = f" | YES: ${float(t.get('price', 0)):.2f}"
                     except: pass
-                vol_str = f"${vol24:,.0f}" if vol24 > 0 else f"${vol_total:,.0f}"
                 msg += f"{i}. <b>{title}</b>\n"
-                msg += f"   Vol: {vol_str}{yes_price}\n"
+                msg += f"   24h Vol: ${vol24:,.0f}{yes_price}\n\n"
                 if slug:
-                    msg += f"   🔗 polymarket.com/event/{slug}\n"
-                msg += "\n"
-
-            buttons = []
-            # Add research buttons for each event
-            for i, ev in enumerate(events[:5], 1):
-                slug = ev.get("slug", "")
-                title_short = (ev.get("title") or "")[:25]
-                if slug:
-                    buttons.append([{"text": f"🔬 {i}. {title_short}", "callback_data": f"research_event_{slug}"}])
-            buttons.append([{"text": "🔄 Refresh", "callback_data": "research_trending"}])
-            buttons.append([{"text": "← Research", "callback_data": "menu_research"}])
+                    btn_label = f"🔗 {i}. {title[:30]}{'...' if len(title) > 30 else ''}"
+                    event_buttons.append([{"text": btn_label,
+                                           "url": f"https://polymarket.com/event/{slug}"}])
+            buttons = event_buttons + [
+                [{"text": "🔄 Refresh", "callback_data": "research_trending"}],
+                [{"text": "← Research", "callback_data": "menu_research"}],
+            ]
             onboarding.send_inline(chat_id, msg, buttons)
         else:
             tg.send("❌ Could not fetch trending events. Try again.", chat_id)
     except Exception as e:
-        print(f"[TRENDING] Error: {e}")
         tg.send(f"❌ Trending error: {e}", chat_id)
 
 def show_new_markets(chat_id):
@@ -668,10 +619,11 @@ def show_new_markets(chat_id):
     try:
         from datetime import timedelta
         cutoff = (datetime.now(timezone.utc) - timedelta(hours=24)).isoformat()
-        events = papi.gamma_get("/events",
+        r = requests.get("https://gamma-api.polymarket.com/events",
             params={"active": "true", "closed": "false", "order": "startDate",
-                     "ascending": "false", "limit": 50})
-        if events:
+                     "ascending": "false", "limit": 50}, timeout=15)
+        if r.ok:
+            events = r.json()
             # Filter to events created in past 24h
             new_events = []
             for ev in events:
@@ -713,9 +665,10 @@ def show_global_stats(chat_id):
         total_volume = 0
         active_markets = 0
         try:
-            events = papi.gamma_get("/events",
-                params={"active": "true", "closed": "false", "limit": 100})
-            if events:
+            r = requests.get("https://gamma-api.polymarket.com/events",
+                params={"active": "true", "closed": "false", "limit": 100}, timeout=15)
+            if r.ok:
+                events = r.json()
                 active_markets = len(events)
                 for ev in events:
                     for m in (ev.get("markets") or []):
@@ -761,11 +714,13 @@ def show_breaking_news(chat_id):
     """Breaking News — pulls latest from Polymarket breaking news"""
     tg.send("📰 <b>Loading Breaking News...</b>", chat_id)
     try:
+        import polymarket_api as papi
         # Fetch trending/breaking events from Polymarket
-        events = papi.gamma_get("/events",
+        r = requests.get("https://gamma-api.polymarket.com/events",
             params={"active": "true", "closed": "false", "order": "volume24hr",
-                     "ascending": "false", "limit": 10})
-        if events:
+                     "ascending": "false", "limit": 10}, timeout=15)
+        if r.ok:
+            events = r.json()
             msg = "📰 <b>Polytragent — Breaking News</b>\n"
             msg += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
             msg += "<i>Latest high-volume events from Polymarket</i>\n\n"
@@ -1518,9 +1473,20 @@ def show_account(chat_id):
 # SECTION: LIVE TRADING
 # ═══════════════════════════════════════════════
 
+# Small slug cache so research Buy buttons can store the full slug
+# without hitting Telegram's 64-byte callback_data limit.
+_rbuy_slug_cache = {}   # idx (0-199) -> full slug string
+_rbuy_slug_counter = 0
+
+def _cache_rbuy_slug(slug: str) -> int:
+    """Store a full market slug and return a short integer index."""
+    global _rbuy_slug_counter
+    idx = _rbuy_slug_counter % 200
+    _rbuy_slug_cache[idx] = slug
+    _rbuy_slug_counter += 1
+    return idx
+
 _trending_cache = {"markets": [], "ts": 0}
-_research_market_cache = {}  # short_key -> {slug, question, parsed_data}
-_research_market_counter = 0
 
 def _fetch_trending_markets(limit=20):
     """Fetch top trending markets from Polymarket events API.
@@ -1537,16 +1503,15 @@ def _fetch_trending_markets(limit=20):
         markets = []
         seen_slugs = set()
 
-        # Fetch top events by volume from Gamma API (limit 20 to keep response fast)
+        # Fetch top 50 events by volume from Gamma API
         try:
-            events = papi.gamma_get("/events", params={
-                "limit": "20", "active": "true", "closed": "false",
+            r = requests.get("https://gamma-api.polymarket.com/events", params={
+                "limit": 50, "active": "true", "closed": "false",
                 "order": "volume", "ascending": "false"
-            }, timeout=25) or []
-            print(f"[TRADE] gamma_get returned {len(events)} events")
+            }, headers={"User-Agent": "PolymarketBot/1.0"}, timeout=15)
+            events = r.json() if r.ok else []
         except Exception as e:
             print(f"[TRADE] Events API error: {e}")
-            import traceback; traceback.print_exc()
             events = []
 
         if isinstance(events, list):
@@ -1615,15 +1580,7 @@ def show_trading_menu(chat_id):
 def show_trending_markets(chat_id, page=0, per_page=5):
     """Show paginated trending Polymarket events with trade buttons"""
     tg.send("🔥 Loading trending events...", chat_id) if page == 0 else None
-    print(f"[TRADE-TRENDING] Fetching trending markets for chat_id={chat_id}, page={page}")
-    import traceback as _tb
-    try:
-        markets = _fetch_trending_markets(30)
-    except Exception as _e:
-        print(f"[TRADE-TRENDING] EXCEPTION in _fetch_trending_markets: {_e}")
-        _tb.print_exc()
-        markets = []
-    print(f"[TRADE-TRENDING] Got {len(markets)} markets")
+    markets = _fetch_trending_markets(30)
 
     if not markets:
         onboarding.send_inline(chat_id,
@@ -1707,20 +1664,21 @@ def _handle_quick_buy(chat_id, data):
     no_pct = int(m["no_price"] * 100)
     price = yes_pct if outcome == "Yes" else no_pct
 
-    # Check if user has a wallet and balance
-    if not trading.is_user_trading_ready(chat_id):
+    # Check if trading engine is configured
+    if not trading.is_trading_enabled():
         onboarding.send_inline(chat_id,
             f"🟩 <b>Buy {outcome}</b> on:\n"
             f"📌 {question}\n\n"
             f"💰 Price: <b>{price}¢</b> per share\n\n"
-            "⚠️ <b>Wallet not ready.</b>\n\n"
-            "You need to deposit funds to start trading:\n"
-            "1️⃣ Send <b>USDC</b> on <b>Polygon</b> to your wallet\n"
-            "2️⃣ Send a small amount of <b>MATIC</b> for gas fees\n\n"
-            "Tap 💰 Wallet below to see your deposit address.",
-            [[{"text": "💰 Wallet", "callback_data": "wallet_main"},
-              {"text": "🔥 Back to Events", "callback_data": "trending_0"}],
-             [{"text": "← Main Menu", "callback_data": "main_menu"}]])
+            "⚠️ <b>Trading not configured yet.</b>\n\n"
+            "To enable live trading, the admin needs to set:\n"
+            "• <code>POLY_API_KEY</code>\n"
+            "• <code>POLY_API_SECRET</code>\n"
+            "• <code>POLY_API_PASSPHRASE</code>\n"
+            "• <code>POLY_PRIVATE_KEY</code>\n\n"
+            "Get your API keys at <a href='https://builders.polymarket.com'>builders.polymarket.com</a>",
+            [[{"text": "🔥 Back to Events", "callback_data": "trending_0"},
+              {"text": "← Main Menu", "callback_data": "main_menu"}]])
         return
 
     # Store trade state — user enters amount manually
@@ -1818,7 +1776,7 @@ def show_buy_prompt(chat_id):
 
 def show_sell_prompt(chat_id):
     """Show positions to sell from"""
-    positions = trading.get_positions(chat_id=str(chat_id))
+    positions = trading.get_positions()
     if not positions:
         tg.send("📭 No open positions to sell.", chat_id)
         show_trading_menu(chat_id)
@@ -1937,9 +1895,9 @@ def handle_trade_input(chat_id, text):
 
 
 def show_trading_positions(chat_id):
-    """Show live positions from the user's wallet"""
+    """Show live positions from the trading wallet"""
     tg.send("📊 Loading positions...", chat_id)
-    positions = trading.get_positions(chat_id=str(chat_id))
+    positions = trading.get_positions()
     msg = trading.format_positions(positions)
     onboarding.send_inline(chat_id, msg,
         [[{"text": "🔄 Refresh", "callback_data": "trading_positions"},
@@ -1948,8 +1906,8 @@ def show_trading_positions(chat_id):
 
 
 def show_trading_orders(chat_id):
-    """Show open orders for this user"""
-    orders = trading.get_open_orders(chat_id=str(chat_id))
+    """Show open orders"""
+    orders = trading.get_open_orders()
     msg = trading.format_open_orders(orders)
     onboarding.send_inline(chat_id, msg,
         [[{"text": "🔄 Refresh", "callback_data": "trading_orders"},
@@ -1958,8 +1916,8 @@ def show_trading_orders(chat_id):
 
 
 def show_trade_history(chat_id):
-    """Show recent trade history for this user"""
-    trades = trading.get_trade_history(20, chat_id=str(chat_id))
+    """Show recent trade history"""
+    trades = trading.get_trade_history(20)
     if not trades:
         msg = "📭 No recent trades."
     else:
@@ -2472,11 +2430,11 @@ def _handle(cmd, chat_id):
         if len(parts) < 2:
             tg.send("Usage: /cancel_order &lt;order_id&gt;", chat_id)
             return
-        result = trading.cancel_order(parts[1], chat_id=str(chat_id))
+        result = trading.cancel_order(parts[1])
         tg.send("✅ Order cancelled." if result["success"] else f"❌ {result['error']}", chat_id)
 
     elif cmd == "/cancel_all":
-        result = trading.cancel_all_orders(chat_id=str(chat_id))
+        result = trading.cancel_all_orders()
         tg.send("✅ All orders cancelled." if result["success"] else f"❌ {result['error']}", chat_id)
 
     elif cmd == "/limit_buy":
@@ -2676,12 +2634,14 @@ def _handle(cmd, chat_id):
         try:
             result = researcher.research_market(parts[1])
             try:
+                import polymarket_api as papi
                 slug = parts[1].rstrip("/").split("/")[-1] if "polymarket.com" in parts[1] else parts[1]
                 m = None
                 if "/event/" in parts[1]:
-                    events = papi.gamma_get("/events",
-                        params={"slug": slug})
-                    if events:
+                    r = requests.get(f"https://gamma-api.polymarket.com/events",
+                        params={"slug": slug}, timeout=15)
+                    if r.ok:
+                        events = r.json()
                         if isinstance(events, list) and events and events[0].get("markets"):
                             m = events[0]["markets"][0]
                 if not m:
@@ -2951,10 +2911,6 @@ def _extended_handle_callback(callback_query):
         show_breaking_news(chat_id)  # redirect old callback
     elif data == "research_trending":
         show_trending_events(chat_id)
-    elif data.startswith("research_event_"):
-        event_slug = data.replace("research_event_", "")
-        link = f"https://polymarket.com/event/{event_slug}"
-        threading.Thread(target=handle_research_link, args=(chat_id, link), daemon=True).start()
     elif data == "research_new_markets":
         show_new_markets(chat_id)
     elif data == "research_kalshi":
@@ -3136,39 +3092,33 @@ def _extended_handle_callback(callback_query):
     elif data.startswith("qbuy_"):
         _handle_quick_buy(chat_id, data)
     elif data.startswith("rbuy_"):
-        # Research page buy: rbuy_{cache_key}_{Yes|No}
+        # Research page buy: rbuy_{idx}_{Yes|No}  (idx is a key into _rbuy_slug_cache)
         parts = data.replace("rbuy_", "").rsplit("_", 1)
         if len(parts) == 2:
-            rkey, outcome = parts[0], parts[1]
-            # Look up full market data from cache
-            cached = _research_market_cache.get(rkey)
-            if cached:
-                slug = cached["slug"]
-                question = cached["question"]
-            else:
-                # Fallback: treat rkey as a (possibly truncated) slug
-                slug = rkey
-                question = rkey.replace("-", " ")[:60]
+            idx_str, outcome = parts[0], parts[1]
+            # Resolve the full slug from cache (new format) or fall back to treating as slug (old format)
+            try:
+                slug = _rbuy_slug_cache.get(int(idx_str))
+            except (ValueError, TypeError):
+                slug = idx_str  # Legacy: idx_str is already a (possibly truncated) slug
+            if not slug:
+                tg.send("❌ Research session expired. Please research the event again.", chat_id)
+                return
             ts = user_store.get_trade_settings(str(chat_id))
             default_amt = ts["buy"]["default_amount"]
-            if not trading.is_user_trading_ready(chat_id):
+            if not trading.is_trading_enabled():
                 onboarding.send_inline(chat_id,
-                    f"⚠️ <b>Wallet not ready.</b>\n\n"
-                    "Deposit USDC (Polygon) to your wallet to start trading.\n"
-                    "Tap 💰 Wallet to see your deposit address.",
-                    [[{"text": "💰 Wallet", "callback_data": "wallet_main"},
-                      {"text": "← Main Menu", "callback_data": "main_menu"}]])
+                    f"⚠️ <b>Trading not configured.</b>\n\n"
+                    "Admin needs to set POLY_API_KEY, POLY_API_SECRET, POLY_API_PASSPHRASE, POLY_PRIVATE_KEY.",
+                    [[{"text": "← Main Menu", "callback_data": "main_menu"}]])
             else:
                 _waiting_for_trade[str(chat_id)] = {
                     "action": "buy", "step": "amount_quick",
-                    "slug": slug, "question": question,
+                    "slug": slug, "question": slug.replace("-", " ")[:60],
                     "outcome": outcome, "price": 0,
                 }
-                ts = user_store.get_trade_settings(str(chat_id))
-                default_amt = ts["buy"]["default_amount"]
                 onboarding.send_inline(chat_id,
                     f"🟩 <b>Buy {outcome}</b> on this event\n\n"
-                    f"📌 <b>{question}</b>\n\n"
                     f"💵 Enter the amount you want to bet (in $):\n"
                     f"<i>Your default: ${default_amt}</i>",
                     [[{"text": "← Cancel", "callback_data": "menu_trading"}]])
@@ -3192,7 +3142,7 @@ def _extended_handle_callback(callback_query):
     elif data == "trading_history":
         show_trade_history(chat_id)
     elif data == "trading_cancel_all":
-        result = trading.cancel_all_orders(chat_id=str(chat_id))
+        result = trading.cancel_all_orders()
         tg.send("✅ All orders cancelled." if result["success"] else f"❌ {result['error']}", chat_id)
         show_trading_orders(chat_id)
     elif data == "trading_cancel_flow":
@@ -3524,21 +3474,6 @@ def _polling_loop():
                         if updates:
                             user_store.update_user(cid, updates)
 
-                    # PRIORITY: Polymarket links ALWAYS trigger research, even during trade/settings flows
-                    if not text.startswith("/") and "polymarket.com" in text.lower():
-                        # Clear any pending input flows so user isn't stuck
-                        _waiting_for_setting.pop(str(cid), None)
-                        _waiting_for_trade.pop(str(cid), None)
-                        _waiting_for_wallet.pop(str(cid), None)
-                        _waiting_for_research_link.pop(str(cid), None)
-                        print(f"[BOT] [{cid}] Polymarket link detected: {text[:80]}")
-                        try:
-                            threading.Thread(target=handle_research_link, args=(cid, text.strip()), daemon=True).start()
-                        except Exception as e:
-                            print(f"[BOT] research input error: {e}")
-                            tg.send(f"❌ Error: {e}", cid)
-                        continue
-
                     # Trade settings custom input
                     if not text.startswith("/") and str(cid) in _waiting_for_setting:
                         try:
@@ -3567,6 +3502,15 @@ def _polling_loop():
                             print(f"[BOT] wallet input error: {e}")
                             tg.send(f"❌ Wallet error: {e}", cid)
                             _waiting_for_wallet.pop(str(cid), None)
+                        continue
+
+                    # Research link input — auto-trigger Event Research when user sends Polymarket link ANYTIME
+                    if not text.startswith("/") and "polymarket.com" in text.lower():
+                        try:
+                            threading.Thread(target=handle_research_link, args=(cid, text.strip()), daemon=True).start()
+                        except Exception as e:
+                            print(f"[BOT] research input error: {e}")
+                            tg.send(f"❌ Error: {e}", cid)
                         continue
 
                     # Research link input (when explicitly waiting)
@@ -3659,9 +3603,9 @@ def main():
     except Exception as e:
         print(f"[BOOT] Leaderboard init error: {e}")
 
-    # Initialize trading engine (per-user wallets — no admin key required)
-    trade_status = "🟢 Per-user wallets" if trading.is_trading_enabled() else "⚪ py-clob-client not installed"
-    trade_addr = trading.get_wallet_address() or "Per-user mode"
+    # Initialize trading engine
+    trade_status = "🟢 LIVE" if trading.is_trading_enabled() else "⚪ Disabled (set POLY_* env vars)"
+    trade_addr = trading.get_wallet_address() or "N/A"
     print(f"[BOOT] Trading engine: {trade_status}")
     if trade_addr != "N/A":
         print(f"[BOOT] Trading wallet: {trade_addr}")
@@ -3685,17 +3629,6 @@ def main():
     )
 
     threading.Thread(target=_scheduler_loop, daemon=True).start()
-
-    # Start real-time whale listener (on-chain via Polygon WebSocket)
-    try:
-        import whale_realtime
-        # Try WebSocket first; if POLYGON_WSS_URL not set, fall back to HTTP polling
-        use_http = not os.environ.get("POLYGON_WSS_URL", "")
-        whale_realtime.start_listener(use_http_fallback=use_http)
-        print(f"[MAIN] Whale real-time listener started ({'HTTP' if use_http else 'WebSocket'} mode)")
-    except Exception as e:
-        print(f"[MAIN] Whale real-time listener failed to start: {e}")
-
     _polling_loop()
 
 if __name__ == "__main__":

@@ -21,6 +21,7 @@ _waiting_code = set()
 # ═══════════════════════════════════════════════
 
 def send_inline(chat_id, text, buttons, parse_mode="HTML"):
+    import re
     try:
         r = requests.post(f"{BASE}/sendMessage", json={
             "chat_id": chat_id,
@@ -30,14 +31,24 @@ def send_inline(chat_id, text, buttons, parse_mode="HTML"):
             "reply_markup": {"inline_keyboard": buttons},
         }, timeout=15)
         if not r.ok:
-            import re
             plain = re.sub(r"<[^>]+>", "", text)
-            requests.post(f"{BASE}/sendMessage", json={
+            r2 = requests.post(f"{BASE}/sendMessage", json={
                 "chat_id": chat_id, "text": plain,
                 "reply_markup": {"inline_keyboard": buttons},
             }, timeout=15)
+            if not r2.ok:
+                print(f"[ONBOARD] send_inline fallback failed: {r2.text[:200]}")
     except Exception as e:
         print(f"[ONBOARD] send_inline error: {e}")
+        # Last-resort: send plain text without buttons so user always sees something
+        try:
+            plain = re.sub(r"<[^>]+>", "", str(text))[:4000]
+            requests.post(f"{BASE}/sendMessage", json={
+                "chat_id": chat_id,
+                "text": plain,
+            }, timeout=10)
+        except Exception as e2:
+            print(f"[ONBOARD] send_inline last-resort failed: {e2}")
 
 def answer_callback(callback_query_id, text=""):
     try:
