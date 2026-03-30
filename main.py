@@ -1537,14 +1537,16 @@ def _fetch_trending_markets(limit=20):
         markets = []
         seen_slugs = set()
 
-        # Fetch top 50 events by volume from Gamma API
+        # Fetch top events by volume from Gamma API (limit 20 to keep response fast)
         try:
             events = papi.gamma_get("/events", params={
-                "limit": 50, "active": "true", "closed": "false",
+                "limit": "20", "active": "true", "closed": "false",
                 "order": "volume", "ascending": "false"
-            }) or []
+            }, timeout=25) or []
+            print(f"[TRADE] gamma_get returned {len(events)} events")
         except Exception as e:
             print(f"[TRADE] Events API error: {e}")
+            import traceback; traceback.print_exc()
             events = []
 
         if isinstance(events, list):
@@ -1614,7 +1616,13 @@ def show_trending_markets(chat_id, page=0, per_page=5):
     """Show paginated trending Polymarket events with trade buttons"""
     tg.send("🔥 Loading trending events...", chat_id) if page == 0 else None
     print(f"[TRADE-TRENDING] Fetching trending markets for chat_id={chat_id}, page={page}")
-    markets = _fetch_trending_markets(30)
+    import traceback as _tb
+    try:
+        markets = _fetch_trending_markets(30)
+    except Exception as _e:
+        print(f"[TRADE-TRENDING] EXCEPTION in _fetch_trending_markets: {_e}")
+        _tb.print_exc()
+        markets = []
     print(f"[TRADE-TRENDING] Got {len(markets)} markets")
 
     if not markets:

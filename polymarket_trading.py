@@ -8,35 +8,22 @@ import os, json, time, logging
 from typing import Optional, Tuple
 from datetime import datetime, timezone
 from polymarket_api import gamma_get
+import config as _cfg
 
 log = logging.getLogger("polytragent.trading")
 
 # ═══════════════════════════════════════════════
 # PROXY SUPPORT (bypass Polymarket geoblock)
-# Set CLOB_PROXY_URL env var to route Polymarket API calls
-# through a proxy in a non-blocked country.
-# Example: socks5://user:pass@proxy.example.com:1080
-#          http://user:pass@proxy.example.com:8080
-# Only proxies requests to clob.polymarket.com and
-# gamma-api.polymarket.com — all other traffic is direct.
+# CLOB_HOST is set via config.CLOB_BASE which uses the EU
+# reverse proxy (http://13.49.25.66) when CLOB_PROXY_URL is set.
+# The py-clob-client SDK connects directly to CLOB_HOST.
 # ═══════════════════════════════════════════════
 
-_CLOB_PROXY = os.environ.get("CLOB_PROXY_URL", "")
+CLOB_HOST = _cfg.CLOB_BASE  # Routes through EU proxy when CLOB_PROXY_URL is set
+CHAIN_ID = 137  # Polygon mainnet
 
-if _CLOB_PROXY:
-    import requests as _req
-    _original_send = _req.Session.send
-
-    def _proxied_send(self, request, **kwargs):
-        """Intercept requests — add proxy ONLY for Polymarket domains."""
-        url = getattr(request, "url", "") or ""
-        if "polymarket.com" in url:
-            if "proxies" not in kwargs or not kwargs["proxies"]:
-                kwargs["proxies"] = {"http": _CLOB_PROXY, "https": _CLOB_PROXY}
-        return _original_send(self, request, **kwargs)
-
-    _req.Session.send = _proxied_send
-    log.info(f"CLOB proxy configured (polymarket.com only): {_CLOB_PROXY[:40]}...")
+if _cfg.CLOB_PROXY_URL:
+    log.info(f"CLOB proxy active: {CLOB_HOST[:40]}...")
 
 # ═══════════════════════════════════════════════
 # FEE CALCULATION & TRACKING
@@ -110,9 +97,6 @@ def get_total_fees_collected() -> float:
 # ═══════════════════════════════════════════════
 # CONFIGURATION
 # ═══════════════════════════════════════════════
-
-CLOB_HOST = "https://clob.polymarket.com"
-CHAIN_ID = 137  # Polygon mainnet
 
 # ═══════════════════════════════════════════════
 # PER-USER CLIENT MANAGEMENT
