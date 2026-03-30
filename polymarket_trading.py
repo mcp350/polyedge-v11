@@ -19,11 +19,11 @@ log = logging.getLogger("polytragent.trading")
 # The py-clob-client SDK connects directly to CLOB_HOST.
 # ═══════════════════════════════════════════════
 
-CLOB_HOST = _cfg.CLOB_BASE  # Routes through EU proxy when CLOB_PROXY_URL is set
+CLOB_HOST = _cfg.CLOB_BASE        # EU proxy — actual HTTP destination for requests
+CLOB_AUTH_HOST = _cfg.CLOB_AUTH_HOST  # Real Polymarket host — used for ECDSA signing only
 CHAIN_ID = 137  # Polygon mainnet
 
-if _cfg.CLOB_PROXY_URL:
-    log.info(f"CLOB proxy active: {CLOB_HOST[:40]}...")
+log.info(f"CLOB routing: sign via {CLOB_AUTH_HOST} → send via {CLOB_HOST}")
 
 # ═══════════════════════════════════════════════
 # FEE CALCULATION & TRACKING
@@ -143,11 +143,14 @@ def _get_admin_client():
         if not private_key.startswith("0x"):
             private_key = "0x" + private_key
 
+        # Create with real host so signatures reference clob.polymarket.com
         client = ClobClient(
-            CLOB_HOST, key=private_key, chain_id=CHAIN_ID, signature_type=0,
+            CLOB_AUTH_HOST, key=private_key, chain_id=CHAIN_ID, signature_type=0,
         )
         creds = ApiCreds(api_key=api_key, api_secret=api_secret, api_passphrase=api_passphrase)
         client.set_api_creds(creds)
+        # Switch to EU proxy for actual HTTP requests (bypass US geoblock)
+        client.host = CLOB_HOST
 
         _admin_client = client
         _admin_initialized = True
@@ -201,16 +204,17 @@ def _get_client_for_user(chat_id: str):
     try:
         from py_clob_client.client import ClobClient
 
-        # Step 1: Create client with user's private key (Level 1 auth)
+        # Step 1: Create client with REAL host — ECDSA signatures must reference clob.polymarket.com
         client = ClobClient(
-            CLOB_HOST, key=pk, chain_id=CHAIN_ID, signature_type=0,
+            CLOB_AUTH_HOST, key=pk, chain_id=CHAIN_ID, signature_type=0,
         )
 
-        # Step 2: Auto-derive API credentials from their private key
-        # This calls Polymarket's /auth/api-key or /auth/derive-api-key
-        # No manual API key setup needed!
+        # Step 2: Derive API credentials using real host (auth endpoint also on real host)
         creds = client.create_or_derive_api_creds()
         client.set_api_creds(creds)
+
+        # Step 3: Switch to EU proxy for all subsequent trade HTTP requests (bypass US geoblock)
+        client.host = CLOB_HOST
 
         # Get wallet address for logging
         from eth_account import Account

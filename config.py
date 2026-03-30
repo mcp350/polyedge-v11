@@ -8,10 +8,11 @@ TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "")
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
 
 # ── Polymarket CLOB API ──
-# Always use the direct endpoint — the EU proxy (http://13.49.25.66) was
-# mangling L1 auth headers and causing 401 "Invalid L1 Request headers".
-CLOB_PROXY_URL = os.environ.get("CLOB_PROXY_URL", "")  # kept for reference, no longer used
-CLOB_BASE = "https://clob.polymarket.com"
+# CLOB_AUTH_HOST: used for ECDSA signature generation (must match what Polymarket expects)
+# CLOB_BASE: actual HTTP destination for trade requests (EU proxy to bypass US geoblock)
+CLOB_PROXY_URL = os.environ.get("CLOB_PROXY_URL", "http://13.49.25.66")
+CLOB_AUTH_HOST = "https://clob.polymarket.com"   # for signing only — never change
+CLOB_BASE = os.environ.get("CLOB_PROXY_URL", "http://13.49.25.66")  # EU proxy
 
 # ── Polymarket Trading API (builders.polymarket.com) ──
 POLY_API_KEY = os.environ.get("POLY_API_KEY", "")
