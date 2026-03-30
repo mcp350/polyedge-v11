@@ -1040,7 +1040,36 @@ def home():
 
 @app.route("/health")
 def health():
-    return jsonify({"status": "ok", "service": "polytragent", "version": "v12.1", "build": "2026-03-30-fix2"})
+    return jsonify({"status": "ok", "service": "polytragent", "version": "v12.2", "build": "2026-03-30-fix3"})
+
+@app.route("/diag")
+def diag():
+    """Diagnostic endpoint: test if Gamma API and CLOB API are reachable"""
+    import requests as _req
+    results = {}
+    # Test Gamma API
+    try:
+        r = _req.get("https://gamma-api.polymarket.com/events",
+            params={"slug": "us-forces-enter-iran-by", "limit": 1}, timeout=10)
+        results["gamma_api"] = {"status": r.status_code, "length": len(r.text),
+                                "ok": r.ok, "body_start": r.text[:200]}
+    except Exception as e:
+        results["gamma_api"] = {"error": str(e)}
+    # Test CLOB API (through proxy if configured)
+    try:
+        import config
+        r = _req.get(f"{config.CLOB_BASE}/time", timeout=10)
+        results["clob_api"] = {"status": r.status_code, "body": r.text[:100],
+                               "base": config.CLOB_BASE}
+    except Exception as e:
+        results["clob_api"] = {"error": str(e)}
+    # Test Gamma API through EU proxy
+    try:
+        r = _req.get("http://13.49.25.66/time", timeout=10)
+        results["eu_proxy"] = {"status": r.status_code, "body": r.text[:100]}
+    except Exception as e:
+        results["eu_proxy"] = {"error": str(e)}
+    return jsonify(results)
 
 # ═══════════════════════════════════════════════
 # RUN SERVER
