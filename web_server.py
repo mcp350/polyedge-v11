@@ -1078,35 +1078,28 @@ def diag():
         results["clob_api"] = {"status": r.status_code, "base": config.CLOB_BASE}
     except Exception as e:
         results["clob_api"] = {"error": str(e)[:200]}
-    # Test direct IP connection (bypass DNS/proxy)
+    # Test via system curl (bypasses Python proxy settings)
     try:
-        import socket
-        ip = socket.gethostbyname("gamma-api.polymarket.com")
-        results["gamma_dns"] = {"ip": ip}
+        import subprocess
+        proc = subprocess.run(
+            ['curl', '-s', '--max-time', '8', 'https://gamma-api.polymarket.com/events?slug=us-forces-enter-iran-by&limit=1'],
+            capture_output=True, text=True, timeout=10
+        )
+        results["gamma_curl"] = {"returncode": proc.returncode, "len": len(proc.stdout), "stderr": proc.stderr[:200], "body_start": proc.stdout[:100]}
     except Exception as e:
-        results["gamma_dns"] = {"error": str(e)[:100]}
-    # Test via IP with Host header
+        results["gamma_curl"] = {"error": str(e)[:200]}
+    # Test httpbin to confirm general HTTPS works
     try:
-        s = _req.Session()
-        s.trust_env = False
-        r = s.get(f"https://gamma-api.polymarket.com/events",
-            params={"slug": "us-forces-enter-iran-by", "limit": 1},
-            headers={"Host": "gamma-api.polymarket.com"}, timeout=10, verify=True)
-        results["gamma_direct"] = {"status": r.status_code, "ok": r.ok}
-    except Exception as e:
-        results["gamma_direct"] = {"error": str(e)[:200]}
-    # Test other domains
-    try:
-        r = _req.get("https://httpbin.org/ip", timeout=10)
+        r = _req.get("https://httpbin.org/ip", timeout=8)
         results["httpbin"] = {"status": r.status_code, "body": r.text[:100]}
     except Exception as e:
         results["httpbin"] = {"error": str(e)[:200]}
-    # Test strapi-matic (alternative polymarket API)
+    # Test via EU proxy passing gamma request as path
     try:
-        r = _req.get("https://strapi-matic.polymarket.com/markets?slug=us-forces-enter-iran-by-april-30-899&_limit=1", timeout=10)
-        results["strapi"] = {"status": r.status_code, "len": len(r.text)}
+        r = _req.get("http://13.49.25.66/events?slug=us-forces-enter-iran-by&limit=1", timeout=8)
+        results["gamma_via_clob_proxy"] = {"status": r.status_code, "body_start": r.text[:100]}
     except Exception as e:
-        results["strapi"] = {"error": str(e)[:200]}
+        results["gamma_via_clob_proxy"] = {"error": str(e)[:200]}
     return jsonify(results)
 
 # ═══════════════════════════════════════════════
