@@ -1046,29 +1046,38 @@ def health():
 def diag():
     """Diagnostic endpoint: test if Gamma API and CLOB API are reachable"""
     import requests as _req
+    import os
     results = {}
-    # Test Gamma API
+    results["env_proxy"] = {
+        "HTTP_PROXY": os.environ.get("HTTP_PROXY", ""),
+        "HTTPS_PROXY": os.environ.get("HTTPS_PROXY", ""),
+        "http_proxy": os.environ.get("http_proxy", ""),
+        "https_proxy": os.environ.get("https_proxy", ""),
+        "NO_PROXY": os.environ.get("NO_PROXY", ""),
+    }
+    # Test Gamma API (default - uses env proxy)
     try:
         r = _req.get("https://gamma-api.polymarket.com/events",
             params={"slug": "us-forces-enter-iran-by", "limit": 1}, timeout=10)
-        results["gamma_api"] = {"status": r.status_code, "length": len(r.text),
-                                "ok": r.ok, "body_start": r.text[:200]}
+        results["gamma_default"] = {"status": r.status_code, "ok": r.ok, "len": len(r.text)}
     except Exception as e:
-        results["gamma_api"] = {"error": str(e)}
-    # Test CLOB API (through proxy if configured)
+        results["gamma_default"] = {"error": str(e)[:200]}
+    # Test Gamma API with trust_env=False (bypasses Railway proxy)
+    try:
+        s = _req.Session()
+        s.trust_env = False
+        r = s.get("https://gamma-api.polymarket.com/events",
+            params={"slug": "us-forces-enter-iran-by", "limit": 1}, timeout=10)
+        results["gamma_no_proxy"] = {"status": r.status_code, "ok": r.ok, "len": len(r.text)}
+    except Exception as e:
+        results["gamma_no_proxy"] = {"error": str(e)[:200]}
+    # Test CLOB API through EU proxy
     try:
         import config
         r = _req.get(f"{config.CLOB_BASE}/time", timeout=10)
-        results["clob_api"] = {"status": r.status_code, "body": r.text[:100],
-                               "base": config.CLOB_BASE}
+        results["clob_api"] = {"status": r.status_code, "base": config.CLOB_BASE}
     except Exception as e:
-        results["clob_api"] = {"error": str(e)}
-    # Test Gamma API through EU proxy
-    try:
-        r = _req.get("http://13.49.25.66/time", timeout=10)
-        results["eu_proxy"] = {"status": r.status_code, "body": r.text[:100]}
-    except Exception as e:
-        results["eu_proxy"] = {"error": str(e)}
+        results["clob_api"] = {"error": str(e)[:200]}
     return jsonify(results)
 
 # ═══════════════════════════════════════════════
