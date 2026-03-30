@@ -145,17 +145,24 @@ def handle_research_link(chat_id, link):
         # 2. Get market data for enrichment
         try:
             import polymarket_api as papi
-            slug = link.rstrip("/").split("/")[-1] if "polymarket.com" in link else link
+            parts = link.rstrip("/").split("/")
+            last_slug = parts[-1] if parts else link
             m = None
             if "/event/" in link:
+                # Extract event slug (segment after /event/)
+                try:
+                    event_idx = parts.index("event")
+                    event_slug = parts[event_idx + 1] if event_idx + 1 < len(parts) else last_slug
+                except (ValueError, IndexError):
+                    event_slug = last_slug
                 r = requests.get(f"https://gamma-api.polymarket.com/events",
-                    params={"slug": slug}, timeout=15)
+                    params={"slug": event_slug}, timeout=15)
                 if r.ok:
                     events = r.json()
                     if isinstance(events, list) and events and events[0].get("markets"):
                         m = events[0]["markets"][0]
             if not m:
-                m = papi.get_market_by_slug(slug) or papi.get_market_by_id(slug)
+                m = papi.get_market_by_slug(last_slug) or papi.get_market_by_id(last_slug)
 
             if m:
                 parsed = papi.parse_market(m)
@@ -587,34 +594,60 @@ def show_trending_events(chat_id):
                      "ascending": "false", "limit": 10}, timeout=15)
         if r.ok:
             events = r.json()
+            if not events:
+                # Fallback to volume order if volume24hr returns empty
+                r2 = requests.get("https://gamma-api.polymarket.com/events",
+                    params={"active": "true", "closed": "false", "order": "volume",
+                             "ascending": "false", "limit": 10}, timeout=15)
+                events = r2.json() if r2.ok else []
+
+            if not events:
+                tg.send("❌ No trending events found. Try again later.", chat_id)
+                return
+
             msg = "📈 <b>Polytragent — Trending Events</b>\n"
             msg += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-            msg += "<i>Top events by 24h trading volume</i>\n\n"
+            msg += "<i>Top events by trading volume</i>\n\n"
             for i, ev in enumerate(events[:10], 1):
                 title = (ev.get("title") or "Untitled")[:55]
                 vol24 = float(ev.get("volume24hr", 0) or 0)
+                vol_total = float(ev.get("volume", 0) or 0)
                 slug = ev.get("slug", "")
-                # Get top market yes price
+                # Get top market yes price from outcomePrices (tokens may be None)
                 markets = ev.get("markets") or []
                 yes_price = ""
                 if markets:
                     try:
-                        tokens = markets[0].get("tokens") or []
-                        for t in tokens:
-                            if t.get("outcome", "").lower() == "yes":
-                                yes_price = f" | YES: ${float(t.get('price', 0)):.2f}"
+                        import json as _json
+                        op = markets[0].get("outcomePrices", "[]")
+                        if isinstance(op, str):
+                            prices = _json.loads(op)
+                        else:
+                            prices = op or []
+                        if len(prices) >= 2:
+                            yes_price = f" | YES: ${float(prices[0]):.2f}"
                     except: pass
+                vol_str = f"${vol24:,.0f}" if vol24 > 0 else f"${vol_total:,.0f}"
                 msg += f"{i}. <b>{title}</b>\n"
-                msg += f"   24h Vol: ${vol24:,.0f}{yes_price}\n"
+                msg += f"   Vol: {vol_str}{yes_price}\n"
                 if slug:
                     msg += f"   🔗 polymarket.com/event/{slug}\n"
                 msg += "\n"
-            onboarding.send_inline(chat_id, msg,
-                [[{"text": "🔄 Refresh", "callback_data": "research_trending"}],
-                 [{"text": "← Research", "callback_data": "menu_research"}]])
+
+            buttons = []
+            # Add research buttons for each event
+            for i, ev in enumerate(events[:5], 1):
+                slug = ev.get("slug", "")
+                title_short = (ev.get("title") or "")[:25]
+                if slug:
+                    buttons.append([{"text": f"🔬 {i}. {title_short}", "callback_data": f"research_event_{slug}"}])
+            buttons.append([{"text": "🔄 Refresh", "callback_data": "research_trending"}])
+            buttons.append([{"text": "← Research", "callback_data": "menu_research"}])
+            onboarding.send_inline(chat_id, msg, buttons)
         else:
             tg.send("❌ Could not fetch trending events. Try again.", chat_id)
     except Exception as e:
+        print(f"[TRENDING] Error: {e}")
         tg.send(f"❌ Trending error: {e}", chat_id)
 
 def show_new_markets(chat_id):
@@ -2903,6 +2936,10 @@ def _extended_handle_callback(callback_query):
         show_breaking_news(chat_id)  # redirect old callback
     elif data == "research_trending":
         show_trending_events(chat_id)
+    elif data.startswith("research_event_"):
+        event_slug = data.replace("research_event_", "")
+        link = f"https://polymarket.com/event/{event_slug}"
+        threading.Thread(target=handle_research_link, args=(chat_id, link), daemon=True).start()
     elif data == "research_new_markets":
         show_new_markets(chat_id)
     elif data == "research_kalshi":

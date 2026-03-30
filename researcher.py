@@ -193,15 +193,33 @@ def research_market(market_ref: str) -> str:
     all_event_markets = []
 
     if "polymarket.com" in market_ref:
-        slug = market_ref.rstrip("/").split("/")[-1]
+        # Extract slugs from URL: /event/{event_slug}/{market_slug}
+        parts = market_ref.rstrip("/").split("/")
+        last_slug = parts[-1] if parts else ""
 
         if "/event/" in market_ref:
-            event_title, all_event_markets = _fetch_event_markets(slug)
+            # For event URLs, extract the event slug (segment after /event/)
+            try:
+                event_idx = parts.index("event")
+                event_slug = parts[event_idx + 1] if event_idx + 1 < len(parts) else last_slug
+            except (ValueError, IndexError):
+                event_slug = last_slug
+            # Market slug is the last segment (if different from event slug)
+            market_slug = last_slug if last_slug != event_slug else ""
+
+            # Try event lookup first
+            event_title, all_event_markets = _fetch_event_markets(event_slug)
             if all_event_markets:
                 is_event = True
 
-        if not is_event:
-            raw = api.get_market_by_slug(slug)
+            # If event lookup failed, try the market slug directly
+            if not is_event and market_slug:
+                raw = api.get_market_by_slug(market_slug)
+                if raw:
+                    m = api.parse_market(raw)
+
+        if not is_event and not m:
+            raw = api.get_market_by_slug(last_slug)
             if raw:
                 m = api.parse_market(raw)
 
