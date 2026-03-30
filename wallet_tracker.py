@@ -11,8 +11,9 @@ logger = logging.getLogger("wallet_tracker")
 DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
 WALLET_FILE = os.path.join(DATA_DIR, "wallets.json")
 
+import config as _cfg
 # Polymarket APIs
-CLOB_API = "https://clob.polymarket.com"
+CLOB_API = _cfg.CLOB_BASE  # Routed through EU proxy when CLOB_PROXY_URL is set
 GAMMA_API = "https://gamma-api.polymarket.com"
 DATA_API = "https://data-api.polymarket.com"
 

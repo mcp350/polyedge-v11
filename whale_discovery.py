@@ -12,8 +12,9 @@ from typing import Optional
 
 log = logging.getLogger("polytragent.whale_discovery")
 
+import config as _cfg
 GAMMA_BASE = "https://gamma-api.polymarket.com"
-CLOB_BASE = "https://clob.polymarket.com"
+CLOB_BASE = _cfg.CLOB_BASE  # Routed through EU proxy when CLOB_PROXY_URL is set
 HEADERS = {"User-Agent": "Polytragent/2.0", "Accept": "application/json"}
 
 CACHE_FILE = os.path.join(os.path.dirname(__file__), "data", "whale_cache.json")

@@ -7,9 +7,10 @@ import requests
 import time
 from datetime import datetime, timezone
 from typing import Optional
+import config
 
 GAMMA_BASE  = "https://gamma-api.polymarket.com"
-CLOB_BASE   = "https://clob.polymarket.com"
+CLOB_BASE   = config.CLOB_BASE  # Routed through EU proxy when CLOB_PROXY_URL is set
 DATA_BASE   = "https://data-api.polymarket.com"
 
 HEADERS = {"User-Agent": "PolymarketBot/1.0"}

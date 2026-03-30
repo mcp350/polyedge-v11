@@ -23,8 +23,9 @@ FILE = os.path.join(os.path.dirname(__file__), "copy_trading.json")
 # POLYMARKET PROFILE / WALLET APIs
 # ═══════════════════════════════════════════════
 
+import config as _cfg
 GAMMA_BASE = "https://gamma-api.polymarket.com"
-CLOB_BASE = "https://clob.polymarket.com"
+CLOB_BASE = _cfg.CLOB_BASE  # Routed through EU proxy when CLOB_PROXY_URL is set
 
 # Curated wallets are loaded from whale_discovery.py
 # They auto-seed into the tracking system on boot
