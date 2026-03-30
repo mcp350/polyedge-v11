@@ -134,27 +134,40 @@ def show_quick_research_prompt(chat_id):
 
 def handle_research_link(chat_id, link):
     """Run full research on a Polymarket link"""
+    from urllib.parse import urlparse
     _waiting_for_research_link.pop(str(chat_id), None)
+
+    # Clean the link: strip fragments (#...), query params, whitespace
+    clean_link = link.strip()
+    if "polymarket.com" in clean_link:
+        try:
+            pu = urlparse(clean_link)
+            clean_link = f"{pu.scheme}://{pu.netloc}{pu.path}"
+        except Exception:
+            clean_link = clean_link.split("#")[0].split("?")[0]
+    print(f"[RESEARCH] handle_research_link: original='{link[:100]}' clean='{clean_link[:100]}'")
 
     tg.send("🔬 <b>Researching event...</b>\n\n⏳ Running AI analysis, market data, whale scan, news check...\nThis takes ~30-60 seconds.", chat_id)
 
     try:
         # 1. Core AI research
-        result = researcher.research_market(link)
+        result = researcher.research_market(clean_link)
+        print(f"[RESEARCH] research_market returned {len(result)} chars, starts with: {result[:80]}")
 
         # 2. Get market data for enrichment
         try:
             import polymarket_api as papi
-            parts = link.rstrip("/").split("/")
-            last_slug = parts[-1] if parts else link
+            parts = clean_link.rstrip("/").split("/")
+            last_slug = parts[-1] if parts else clean_link
             m = None
-            if "/event/" in link:
+            if "/event/" in clean_link:
                 # Extract event slug (segment after /event/)
                 try:
                     event_idx = parts.index("event")
                     event_slug = parts[event_idx + 1] if event_idx + 1 < len(parts) else last_slug
                 except (ValueError, IndexError):
                     event_slug = last_slug
+                print(f"[RESEARCH] Enrichment: fetching event slug='{event_slug}'")
                 r = requests.get(f"https://gamma-api.polymarket.com/events",
                     params={"slug": event_slug}, timeout=15)
                 if r.ok:
@@ -589,11 +602,14 @@ def show_trending_events(chat_id):
     """Trending Events — most recent data from Polymarket by 24h volume"""
     tg.send("📈 <b>Loading trending events by 24h volume...</b>", chat_id)
     try:
+        print(f"[TRENDING] Fetching trending events for chat_id={chat_id}")
         r = requests.get("https://gamma-api.polymarket.com/events",
             params={"active": "true", "closed": "false", "order": "volume24hr",
                      "ascending": "false", "limit": 10}, timeout=15)
+        print(f"[TRENDING] Response status={r.status_code}, length={len(r.text)}")
         if r.ok:
             events = r.json()
+            print(f"[TRENDING] Got {len(events) if isinstance(events, list) else 'non-list'} events")
             if not events:
                 # Fallback to volume order if volume24hr returns empty
                 r2 = requests.get("https://gamma-api.polymarket.com/events",
@@ -1606,7 +1622,9 @@ def show_trading_menu(chat_id):
 def show_trending_markets(chat_id, page=0, per_page=5):
     """Show paginated trending Polymarket events with trade buttons"""
     tg.send("🔥 Loading trending events...", chat_id) if page == 0 else None
+    print(f"[TRADE-TRENDING] Fetching trending markets for chat_id={chat_id}, page={page}")
     markets = _fetch_trending_markets(30)
+    print(f"[TRADE-TRENDING] Got {len(markets)} markets")
 
     if not markets:
         onboarding.send_inline(chat_id,
@@ -3509,6 +3527,21 @@ def _polling_loop():
                         if updates:
                             user_store.update_user(cid, updates)
 
+                    # PRIORITY: Polymarket links ALWAYS trigger research, even during trade/settings flows
+                    if not text.startswith("/") and "polymarket.com" in text.lower():
+                        # Clear any pending input flows so user isn't stuck
+                        _waiting_for_setting.pop(str(cid), None)
+                        _waiting_for_trade.pop(str(cid), None)
+                        _waiting_for_wallet.pop(str(cid), None)
+                        _waiting_for_research_link.pop(str(cid), None)
+                        print(f"[BOT] [{cid}] Polymarket link detected: {text[:80]}")
+                        try:
+                            threading.Thread(target=handle_research_link, args=(cid, text.strip()), daemon=True).start()
+                        except Exception as e:
+                            print(f"[BOT] research input error: {e}")
+                            tg.send(f"❌ Error: {e}", cid)
+                        continue
+
                     # Trade settings custom input
                     if not text.startswith("/") and str(cid) in _waiting_for_setting:
                         try:
@@ -3537,15 +3570,6 @@ def _polling_loop():
                             print(f"[BOT] wallet input error: {e}")
                             tg.send(f"❌ Wallet error: {e}", cid)
                             _waiting_for_wallet.pop(str(cid), None)
-                        continue
-
-                    # Research link input — auto-trigger Event Research when user sends Polymarket link ANYTIME
-                    if not text.startswith("/") and "polymarket.com" in text.lower():
-                        try:
-                            threading.Thread(target=handle_research_link, args=(cid, text.strip()), daemon=True).start()
-                        except Exception as e:
-                            print(f"[BOT] research input error: {e}")
-                            tg.send(f"❌ Error: {e}", cid)
                         continue
 
                     # Research link input (when explicitly waiting)

@@ -187,17 +187,31 @@ def research_market(market_ref: str) -> str:
     If event URL: shows ALL date sub-markets with AI analysis.
     If single market: divergence research with Manifold.
     """
+    from urllib.parse import urlparse, unquote
+    print(f"[RESEARCHER] research_market called with: {market_ref[:120]}")
     m = None
     is_event = False
     event_title = ""
     all_event_markets = []
 
-    if "polymarket.com" in market_ref:
-        # Extract slugs from URL: /event/{event_slug}/{market_slug}
-        parts = market_ref.rstrip("/").split("/")
-        last_slug = parts[-1] if parts else ""
+    # Clean the URL: strip fragments (#...), query params, whitespace
+    clean_ref = market_ref.strip()
+    if "polymarket.com" in clean_ref:
+        try:
+            parsed_url = urlparse(clean_ref)
+            # Rebuild URL without fragment and query
+            clean_ref = f"{parsed_url.scheme}://{parsed_url.netloc}{parsed_url.path}"
+        except Exception:
+            # Fallback: strip fragment manually
+            clean_ref = clean_ref.split("#")[0].split("?")[0]
 
-        if "/event/" in market_ref:
+    if "polymarket.com" in clean_ref:
+        # Extract slugs from URL: /event/{event_slug}/{market_slug}
+        parts = clean_ref.rstrip("/").split("/")
+        last_slug = parts[-1] if parts else ""
+        print(f"[RESEARCHER] URL parts: {parts}, last_slug: {last_slug}")
+
+        if "/event/" in clean_ref:
             # For event URLs, extract the event slug (segment after /event/)
             try:
                 event_idx = parts.index("event")
@@ -206,9 +220,11 @@ def research_market(market_ref: str) -> str:
                 event_slug = last_slug
             # Market slug is the last segment (if different from event slug)
             market_slug = last_slug if last_slug != event_slug else ""
+            print(f"[RESEARCHER] event_slug: {event_slug}, market_slug: {market_slug}")
 
             # Try event lookup first
             event_title, all_event_markets = _fetch_event_markets(event_slug)
+            print(f"[RESEARCHER] Event lookup: title='{event_title}', markets={len(all_event_markets)}")
             if all_event_markets:
                 is_event = True
 
@@ -217,6 +233,7 @@ def research_market(market_ref: str) -> str:
                 raw = api.get_market_by_slug(market_slug)
                 if raw:
                     m = api.parse_market(raw)
+                    print(f"[RESEARCHER] Market slug lookup succeeded: {m.get('question', '')[:50] if m else 'None'}")
 
         if not is_event and not m:
             raw = api.get_market_by_slug(last_slug)
@@ -224,11 +241,12 @@ def research_market(market_ref: str) -> str:
                 m = api.parse_market(raw)
 
     if not m and not is_event:
-        raw = api.get_market_by_id(market_ref) or api.get_market_by_slug(market_ref)
+        raw = api.get_market_by_id(market_ref.strip()) or api.get_market_by_slug(market_ref.strip())
         if raw:
             m = api.parse_market(raw)
 
     if not m and not is_event:
+        print(f"[RESEARCHER] FAILED - Market not found for: {market_ref[:100]}")
         return "❌ Market not found. Send a Polymarket URL or market ID."
 
     # Event with multiple sub-markets
