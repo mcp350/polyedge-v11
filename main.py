@@ -1506,12 +1506,12 @@ def _fetch_trending_markets(limit=20):
         seen_slugs = set()
 
         # Fetch top 50 events by volume from Gamma API
+        # Use gamma_get (curl-based) because Railway blocks Python requests to polymarket.com
         try:
-            r = requests.get("https://gamma-api.polymarket.com/events", params={
+            events = polymarket_api.gamma_get("/events", params={
                 "limit": 50, "active": "true", "closed": "false",
                 "order": "volume", "ascending": "false"
-            }, headers={"User-Agent": "PolymarketBot/1.0"}, timeout=15)
-            events = r.json() if r.ok else []
+            }) or []
         except Exception as e:
             print(f"[TRADE] Events API error: {e}")
             events = []

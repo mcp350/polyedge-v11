@@ -35,15 +35,33 @@ def gamma_get(path: str, params: dict = None, timeout: int = 15) -> Optional[lis
         url = f"{url}?{qs}"
     try:
         proc = subprocess.run(
-            ['curl', '-s', '--max-time', str(timeout),
+            ['curl', '-s', '-L', '--max-time', str(timeout),
+             '-H', 'Accept: application/json',
              '-H', 'User-Agent: PolymarketBot/1.0', url],
             capture_output=True, text=True, timeout=timeout + 5
         )
         if proc.returncode == 0 and proc.stdout:
-            return _json.loads(proc.stdout)
+            raw = proc.stdout.strip()
+            # Handle cases where curl returns extra data or non-JSON prefix
+            # Find the first [ or { which starts the actual JSON
+            json_start = -1
+            for i, ch in enumerate(raw):
+                if ch in '[{':
+                    json_start = i
+                    break
+            if json_start == -1:
+                print(f"[GAMMA_GET] No JSON found in response. First 200 chars: {raw[:200]}")
+                return None
+            if json_start > 0:
+                print(f"[GAMMA_GET] Skipping {json_start} chars of non-JSON prefix: {raw[:json_start]!r}")
+                raw = raw[json_start:]
+            return _json.loads(raw)
         else:
-            print(f"[GAMMA_GET] curl failed: rc={proc.returncode} stderr={proc.stderr[:100]}")
+            print(f"[GAMMA_GET] curl failed: rc={proc.returncode} stderr={proc.stderr[:200]}")
             return None
+    except _json.JSONDecodeError as e:
+        print(f"[GAMMA_GET] JSON parse error: {e}. Raw first 300 chars: {proc.stdout[:300] if proc.stdout else 'empty'}")
+        return None
     except Exception as e:
         print(f"[GAMMA_GET] Error: {e}")
         return None

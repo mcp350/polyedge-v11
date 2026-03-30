@@ -67,8 +67,15 @@ ERC20_ABI = [
     },
 ]
 
-WALLETS_DIR = os.path.join(os.path.dirname(__file__), "data")
-WALLETS_FILE = os.path.join(WALLETS_DIR, "user_wallets.json")
+# Allow override via env var so a Railway persistent volume path can be used.
+# Set WALLETS_FILE=/railway/volume/user_wallets.json in Railway env vars if you have a volume mounted.
+_wallets_file_override = os.environ.get("WALLETS_FILE")
+if _wallets_file_override:
+    WALLETS_FILE = _wallets_file_override
+    WALLETS_DIR = os.path.dirname(WALLETS_FILE)
+else:
+    WALLETS_DIR = os.path.join(os.path.dirname(__file__), "data")
+    WALLETS_FILE = os.path.join(WALLETS_DIR, "user_wallets.json")
 
 
 # ═══════════════════════════════════════════════

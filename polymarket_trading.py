@@ -230,7 +230,9 @@ def _get_client_for_user(chat_id: str):
         log.error("py-clob-client not installed. Run: pip install py-clob-client")
         return None
     except Exception as e:
-        log.error(f"User client init failed for {chat_str}: {e}")
+        log.error(f"User client init failed for {chat_str}: {e}", exc_info=True)
+        # Store the error so market_buy can surface it to the user
+        _user_clients[chat_str] = {"client": None, "error": str(e), "ts": time.time()}
         return None
 
 
@@ -377,7 +379,16 @@ def market_buy(token_id: str, amount: float, neg_risk: bool = False,
 
     client = _get_client_for_user(chat_id)
     if not client:
-        return {"success": False, "error": "Wallet not ready. Use /start to create a wallet."}
+        # Check if there was a specific init error
+        cached_err = _user_clients.get(str(chat_id), {}).get("error")
+        if cached_err:
+            return {"success": False, "error": f"Wallet init failed: {cached_err}"}
+        import wallet_manager as _wm
+        _wm_data = _wm._load()
+        _has_wallet = bool(_wm_data.get("wallets", {}).get(str(chat_id)))
+        if _has_wallet:
+            return {"success": False, "error": "Wallet found but CLOB client init failed. Possible network issue with Polymarket API."}
+        return {"success": False, "error": "No wallet found. Use /start to create one, or /import_wallet to restore an existing wallet with your private key."}
 
     try:
         from py_clob_client.clob_types import MarketOrderArgs, OrderType
@@ -447,7 +458,7 @@ def market_sell(token_id: str, amount: float, neg_risk: bool = False,
 
     client = _get_client_for_user(chat_id)
     if not client:
-        return {"success": False, "error": "Wallet not ready. Use /start to create a wallet."}
+        return {"success": False, "error": "No wallet found. Use /start to create one, or /import_wallet to restore an existing wallet with your private key."}
 
     try:
         from py_clob_client.clob_types import MarketOrderArgs, OrderType
@@ -518,7 +529,7 @@ def limit_buy(token_id: str, price: float, size: float, neg_risk: bool = False,
 
     client = _get_client_for_user(chat_id)
     if not client:
-        return {"success": False, "error": "Wallet not ready. Use /start to create a wallet."}
+        return {"success": False, "error": "No wallet found. Use /start to create one, or /import_wallet to restore an existing wallet with your private key."}
 
     try:
         from py_clob_client.clob_types import OrderArgs, OrderType
@@ -563,7 +574,7 @@ def limit_sell(token_id: str, price: float, size: float, neg_risk: bool = False,
 
     client = _get_client_for_user(chat_id)
     if not client:
-        return {"success": False, "error": "Wallet not ready. Use /start to create a wallet."}
+        return {"success": False, "error": "No wallet found. Use /start to create one, or /import_wallet to restore an existing wallet with your private key."}
 
     try:
         from py_clob_client.clob_types import OrderArgs, OrderType
