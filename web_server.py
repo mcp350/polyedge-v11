@@ -1078,6 +1078,35 @@ def diag():
         results["clob_api"] = {"status": r.status_code, "base": config.CLOB_BASE}
     except Exception as e:
         results["clob_api"] = {"error": str(e)[:200]}
+    # Test direct IP connection (bypass DNS/proxy)
+    try:
+        import socket
+        ip = socket.gethostbyname("gamma-api.polymarket.com")
+        results["gamma_dns"] = {"ip": ip}
+    except Exception as e:
+        results["gamma_dns"] = {"error": str(e)[:100]}
+    # Test via IP with Host header
+    try:
+        s = _req.Session()
+        s.trust_env = False
+        r = s.get(f"https://gamma-api.polymarket.com/events",
+            params={"slug": "us-forces-enter-iran-by", "limit": 1},
+            headers={"Host": "gamma-api.polymarket.com"}, timeout=10, verify=True)
+        results["gamma_direct"] = {"status": r.status_code, "ok": r.ok}
+    except Exception as e:
+        results["gamma_direct"] = {"error": str(e)[:200]}
+    # Test other domains
+    try:
+        r = _req.get("https://httpbin.org/ip", timeout=10)
+        results["httpbin"] = {"status": r.status_code, "body": r.text[:100]}
+    except Exception as e:
+        results["httpbin"] = {"error": str(e)[:200]}
+    # Test strapi-matic (alternative polymarket API)
+    try:
+        r = _req.get("https://strapi-matic.polymarket.com/markets?slug=us-forces-enter-iran-by-april-30-899&_limit=1", timeout=10)
+        results["strapi"] = {"status": r.status_code, "len": len(r.text)}
+    except Exception as e:
+        results["strapi"] = {"error": str(e)[:200]}
     return jsonify(results)
 
 # ═══════════════════════════════════════════════
