@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Polytragent Admin</title>
+<style>
+:root {
+  --bg: #06080d; --bg2: #0c1017; --bg3: #131820; --bg4: #1a2030;
+  --border: #1e2738; --border2: #2a3548;
+  --text: #e8ecf4; --text2: #8892a4; --text3: #5a6478;
+  --green: #00d4aa; --green2: #00b894; --red: #ff6b6b; --blue: #4ea8de;
+  --yellow: #ffd93d; --purple: #a78bfa; --orange: #f59e0b;
+  --radius: 10px;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+a { color: var(--blue); text-decoration: none; }
+
+/* Layout */
+.app { display: flex; min-height: 100vh; }
+.sidebar { width: 220px; background: var(--bg2); border-right: 1px solid var(--border); padding: 20px 0; display: flex; flex-direction: column; position: fixed; height: 100vh; z-index: 10; }
+.main { flex: 1; margin-left: 220px; padding: 24px 32px; }
+.logo { padding: 0 20px 24px; font-size: 18px; font-weight: 700; color: var(--green); letter-spacing: -0.5px; border-bottom: 1px solid var(--border); margin-bottom: 8px; }
+.logo small { display: block; font-size: 11px; color: var(--text3); font-weight: 400; margin-top: 2px; }
+.nav-item { padding: 10px 20px; cursor: pointer; color: var(--text2); font-size: 13px; font-weight: 500; transition: all 0.15s; display: flex; align-items: center; gap: 10px; }
+.nav-item:hover { color: var(--text); background: var(--bg3); }
+.nav-item.active { color: var(--green); background: var(--bg3); border-right: 2px solid var(--green); }
+.nav-item .icon { font-size: 16px; width: 20px; text-align: center; }
+.nav-section { padding: 16px 20px 6px; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: var(--text3); }
+
+/* Cards */
+.kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; margin-bottom: 24px; }
+.kpi { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; }
+.kpi .label { font-size: 11px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+.kpi .value { font-size: 26px; font-weight: 700; color: var(--text); }
+.kpi .sub { font-size: 12px; color: var(--text2); margin-top: 4px; }
+.kpi.green .value { color: var(--green); }
+.kpi.blue .value { color: var(--blue); }
+.kpi.yellow .value { color: var(--yellow); }
+.kpi.purple .value { color: var(--purple); }
+
+/* Section header */
+.section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+.section-title { font-size: 18px; font-weight: 600; }
+.section-actions { display: flex; gap: 8px; }
+
+/* Tables */
+.table-wrap { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; margin-bottom: 24px; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th { text-align: left; padding: 12px 16px; background: var(--bg3); color: var(--text2); font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid var(--border); }
+td { padding: 10px 16px; border-bottom: 1px solid var(--border); }
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: var(--bg3); }
+.mono { font-family: 'SF Mono', 'Fira Code', monospace; font-size: 12px; }
+.badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; }
+.badge.degen { background: #2d1b69; color: var(--purple); }
+.badge.free { background: var(--bg4); color: var(--text3); }
+.badge.active { background: #0d3320; color: var(--green); }
+.badge.buy { background: #0d3320; color: var(--green); }
+.badge.sell { background: #3d1515; color: var(--red); }
+
+/* Inputs & Buttons */
+input, select, textarea { background: var(--bg3); border: 1px solid var(--border); border-radius: 6px; padding: 8px 12px; color: var(--text); font-size: 13px; outline: none; }
+input:focus { border-color: var(--green); }
+.btn { padding: 8px 16px; border-radius: 6px; border: none; cursor: pointer; font-size: 13px; font-weight: 500; transition: all 0.15s; }
+.btn-primary { background: var(--green); color: #000; }
+.btn-primary:hover { background: var(--green2); }
+.btn-danger { background: #3d1515; color: var(--red); border: 1px solid #5a2020; }
+.btn-danger:hover { background: #4d1f1f; }
+.btn-secondary { background: var(--bg4); color: var(--text2); border: 1px solid var(--border); }
+.btn-secondary:hover { background: var(--bg3); color: var(--text); }
+.btn-sm { padding: 4px 10px; font-size: 11px; }
+
+/* Panels */
+.panel { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; margin-bottom: 16px; }
+.panel h3 { font-size: 14px; margin-bottom: 12px; color: var(--text2); }
+.form-row { display: flex; gap: 10px; margin-bottom: 10px; align-items: center; }
+.form-row input, .form-row select { flex: 1; }
+
+/* Activity feed */
+.activity-item { padding: 10px 16px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 12px; font-size: 13px; }
+.activity-item:last-child { border-bottom: none; }
+.activity-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.activity-dot.trade { background: var(--green); }
+.activity-dot.copy { background: var(--purple); }
+.activity-dot.signup { background: var(--blue); }
+.activity-time { color: var(--text3); font-size: 11px; flex-shrink: 0; width: 70px; }
+
+/* Modal */
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 100; }
+.modal { background: var(--bg2); border: 1px solid var(--border2); border-radius: 12px; padding: 24px; min-width: 500px; max-width: 700px; max-height: 80vh; overflow-y: auto; }
+.modal h2 { font-size: 18px; margin-bottom: 16px; }
+.modal .close { float: right; cursor: pointer; color: var(--text3); font-size: 20px; }
+.modal .close:hover { color: var(--text); }
+
+/* Responsive */
+.page { display: none; }
+.page.active { display: block; }
+.search-bar { margin-bottom: 16px; }
+.search-bar input { width: 100%; padding: 10px 14px; }
+.status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+.status-dot.online { background: var(--green); }
+.status-dot.offline { background: var(--text3); }
+.empty { text-align: center; padding: 40px; color: var(--text3); }
+.clickable { cursor: pointer; }
+.clickable:hover { color: var(--green); }
+.truncate { max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline-block; }
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <div class="logo">POLYTRAGENT<small>Admin Console</small></div>
+    <div class="nav-section">Dashboard</div>
+    <div class="nav-item active" onclick="showPage('overview')"><span class="icon">📊</span> Overview</div>
+    <div class="nav-section">Data</div>
+    <div class="nav-item" onclick="showPage('users')"><span class="icon">👥</span> Users & Wallets</div>
+    <div class="nav-item" onclick="showPage('trading')"><span class="icon">💹</span> Trading</div>
+    <div class="nav-item" onclick="showPage('revenue')"><span class="icon">💰</span> Revenue</div>
+    <div class="nav-item" onclick="showPage('whales')"><span class="icon">🐋</span> Whale Tracking</div>
+    <div class="nav-section">Admin</div>
+    <div class="nav-item" onclick="showPage('controls')"><span class="icon">⚙️</span> Controls</div>
+    <div style="flex:1"></div>
+    <div class="nav-item" style="color:var(--text3);font-size:11px"><span class="icon">🔄</span> <span id="lastUpdate">Loading...</span></div>
+  </div>
+
+  <!-- Main Content -->
+  <div class="main">
+
+    <!-- OVERVIEW PAGE -->
+    <div id="page-overview" class="page active">
+      <div class="section-header">
+        <h1 class="section-title">Dashboard Overview</h1>
+        <button class="btn btn-secondary btn-sm" onclick="loadAll()">↻ Refresh</button>
+      </div>
+      <div class="kpi-grid" id="kpiGrid"></div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+        <div>
+          <div class="section-header"><h2 style="font-size:15px">Recent Activity</h2></div>
+          <div class="table-wrap" id="activityFeed" style="max-height:400px;overflow-y:auto"></div>
+        </div>
+        <div>
+          <div class="section-header"><h2 style="font-size:15px">Quick Stats</h2></div>
+          <div class="panel" id="quickStats"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- USERS PAGE -->
+    <div id="page-users" class="page">
+      <div class="section-header">
+        <h1 class="section-title">Users & Wallets</h1>
+        <span id="userCount" style="color:var(--text2);font-size:13px"></span>
+      </div>
+      <div class="search-bar">
+        <input type="text" id="userSearch" placeholder="Search by username, chat ID, or wallet..." oninput="filterUsers()">
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr>
+            <th>User</th><th>Chat ID</th><th>Plan</th><th>Wallet</th>
+            <th>Volume</th><th>Trades</th><th>Fees Paid</th><th>Last Active</th><th></th>
+          </tr></thead>
+          <tbody id="usersTable"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- TRADING PAGE -->
+    <div id="page-trading" class="page">
+      <div class="section-header">
+        <h1 class="section-title">Trading & Positions</h1>
+      </div>
+      <div class="kpi-grid" id="tradingKpis"></div>
+      <h2 style="font-size:15px;margin-bottom:12px">Recent Fee Transactions</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Time</th><th>User</th><th>Side</th><th>Amount</th><th>Fee</th><th>Market</th></tr></thead>
+          <tbody id="feesTable"></tbody>
+        </table>
+      </div>
+      <h2 style="font-size:15px;margin:16px 0 12px">Copy Trade Executions</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Time</th><th>User</th><th>Action</th><th>Amount</th><th>Market</th><th>Copied From</th></tr></thead>
+          <tbody id="copyTradesTable"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- REVENUE PAGE -->
+    <div id="page-revenue" class="page">
+      <div class="section-header"><h1 class="section-title">Revenue & Billing</h1></div>
+      <div class="kpi-grid" id="revenueKpis"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+        <div>
+          <h2 style="font-size:15px;margin-bottom:12px">Fee Revenue Timeline</h2>
+          <div class="panel" id="feeTimeline"></div>
+        </div>
+        <div>
+          <h2 style="font-size:15px;margin-bottom:12px">Top Revenue Users</h2>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>User</th><th>Volume</th><th>Fees Paid</th><th>Trades</th></tr></thead>
+              <tbody id="topRevenueUsers"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- WHALES PAGE -->
+    <div id="page-whales" class="page">
+      <div class="section-header"><h1 class="section-title">Whale Tracking</h1></div>
+      <div class="kpi-grid" id="whaleKpis"></div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Address</th><th>Alias</th><th>PnL</th><th>Volume</th><th>Followers</th><th>Signals</th><th>Last Checked</th></tr></thead>
+          <tbody id="whalesTable"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- CONTROLS PAGE -->
+    <div id="page-controls" class="page">
+      <div class="section-header"><h1 class="section-title">Admin Controls</h1></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+        <div class="panel">
+          <h3>🚀 Grant Degen Mode</h3>
+          <div class="form-row">
+            <input type="text" id="grantChatId" placeholder="Chat ID">
+            <button class="btn btn-primary btn-sm" onclick="grantDegen()">Grant</button>
+          </div>
+          <div id="grantResult" style="font-size:12px;margin-top:6px;color:var(--text2)"></div>
+        </div>
+        <div class="panel">
+          <h3>🔒 Revoke Degen Mode</h3>
+          <div class="form-row">
+            <input type="text" id="revokeChatId" placeholder="Chat ID">
+            <button class="btn btn-danger btn-sm" onclick="revokeDegen()">Revoke</button>
+          </div>
+          <div id="revokeResult" style="font-size:12px;margin-top:6px;color:var(--text2)"></div>
+        </div>
+        <div class="panel">
+          <h3>🎟️ Generate Access Code</h3>
+          <div class="form-row">
+            <input type="number" id="codeMaxUses" placeholder="Max uses" value="1" style="width:100px">
+            <input type="number" id="codeDuration" placeholder="Days" value="30" style="width:100px">
+            <button class="btn btn-primary btn-sm" onclick="genCode()">Generate</button>
+          </div>
+          <div id="codeResult" style="font-size:12px;margin-top:6px;color:var(--green);font-family:monospace"></div>
+        </div>
+        <div class="panel">
+          <h3>📢 Broadcast Message</h3>
+          <textarea id="broadcastMsg" rows="3" style="width:100%;resize:vertical" placeholder="Message (HTML supported)"></textarea>
+          <div style="margin-top:8px;display:flex;gap:8px;align-items:center">
+            <button class="btn btn-primary btn-sm" onclick="broadcast()">Send to All</button>
+            <span id="broadcastResult" style="font-size:12px;color:var(--text2)"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- User Detail Modal -->
+<div id="userModal" class="modal-overlay" style="display:none" onclick="if(event.target===this)closeModal()">
+  <div class="modal">
+    <span class="close" onclick="closeModal()">✕</span>
+    <div id="userModalContent"></div>
+  </div>
+</div>
+
+<script>
+const BASE = window.location.origin + '/admin/api';
+const AUTH = new URLSearchParams(window.location.search).get('token') || '';
+let _stats = {}, _users = [], _fees = {}, _trades = {}, _whales = {}, _activity = [];
+
+function api(path, opts = {}) {
+  const sep = path.includes('?') ? '&' : '?';
+  return fetch(BASE + path + sep + 'token=' + AUTH, {
+    headers: {'Content-Type': 'application/json', 'Authorization': 'Basic ' + btoa(':' + AUTH)},
+    ...opts,
+  }).then(r => r.json());
+}
+
+function showPage(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  event.target.closest('.nav-item').classList.add('active');
+}
+
+function fmtTime(ts) {
+  if (!ts) return '—';
+  const d = new Date(ts);
+  const now = new Date();
+  const diff = (now - d) / 1000;
+  if (diff < 60) return 'just now';
+  if (diff < 3600) return Math.floor(diff/60) + 'm ago';
+  if (diff < 86400) return Math.floor(diff/3600) + 'h ago';
+  if (diff < 604800) return Math.floor(diff/86400) + 'd ago';
+  return d.toLocaleDateString();
+}
+
+function fmtUSD(v) { return '$' + (Number(v) || 0).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}); }
+function fmtNum(v) { return (Number(v) || 0).toLocaleString(); }
+function shortAddr(a) { return a ? a.slice(0, 6) + '...' + a.slice(-4) : '—'; }
+
+// ═══ LOAD DATA ═══
+async function loadAll() {
+  try {
+    [_stats, {users: _users}, _fees, _trades, _whales, {activity: _activity}] = await Promise.all([
+      api('/stats'), api('/users'), api('/fees'), api('/trades'), api('/whales'), api('/activity'),
+    ]);
+    renderOverview();
+    renderUsers();
+    renderTrading();
+    renderRevenue();
+    renderWhales();
+    document.getElementById('lastUpdate').textContent = new Date().toLocaleTimeString();
+  } catch(e) { console.error('Load failed:', e); }
+}
+
+// ═══ OVERVIEW ═══
+function renderOverview() {
+  const s = _stats;
+  document.getElementById('kpiGrid').innerHTML = `
+    <div class="kpi"><div class="label">Total Users</div><div class="value">${fmtNum(s.total_users)}</div></div>
+    <div class="kpi green"><div class="label">Active Traders</div><div class="value">${fmtNum(s.active_traders)}</div></div>
+    <div class="kpi purple"><div class="label">Degen Subscribers</div><div class="value">${fmtNum(s.degen_subscribers)}</div><div class="sub">MRR: ${fmtUSD(s.mrr)}</div></div>
+    <div class="kpi blue"><div class="label">Total Volume</div><div class="value">${fmtUSD(s.total_volume)}</div></div>
+    <div class="kpi yellow"><div class="label">Total Fees</div><div class="value">${fmtUSD(s.total_fees_collected)}</div></div>
+    <div class="kpi"><div class="label">Daily Volume</div><div class="value">${fmtUSD(s.daily_volume)}</div></div>
+  `;
+  // Activity feed
+  const feed = _activity.slice(0, 20).map(a => {
+    const dotClass = a.type === 'signup' ? 'signup' : a.type === 'copy_trade' ? 'copy' : 'trade';
+    let desc = '';
+    if (a.type === 'signup') desc = `<b>${a.username || a.chat_id}</b> signed up`;
+    else if (a.type === 'trade') desc = `<span class="badge ${a.side?.toLowerCase()}">${a.side}</span> ${fmtUSD(a.amount)} <span style="color:var(--text3)">${(a.market||'').slice(0,40)}</span>`;
+    else if (a.type === 'copy_trade') desc = `Copy ${a.action} ${fmtUSD(a.amount)} <span style="color:var(--text3)">${(a.market||'').slice(0,30)}</span>`;
+    return `<div class="activity-item"><div class="activity-dot ${dotClass}"></div><span class="activity-time">${fmtTime(a.timestamp)}</span><span>${desc}</span></div>`;
+  }).join('');
+  document.getElementById('activityFeed').innerHTML = feed || '<div class="empty">No recent activity</div>';
+
+  // Quick stats
+  document.getElementById('quickStats').innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:13px">
+      <div><span style="color:var(--text3)">Daily Fees</span><br><b style="color:var(--green)">${fmtUSD(s.daily_fees)}</b></div>
+      <div><span style="color:var(--text3)">Weekly Fees</span><br><b style="color:var(--green)">${fmtUSD(s.weekly_fees)}</b></div>
+      <div><span style="color:var(--text3)">Monthly Fees</span><br><b style="color:var(--green)">${fmtUSD(s.monthly_fees)}</b></div>
+      <div><span style="color:var(--text3)">Tracked Whales</span><br><b>${fmtNum(_whales.total)}</b></div>
+      <div><span style="color:var(--text3)">Whale Followers</span><br><b>${fmtNum(_whales.total_followers)}</b></div>
+      <div><span style="color:var(--text3)">Total Signals</span><br><b>${fmtNum(_whales.total_signals)}</b></div>
+    </div>`;
+}
+
+// ═══ USERS ═══
+function renderUsers() {
+  document.getElementById('userCount').textContent = `${_users.length} users`;
+  _renderUserTable(_users);
+}
+function _renderUserTable(list) {
+  document.getElementById('usersTable').innerHTML = list.map(u => `
+    <tr>
+      <td><b>${u.username || u.first_name || '—'}</b></td>
+      <td class="mono" style="font-size:11px">${u.chat_id}</td>
+      <td><span class="badge ${u.plan === 'degen' ? 'degen' : 'free'}">${u.plan || 'free'}</span></td>
+      <td class="mono" style="font-size:11px" title="${u.wallet}">${shortAddr(u.wallet)}</td>
+      <td>${fmtUSD(u.total_volume)}</td>
+      <td>${(u.total_buys||0) + (u.total_sells||0)}</td>
+      <td>${fmtUSD(u.total_fees_paid)}</td>
+      <td style="color:var(--text3);font-size:12px">${fmtTime(u.last_active)}</td>
+      <td><button class="btn btn-secondary btn-sm" onclick="viewUser('${u.chat_id}')">View</button></td>
+    </tr>`).join('');
+}
+function filterUsers() {
+  const q = document.getElementById('userSearch').value.toLowerCase();
+  const filtered = _users.filter(u =>
+    (u.username||'').toLowerCase().includes(q) ||
+    (u.chat_id||'').includes(q) ||
+    (u.wallet||'').toLowerCase().includes(q) ||
+    (u.first_name||'').toLowerCase().includes(q)
+  );
+  _renderUserTable(filtered);
+}
+
+// ═══ USER DETAIL MODAL ═══
+async function viewUser(chatId) {
+  document.getElementById('userModal').style.display = 'flex';
+  document.getElementById('userModalContent').innerHTML = '<div class="empty">Loading...</div>';
+  try {
+    const data = await api('/user/' + chatId);
+    const u = data.user;
+    const b = data.balance;
+    const s = u.subscription || {};
+    const ts = u.trading_stats || {};
+    const ct = data.copy_trading || {};
+    document.getElementById('userModalContent').innerHTML = `
+      <h2>${u.username || u.first_name || 'User'} <span style="color:var(--text3);font-size:14px">#${u.chat_id}</span></h2>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px">
+        <div class="panel" style="margin:0">
+          <h3>Profile</h3>
+          <div style="font-size:13px;line-height:2">
+            <b>Username:</b> ${u.username || '—'}<br>
+            <b>Name:</b> ${u.first_name || '—'}<br>
+            <b>Joined:</b> ${fmtTime(u.created_at)}<br>
+            <b>Last Active:</b> ${fmtTime(u.last_active)}<br>
+            <b>Plan:</b> <span class="badge ${s.plan==='degen'?'degen':'free'}">${s.plan||'free'}</span><br>
+            <b>Onboarding:</b> ${(u.onboarding||{}).step || '—'}
+          </div>
+        </div>
+        <div class="panel" style="margin:0">
+          <h3>Wallet</h3>
+          <div style="font-size:13px;line-height:2">
+            <b>Address:</b> <span class="mono" style="font-size:11px">${u.wallet_address || '—'}</span><br>
+            <b>USDC:</b> <span style="color:var(--green)">${fmtUSD(b.usdc)}</span><br>
+            <b>MATIC:</b> ${Number(b.matic||0).toFixed(4)}<br>
+            <b>Signals:</b> ${u.total_signals_received || 0}<br>
+            <b>Following:</b> ${ct.followed_wallets || 0} whales<br>
+            <b>Auto-Copy:</b> ${ct.auto_copy_enabled ? '✅ On' : '❌ Off'}
+          </div>
+        </div>
+      </div>
+      <div class="panel" style="margin-top:16px">
+        <h3>Trading Stats</h3>
+        <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px;text-align:center;font-size:13px">
+          <div><div style="color:var(--text3);font-size:11px">Buys</div><b>${ts.total_buys||0}</b></div>
+          <div><div style="color:var(--text3);font-size:11px">Sells</div><b>${ts.total_sells||0}</b></div>
+          <div><div style="color:var(--text3);font-size:11px">Volume</div><b>${fmtUSD(ts.total_volume)}</b></div>
+          <div><div style="color:var(--text3);font-size:11px">Fees Paid</div><b>${fmtUSD(ts.total_fees_paid)}</b></div>
+          <div><div style="color:var(--text3);font-size:11px">PnL</div><b style="color:${(ts.total_pnl||0)>=0?'var(--green)':'var(--red)'}">${fmtUSD(ts.total_pnl)}</b></div>
+        </div>
+      </div>
+      ${data.recent_fees.length ? `
+      <div style="margin-top:16px"><h3 style="font-size:14px;margin-bottom:8px;color:var(--text2)">Recent Trades</h3>
+      <div class="table-wrap"><table><thead><tr><th>Time</th><th>Side</th><th>Amount</th><th>Fee</th></tr></thead><tbody>
+      ${data.recent_fees.map(f => `<tr><td>${fmtTime(f.timestamp)}</td><td><span class="badge ${(f.side||'').toLowerCase()}">${f.side}</span></td><td>${fmtUSD(f.trade_amount||f.amount)}</td><td>${fmtUSD(f.fee||f.amount)}</td></tr>`).join('')}
+      </tbody></table></div></div>` : ''}
+      <div style="margin-top:16px;display:flex;gap:8px">
+        <button class="btn btn-primary btn-sm" onclick="grantDegenFor('${u.chat_id}')">Grant Degen</button>
+        <button class="btn btn-danger btn-sm" onclick="revokeDegenFor('${u.chat_id}')">Revoke Degen</button>
+      </div>`;
+  } catch(e) { document.getElementById('userModalContent').innerHTML = '<div class="empty">Error loading user</div>'; }
+}
+function closeModal() { document.getElementById('userModal').style.display = 'none'; }
+
+// ═══ TRADING ═══
+function renderTrading() {
+  const s = _stats;
+  document.getElementById('tradingKpis').innerHTML = `
+    <div class="kpi blue"><div class="label">Total Volume</div><div class="value">${fmtUSD(s.total_volume)}</div></div>
+    <div class="kpi green"><div class="label">Total Fees (1%)</div><div class="value">${fmtUSD(s.total_fees_collected)}</div></div>
+    <div class="kpi"><div class="label">Copy Trades</div><div class="value">${fmtNum(_trades.count)}</div></div>
+    <div class="kpi purple"><div class="label">Active Traders</div><div class="value">${fmtNum(s.active_traders)}</div></div>
+  `;
+  document.getElementById('feesTable').innerHTML = (_fees.recent_fees || []).slice(-30).reverse().map(f => `
+    <tr>
+      <td style="color:var(--text3);font-size:12px">${fmtTime(f.timestamp)}</td>
+      <td class="mono" style="font-size:11px">${f.chat_id||'—'}</td>
+      <td><span class="badge ${(f.side||'').toLowerCase()}">${f.side||'—'}</span></td>
+      <td>${fmtUSD(f.trade_amount||f.amount)}</td>
+      <td style="color:var(--green)">${fmtUSD(f.fee||f.amount)}</td>
+      <td class="truncate" style="max-width:200px">${f.market||'—'}</td>
+    </tr>`).join('') || '<tr><td colspan="6" class="empty">No trades yet</td></tr>';
+
+  document.getElementById('copyTradesTable').innerHTML = (_trades.trades || []).slice(-30).reverse().map(t => `
+    <tr>
+      <td style="color:var(--text3);font-size:12px">${fmtTime(t.timestamp)}</td>
+      <td class="mono" style="font-size:11px">${t.chat_id||'—'}</td>
+      <td><span class="badge ${(t.action||'').toLowerCase()}">${t.action||'—'}</span></td>
+      <td>${fmtUSD(t.amount)}</td>
+      <td class="truncate" style="max-width:200px">${t.market||'—'}</td>
+      <td class="mono" style="font-size:11px">${t.signal_wallet ? t.signal_wallet.slice(0,10)+'...' : '—'}</td>
+    </tr>`).join('') || '<tr><td colspan="6" class="empty">No copy trades yet</td></tr>';
+}
+
+// ═══ REVENUE ═══
+function renderRevenue() {
+  const s = _stats;
+  document.getElementById('revenueKpis').innerHTML = `
+    <div class="kpi purple"><div class="label">MRR (Subscriptions)</div><div class="value">${fmtUSD(s.mrr)}</div><div class="sub">${s.degen_subscribers} Degen subs × $79</div></div>
+    <div class="kpi green"><div class="label">Total Fee Revenue</div><div class="value">${fmtUSD(s.total_fees_collected)}</div></div>
+    <div class="kpi yellow"><div class="label">Monthly Fees</div><div class="value">${fmtUSD(s.monthly_fees)}</div></div>
+    <div class="kpi blue"><div class="label">Total Revenue</div><div class="value">${fmtUSD((s.mrr||0) + (s.monthly_fees||0))}</div><div class="sub">Subs + Fees (monthly)</div></div>
+  `;
+  // Fee timeline
+  const fees = _fees.recent_fees || [];
+  const byDay = {};
+  fees.forEach(f => {
+    const day = (f.timestamp || '').slice(0, 10);
+    if (day) { byDay[day] = (byDay[day] || 0) + (f.fee || f.amount || 0); }
+  });
+  const days = Object.entries(byDay).sort().slice(-14);
+  const maxFee = Math.max(...days.map(d => d[1]), 1);
+  document.getElementById('feeTimeline').innerHTML = days.length ?
+    `<div style="display:flex;align-items:flex-end;gap:4px;height:120px">` +
+    days.map(([day, amt]) => `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px">
+      <div style="font-size:10px;color:var(--green)">${amt > 0 ? '$'+amt.toFixed(2) : ''}</div>
+      <div style="width:100%;background:var(--green);border-radius:3px;height:${Math.max(4, (amt/maxFee)*80)}px;opacity:0.7"></div>
+      <div style="font-size:9px;color:var(--text3)">${day.slice(5)}</div>
+    </div>`).join('') + `</div>` : '<div class="empty">No fee data yet</div>';
+
+  // Top revenue users
+  const sorted = [..._users].sort((a,b) => (b.total_fees_paid||0) - (a.total_fees_paid||0)).slice(0, 10);
+  document.getElementById('topRevenueUsers').innerHTML = sorted.map(u => `
+    <tr>
+      <td><b>${u.username || u.first_name || u.chat_id}</b></td>
+      <td>${fmtUSD(u.total_volume)}</td>
+      <td style="color:var(--green)">${fmtUSD(u.total_fees_paid)}</td>
+      <td>${(u.total_buys||0) + (u.total_sells||0)}</td>
+    </tr>`).join('') || '<tr><td colspan="4" class="empty">No data</td></tr>';
+}
+
+// ═══ WHALES ═══
+function renderWhales() {
+  const w = _whales;
+  document.getElementById('whaleKpis').innerHTML = `
+    <div class="kpi"><div class="label">Tracked Whales</div><div class="value">${fmtNum(w.total)}</div></div>
+    <div class="kpi blue"><div class="label">Total Followers</div><div class="value">${fmtNum(w.total_followers)}</div></div>
+    <div class="kpi purple"><div class="label">Total Signals</div><div class="value">${fmtNum(w.total_signals)}</div></div>
+    <div class="kpi"><div class="label">Last Scan</div><div class="value" style="font-size:14px">${fmtTime(w.last_scan)}</div></div>
+  `;
+  document.getElementById('whalesTable').innerHTML = (w.wallets || []).map(wh => `
+    <tr>
+      <td class="mono" style="font-size:11px" title="${wh.address}">${shortAddr(wh.address)}</td>
+      <td>${wh.alias || '—'}</td>
+      <td style="color:${(wh.pnl||0)>=0?'var(--green)':'var(--red)'}">${fmtUSD(wh.pnl)}</td>
+      <td>${fmtUSD(wh.volume)}</td>
+      <td>${wh.followers_count || 0}</td>
+      <td>${wh.total_signals || 0}</td>
+      <td style="color:var(--text3);font-size:12px">${fmtTime(wh.last_checked)}</td>
+    </tr>`).join('') || '<tr><td colspan="7" class="empty">No whales tracked</td></tr>';
+}
+
+// ═══ ADMIN ACTIONS ═══
+async function grantDegen() { await _adminAction('/grant_degen', {chat_id: document.getElementById('grantChatId').value}, 'grantResult'); }
+async function revokeDegen() { await _adminAction('/revoke_degen', {chat_id: document.getElementById('revokeChatId').value}, 'revokeResult'); }
+async function grantDegenFor(id) { await _adminAction('/grant_degen', {chat_id: id}, null); closeModal(); loadAll(); }
+async function revokeDegenFor(id) { await _adminAction('/revoke_degen', {chat_id: id}, null); closeModal(); loadAll(); }
+async function genCode() {
+  const r = await _adminAction('/gen_code', {
+    max_uses: parseInt(document.getElementById('codeMaxUses').value),
+    duration_days: parseInt(document.getElementById('codeDuration').value),
+  }, null);
+  document.getElementById('codeResult').textContent = r.code ? '✅ Code: ' + r.code : '❌ Failed';
+}
+async function broadcast() {
+  const msg = document.getElementById('broadcastMsg').value;
+  if (!msg) return;
+  if (!confirm('Send this message to ALL users?')) return;
+  const r = await _adminAction('/broadcast', {message: msg}, null);
+  document.getElementById('broadcastResult').textContent = r.sent ? `✅ Sent to ${r.sent}/${r.total}` : '❌ Failed';
+}
+async function _adminAction(path, body, resultEl) {
+  try {
+    const r = await api(path, {method: 'POST', body: JSON.stringify(body)});
+    if (resultEl) document.getElementById(resultEl).textContent = r.error ? '❌ ' + r.error : '✅ Done';
+    return r;
+  } catch(e) { if (resultEl) document.getElementById(resultEl).textContent = '❌ Error'; return {}; }
+}
+
+// ═══ INIT ═══
+loadAll();
+setInterval(loadAll, 30000);
+</script>
+</body>
+</html>
