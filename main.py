@@ -3627,6 +3627,17 @@ def main():
     )
 
     threading.Thread(target=_scheduler_loop, daemon=True).start()
+
+    # Start real-time whale listener (on-chain via Polygon WebSocket)
+    try:
+        import whale_realtime
+        # Try WebSocket first; if POLYGON_WSS_URL not set, fall back to HTTP polling
+        use_http = not os.environ.get("POLYGON_WSS_URL", "")
+        whale_realtime.start_listener(use_http_fallback=use_http)
+        print(f"[MAIN] Whale real-time listener started ({'HTTP' if use_http else 'WebSocket'} mode)")
+    except Exception as e:
+        print(f"[MAIN] Whale real-time listener failed to start: {e}")
+
     _polling_loop()
 
 if __name__ == "__main__":

@@ -847,13 +847,34 @@ def admin_api_whales():
     wallets.sort(key=lambda w: w.get("pnl", 0), reverse=True)
     total_followers = sum(len(f) for f in data.get("followers", {}).values())
     total_signals = len(data.get("signals", []))
+    # Include real-time listener stats
+    rt_stats = {"listener_status": "not_installed"}
+    try:
+        import whale_realtime as wrt
+        rt_stats = wrt.get_realtime_stats()
+    except ImportError:
+        pass
     return jsonify({
         "wallets": wallets[:50],
         "total": len(wallets),
         "total_followers": total_followers,
         "total_signals": total_signals,
         "last_scan": data.get("last_scan", ""),
+        "realtime": rt_stats,
     })
+
+@app.route("/admin/api/whale-realtime")
+@require_admin_auth
+def admin_api_whale_realtime():
+    """Real-time whale transaction log and stats."""
+    try:
+        import whale_realtime as wrt
+        limit = int(request.args.get("limit", 50))
+        stats = wrt.get_realtime_stats()
+        txs = wrt.get_recent_whale_txs(limit)
+        return jsonify({"stats": stats, "transactions": txs})
+    except ImportError:
+        return jsonify({"stats": {"listener_status": "not_installed"}, "transactions": []})
 
 @app.route("/admin/api/user/<chat_id>")
 @require_admin_auth

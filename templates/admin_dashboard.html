@@ -216,6 +216,23 @@ input:focus { border-color: var(--green); }
     <div id="page-whales" class="page">
       <div class="section-header"><h1 class="section-title">Whale Tracking</h1></div>
       <div class="kpi-grid" id="whaleKpis"></div>
+
+      <!-- Real-Time Transaction Feed -->
+      <div style="margin:16px 0 8px"><h2 style="font-size:15px;color:var(--green);display:flex;align-items:center;gap:8px">
+        <span id="rtDot" style="width:8px;height:8px;border-radius:50%;background:#444;display:inline-block"></span>
+        Live Transaction Feed
+        <span id="rtStatus" style="font-size:11px;color:var(--text2);font-weight:400"></span>
+      </h2></div>
+      <div class="kpi-grid" id="rtKpis"></div>
+      <div class="table-wrap" style="max-height:320px;overflow-y:auto">
+        <table>
+          <thead><tr><th>Time</th><th>Whale</th><th>Side</th><th>Amount</th><th>Market</th><th>Tx</th></tr></thead>
+          <tbody id="rtTable"></tbody>
+        </table>
+      </div>
+
+      <!-- Tracked Wallets -->
+      <div style="margin:24px 0 8px"><h2 style="font-size:15px;color:var(--text)">Tracked Wallets</h2></div>
       <div class="table-wrap">
         <table>
           <thead><tr><th>Address</th><th>Alias</th><th>PnL</th><th>Volume</th><th>Followers</th><th>Signals</th><th>Last Checked</th></tr></thead>
@@ -536,6 +553,37 @@ function renderWhales() {
       <td>${wh.total_signals || 0}</td>
       <td style="color:var(--text3);font-size:12px">${fmtTime(wh.last_checked)}</td>
     </tr>`).join('') || '<tr><td colspan="7" class="empty">No whales tracked</td></tr>';
+
+  // Real-time feed
+  const rt = w.realtime || {};
+  const dot = document.getElementById('rtDot');
+  const status = document.getElementById('rtStatus');
+  if (rt.listener_status === 'running') {
+    dot.style.background = '#6ee7b7'; dot.style.boxShadow = '0 0 6px #6ee7b7';
+    status.textContent = 'Listening on Polygon';
+  } else {
+    dot.style.background = '#f85149'; dot.style.boxShadow = 'none';
+    status.textContent = rt.listener_status === 'not_installed' ? 'Module not loaded' : 'Stopped';
+  }
+  document.getElementById('rtKpis').innerHTML = `
+    <div class="kpi"><div class="label">Detected (24h)</div><div class="value">${fmtNum(rt.last_24h||0)}</div></div>
+    <div class="kpi blue"><div class="label">Volume (24h)</div><div class="value">${fmtUSD(rt.volume_24h||0)}</div></div>
+    <div class="kpi purple"><div class="label">Detected (1h)</div><div class="value">${fmtNum(rt.last_1h||0)}</div></div>
+    <div class="kpi"><div class="label">All-Time</div><div class="value">${fmtNum(rt.total_detected||0)}</div></div>
+  `;
+  // Load live txs
+  fetch('/admin/api/whale-realtime?limit=30').then(r=>r.json()).then(d => {
+    const txs = d.transactions || [];
+    document.getElementById('rtTable').innerHTML = txs.reverse().map(tx => `
+      <tr>
+        <td style="font-size:11px;white-space:nowrap">${fmtTime(tx.timestamp)}</td>
+        <td><b>${tx.alias||shortAddr(tx.whale)}</b></td>
+        <td style="color:${tx.side==='BUY'?'var(--green)':'var(--red)'}"><b>${tx.side}</b></td>
+        <td>${fmtUSD(tx.value_usd)}</td>
+        <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${tx.market_title}">${tx.market_title||'—'}</td>
+        <td class="mono" style="font-size:10px"><a href="https://polygonscan.com/tx/${tx.tx_hash}" target="_blank" style="color:var(--blue)">${(tx.tx_hash||'').slice(0,10)}…</a></td>
+      </tr>`).join('') || '<tr><td colspan="6" class="empty">No transactions yet — listener starting up</td></tr>';
+  }).catch(()=>{});
 }
 
 // ═══ ADMIN ACTIONS ═══
