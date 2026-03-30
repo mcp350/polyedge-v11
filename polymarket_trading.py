@@ -187,10 +187,12 @@ def _get_client_for_user(chat_id: str):
     if cached and (time.time() - cached["ts"]) < _USER_CLIENT_TTL:
         return cached["client"]
 
-    # Get user's private key from wallet storage
-    pk = wallet_manager.get_private_key(chat_str)
+    # Get the primary wallet's private key (works for both created and imported wallets)
+    pk = wallet_manager.get_primary_private_key(chat_str)
     if not pk:
-        log.warning(f"No wallet found for user {chat_str}")
+        all_wallets = wallet_manager._load().get("wallets", {}).get(chat_str, [])
+        log.warning(f"No wallet/key for user {chat_str} — found {len(all_wallets)} wallet(s): "
+                    f"{[{'addr': w.get('address','?')[:10], 'primary': w.get('is_primary'), 'has_key': bool(w.get('private_key_encrypted'))} for w in all_wallets]}")
         return None
 
     if not pk.startswith("0x"):

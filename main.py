@@ -572,13 +572,13 @@ def show_research_menu(chat_id):
 
 def show_trending_events(chat_id):
     """Trending Events — most recent data from Polymarket by 24h volume"""
+    import polymarket_api as papi
     tg.send("📈 <b>Loading trending events by 24h volume...</b>", chat_id)
     try:
-        r = requests.get("https://gamma-api.polymarket.com/events",
-            params={"active": "true", "closed": "false", "order": "volume24hr",
-                     "ascending": "false", "limit": 10}, timeout=15)
-        if r.ok:
-            events = r.json()
+        events = papi.gamma_get("/events", params={"active": "true", "closed": "false",
+                                                    "order": "volume24hr", "ascending": "false",
+                                                    "limit": 10})
+        if events is not None and isinstance(events, list):
             msg = "📈 <b>Polytragent — Trending Events</b>\n"
             msg += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
             msg += "<i>Top events by 24h trading volume</i>\n\n"
@@ -609,8 +609,10 @@ def show_trending_events(chat_id):
             ]
             onboarding.send_inline(chat_id, msg, buttons)
         else:
-            tg.send("❌ Could not fetch trending events. Try again.", chat_id)
+            print(f"[TRENDING] gamma_get returned: {events!r}")
+            tg.send("❌ Could not load markets. Try again later.", chat_id)
     except Exception as e:
+        print(f"[TRENDING] Exception: {e}")
         tg.send(f"❌ Trending error: {e}", chat_id)
 
 def show_new_markets(chat_id):

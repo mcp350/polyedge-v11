@@ -264,7 +264,47 @@ def get_private_key(chat_id: str, wallet_index: int = 0) -> Optional[str]:
     if wallet_index >= len(wallets):
         return None
 
-    return _decrypt_key(wallets[wallet_index]["private_key_encrypted"], chat_str)
+    w = wallets[wallet_index]
+    if not w.get("private_key_encrypted"):
+        log.warning(f"No private_key_encrypted for user {chat_str} at index {wallet_index}")
+        return None
+
+    return _decrypt_key(w["private_key_encrypted"], chat_str)
+
+
+def get_primary_private_key(chat_id: str) -> Optional[str]:
+    """
+    Get decrypted private key for the PRIMARY wallet.
+    Works for both created and imported wallets.
+    Unlike get_private_key(chat_id, 0), this respects the is_primary flag
+    so it correctly handles imported wallets that may not be at index 0.
+    """
+    data = _load()
+    chat_str = str(chat_id)
+    wallets = data["wallets"].get(chat_str, [])
+
+    if not wallets:
+        log.warning(f"No wallets found for user {chat_str}")
+        return None
+
+    # Find the primary wallet; fall back to index 0 if none is marked primary
+    primary_wallet = None
+    primary_idx = 0
+    for i, w in enumerate(wallets):
+        if w.get("is_primary"):
+            primary_wallet = w
+            primary_idx = i
+            break
+    if primary_wallet is None:
+        primary_wallet = wallets[0]
+        primary_idx = 0
+
+    if not primary_wallet.get("private_key_encrypted"):
+        log.warning(f"No private_key_encrypted for user {chat_str} primary wallet (idx {primary_idx})")
+        return None
+
+    log.debug(f"get_primary_private_key: user={chat_str} idx={primary_idx} addr={primary_wallet.get('address','')[:10]}")
+    return _decrypt_key(primary_wallet["private_key_encrypted"], chat_str)
 
 
 def set_primary_wallet(chat_id: str, wallet_index: int) -> dict:
