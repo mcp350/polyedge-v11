@@ -23,7 +23,7 @@ POLY_API_PASSPHRASE = os.environ.get("POLY_API_PASSPHRASE", "")
 POLY_PRIVATE_KEY = os.environ.get("POLY_PRIVATE_KEY", "")
 
 # ── Polygon Network ──
-POLYGON_RPC_URL = os.environ.get("POLYGON_RPC_URL", "https://polygon-rpc.com")
+POLYGON_RPC_URL = os.environ.get("POLYGON_RPC_URL", "https://polygon.llamarpc.com")
 POLYGON_WSS_URL = os.environ.get("POLYGON_WSS_URL", "")  # wss:// for real-time whale tracking
 
 # ── Stripe (Degen Mode) ──

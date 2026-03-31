@@ -17,8 +17,8 @@ log = logging.getLogger("polytragent.wallet")
 # CONSTANTS
 # ═══════════════════════════════════════════════
 
-POLYGON_RPC = os.environ.get("POLYGON_RPC_URL", "https://polygon-rpc.com")
-POLYGON_RPC_FALLBACK = "https://rpc-mainnet.matic.quiknode.pro"
+POLYGON_RPC = os.environ.get("POLYGON_RPC_URL", "https://polygon.llamarpc.com")
+POLYGON_RPC_FALLBACK = "https://rpc.ankr.com/polygon"
 
 # USDC on Polygon — there are TWO versions:
 USDC_NATIVE_CONTRACT = "0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359"  # Native USDC (Circle, post-2023)

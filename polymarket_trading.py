@@ -384,8 +384,32 @@ _ERC20_ABI = [
 
 def _get_w3():
     from web3 import Web3
-    rpc_url = os.environ.get("POLYGON_RPC", "https://polygon-rpc.com")
-    return Web3(Web3.HTTPProvider(rpc_url))
+    # Try env var first, then cycle through reliable free Polygon RPCs
+    rpc_url = os.environ.get("POLYGON_RPC_URL") or os.environ.get("POLYGON_RPC")
+    if rpc_url:
+        w3 = Web3(Web3.HTTPProvider(rpc_url))
+        if w3.is_connected():
+            return w3
+
+    # Reliable free Polygon RPCs (polygon-rpc.com often returns 401)
+    fallbacks = [
+        "https://polygon.llamarpc.com",
+        "https://rpc.ankr.com/polygon",
+        "https://polygon.drpc.org",
+        "https://polygon-bor-rpc.publicnode.com",
+        "https://polygon-rpc.com",
+    ]
+    for rpc in fallbacks:
+        try:
+            w3 = Web3(Web3.HTTPProvider(rpc, request_kwargs={"timeout": 10}))
+            if w3.is_connected():
+                log.info(f"Connected to Polygon RPC: {rpc}")
+                return w3
+        except Exception:
+            continue
+
+    # Last resort — return with first fallback even if not verified
+    return Web3(Web3.HTTPProvider(fallbacks[0]))
 
 
 def _get_token_balances(w3, address: str) -> dict:
