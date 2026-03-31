@@ -3626,16 +3626,22 @@ def _polling_loop():
                     if not text or not cid:
                         continue
 
-                    # Update user info from message
+                    # Ensure user is registered & update info from message
                     from_user = msg.get("from", {})
-                    if from_user:
-                        updates = {}
-                        if from_user.get("username"):
-                            updates["username"] = from_user["username"]
-                        if from_user.get("first_name"):
-                            updates["first_name"] = from_user["first_name"]
-                        if updates:
-                            user_store.update_user(cid, updates)
+                    if from_user and cid:
+                        username = from_user.get("username", "")
+                        first_name = from_user.get("first_name", "")
+                        existing = user_store.get_user(cid)
+                        if not existing:
+                            user_store.create_user(cid, username, first_name)
+                        else:
+                            updates = {}
+                            if username:
+                                updates["username"] = username
+                            if first_name:
+                                updates["first_name"] = first_name
+                            if updates:
+                                user_store.update_user(cid, updates)
 
                     # Trade settings custom input
                     if not text.startswith("/") and str(cid) in _waiting_for_setting:
