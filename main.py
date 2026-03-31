@@ -1491,63 +1491,43 @@ def _cache_rbuy_slug(slug: str) -> int:
 _trending_cache = {"markets": [], "ts": 0}
 
 def _fetch_trending_markets(limit=20):
-    """Fetch top trending markets from Polymarket events API.
-    Gets top events by volume, picks the main market from each event,
-    filters out expired/resolved ones, returns top 20.
+    """Fetch top trending markets from Polymarket using /markets endpoint.
+    Uses volume24hr for truly trending markets (not just all-time volume).
+    The /markets endpoint returns ~150KB vs /events which returns 1.5MB+ per 5 events.
     Cached for 2 minutes.
     """
     import time as _time
-    import json as _json
+    import traceback as _tb
     now = _time.time()
     if _trending_cache["markets"] and now - _trending_cache["ts"] < 120:
+        print(f"[TRADE] Returning {len(_trending_cache['markets'])} cached trending markets")
         return _trending_cache["markets"]
     try:
         markets = []
-        seen_slugs = set()
 
-        # Fetch top 50 events by volume from Gamma API
-        # Use gamma_get (curl-based) because Railway blocks Python requests to polymarket.com
+        # Fetch top markets by 24h volume — lightweight endpoint (~150KB for 30 markets)
+        print("[TRADE] Fetching trending markets from /markets endpoint...")
         try:
-            events = polymarket_api.gamma_get("/events", params={
-                "limit": 50, "active": "true", "closed": "false",
-                "order": "volume", "ascending": "false"
-            }) or []
+            raw_markets = papi.gamma_get("/markets", params={
+                "limit": "30", "active": "true", "closed": "false",
+                "order": "volume24hr", "ascending": "false"
+            }, timeout=20) or []
+            print(f"[TRADE] gamma_get /markets returned {len(raw_markets) if isinstance(raw_markets, list) else type(raw_markets).__name__}")
         except Exception as e:
-            print(f"[TRADE] Events API error: {e}")
-            events = []
+            print(f"[TRADE] Markets API error: {e}")
+            _tb.print_exc()
+            raw_markets = []
 
-        if isinstance(events, list):
-            for ev in events:
-                ev_markets = ev.get("markets", [])
-                if not ev_markets:
-                    continue
-
-                # Pick the highest-volume market from each event
-                best = None
-                best_vol = 0
-                for m in ev_markets:
-                    vol = float(m.get("volume", 0) or 0)
-                    op = m.get("outcomePrices", "[]")
-                    if isinstance(op, str):
-                        try: prices = _json.loads(op)
-                        except: prices = []
-                    else:
-                        prices = op or []
-
-                    # Must have valid prices and some volume
-                    if len(prices) >= 2 and vol > 0:
-                        slug = m.get("slug", "")
-                        if slug and slug not in seen_slugs and vol > best_vol:
-                            best = m
-                            best_vol = vol
-
-                if best:
-                    parsed = polymarket_api.parse_market(best)
-                    if parsed:
-                        seen_slugs.add(parsed["slug"])
+        if isinstance(raw_markets, list):
+            for m in raw_markets:
+                try:
+                    parsed = polymarket_api.parse_market(m)
+                    if parsed and parsed["volume"] > 0:
                         markets.append(parsed)
+                except Exception as e:
+                    print(f"[TRADE] parse_market error: {e}")
 
-        # Sort by volume descending and take top N
+        # Sort by 24h volume (already sorted by API, but ensure consistency)
         markets.sort(key=lambda x: x["volume"], reverse=True)
         _trending_cache["markets"] = markets[:limit]
         _trending_cache["ts"] = now
@@ -1556,10 +1536,11 @@ def _fetch_trending_markets(limit=20):
             print(f"[TRADE] Fetched {len(markets)} trending markets, showing top {limit}. "
                   f"Top: ${markets[0]['volume']:,.0f} — {markets[0]['question'][:50]}")
         else:
-            print("[TRADE] No trending markets found")
+            print("[TRADE] No trending markets found from /markets endpoint")
 
     except Exception as e:
         print(f"[TRADE] Trending fetch error: {e}")
+        _tb.print_exc()
     return _trending_cache["markets"]
 
 

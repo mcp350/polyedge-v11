@@ -13,17 +13,16 @@ import config as _cfg
 log = logging.getLogger("polytragent.trading")
 
 # ═══════════════════════════════════════════════
-# PROXY SUPPORT (bypass Polymarket geoblock)
-# CLOB_HOST is set via config.CLOB_BASE which uses the EU
-# reverse proxy (http://13.49.25.66) when CLOB_PROXY_URL is set.
-# The py-clob-client SDK connects directly to CLOB_HOST.
+# CLOB API CONNECTION
+# Direct connection to clob.polymarket.com — the EU nginx proxy
+# strips POLY_* auth headers (underscores). If Railway geoblocks
+# the direct connection, fix nginx: underscores_in_headers on;
 # ═══════════════════════════════════════════════
 
-CLOB_HOST = _cfg.CLOB_BASE        # EU proxy — actual HTTP destination for requests
-CLOB_AUTH_HOST = _cfg.CLOB_AUTH_HOST  # Real Polymarket host — used for ECDSA signing only
+CLOB_HOST = _cfg.CLOB_BASE  # https://clob.polymarket.com
 CHAIN_ID = 137  # Polygon mainnet
 
-log.info(f"CLOB routing: sign via {CLOB_AUTH_HOST} → send via {CLOB_HOST}")
+log.info(f"CLOB host: {CLOB_HOST}")
 
 # ═══════════════════════════════════════════════
 # FEE CALCULATION & TRACKING
@@ -143,14 +142,11 @@ def _get_admin_client():
         if not private_key.startswith("0x"):
             private_key = "0x" + private_key
 
-        # Create with real host so signatures reference clob.polymarket.com
         client = ClobClient(
-            CLOB_AUTH_HOST, key=private_key, chain_id=CHAIN_ID, signature_type=0,
+            CLOB_HOST, key=private_key, chain_id=CHAIN_ID, signature_type=0,
         )
         creds = ApiCreds(api_key=api_key, api_secret=api_secret, api_passphrase=api_passphrase)
         client.set_api_creds(creds)
-        # Switch to EU proxy for actual HTTP requests (bypass US geoblock)
-        client.host = CLOB_HOST
 
         _admin_client = client
         _admin_initialized = True
@@ -204,17 +200,14 @@ def _get_client_for_user(chat_id: str):
     try:
         from py_clob_client.client import ClobClient
 
-        # Step 1: Create client with REAL host — ECDSA signatures must reference clob.polymarket.com
+        # Create client connected directly to Polymarket CLOB
         client = ClobClient(
-            CLOB_AUTH_HOST, key=pk, chain_id=CHAIN_ID, signature_type=0,
+            CLOB_HOST, key=pk, chain_id=CHAIN_ID, signature_type=0,
         )
 
-        # Step 2: Derive API credentials using real host (auth endpoint also on real host)
+        # Derive API credentials (L1 auth with wallet signature)
         creds = client.create_or_derive_api_creds()
         client.set_api_creds(creds)
-
-        # Step 3: Switch to EU proxy for all subsequent trade HTTP requests (bypass US geoblock)
-        client.host = CLOB_HOST
 
         # Get wallet address for logging
         from eth_account import Account
