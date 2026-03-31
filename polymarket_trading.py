@@ -348,58 +348,271 @@ def get_best_price(token_id: str, side: str = "BUY") -> Optional[float]:
 
 
 # ═══════════════════════════════════════════════
-# USDC HANDLING FOR POLYMARKET EXCHANGE
+# AUTO-SWAP & USDC.e HANDLING FOR POLYMARKET
 # ═══════════════════════════════════════════════
+#
+# Polymarket uses USDC.e (bridged) — NOT native USDC on Polygon.
+# Confirmed in py-clob-client/config.py: collateral="0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174"
+#
+# This module auto-swaps any supported token → USDC.e before trading,
+# so users can trade from MATIC, native USDC, WETH, WBTC, etc.
+# Swaps are done via OpenOcean DEX aggregator (free, no API key).
 
-# Polymarket uses USDC.e (bridged) — NOT native USDC on Polygon
-# This is confirmed in py-clob-client/config.py: collateral="0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174"
-_USDC_E_ADDRESS = "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174"   # USDC.e (bridged) — what Polymarket uses
-_USDC_NATIVE_ADDRESS = "0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359"  # Native USDC — NOT accepted by Polymarket
+_USDC_E = "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174"       # USDC.e (bridged) — Polymarket collateral
 _CTF_EXCHANGE = "0x4bFb41d5B3570DeFd03C39a9A4D8dE6Bd8B8982E"
 _NEG_RISK_CTF_EXCHANGE = "0xC5d563A36AE78145C45a50134d48A1215220f80a"
-_MAX_APPROVAL = 2**256 - 1  # Unlimited approval
+_MAX_APPROVAL = 2**256 - 1
 
-# Track which users we've already approved for (avoid redundant txns)
+# Supported tokens for auto-swap (address → {symbol, decimals})
+_SWAP_TOKENS = {
+    "0x0000000000000000000000000000000000001010": {"symbol": "MATIC", "decimals": 18},  # MATIC (native, use 0xEee... for swaps)
+    "0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359": {"symbol": "USDC", "decimals": 6},    # Native USDC
+    "0x7ceB23fD6bC0adD59E62ac25578270cFf1b9f619": {"symbol": "WETH", "decimals": 18},   # WETH
+    "0x1BFD67037B42Cf73acF2047067bd4F2C47D9BfD6": {"symbol": "WBTC", "decimals": 8},    # WBTC
+}
+# OpenOcean uses 0xEee... for native MATIC
+_NATIVE_TOKEN_ADDRESS = "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE"
+
 _approved_users = {}  # chat_id -> {"ctf": bool, "neg_risk": bool}
 
 _ERC20_ABI = [
     {"constant": True, "inputs": [{"name": "", "type": "address"}], "name": "balanceOf", "outputs": [{"name": "", "type": "uint256"}], "type": "function"},
     {"constant": True, "inputs": [{"name": "_owner", "type": "address"}, {"name": "_spender", "type": "address"}], "name": "allowance", "outputs": [{"name": "", "type": "uint256"}], "type": "function"},
     {"constant": False, "inputs": [{"name": "_spender", "type": "address"}, {"name": "_value", "type": "uint256"}], "name": "approve", "outputs": [{"name": "", "type": "bool"}], "type": "function"},
-    {"constant": False, "inputs": [{"name": "_to", "type": "address"}, {"name": "_value", "type": "uint256"}], "name": "transfer", "outputs": [{"name": "", "type": "bool"}], "type": "function"},
 ]
-
-# Polygon USDC native → USDC.e swap via 0x or direct contract
-# Native USDC migrator contract on Polygon (swaps native USDC to USDC.e 1:1)
-_USDC_MIGRATOR = "0x3870546cfd600ba87e4726de9e01d8ee58bba580"  # Unofficial, may not exist
-# We'll use a simple DEX swap via 0x/1inch if direct migration isn't available
 
 
 def _get_w3():
-    """Get a Web3 instance connected to Polygon."""
     from web3 import Web3
     rpc_url = os.environ.get("POLYGON_RPC", "https://polygon-rpc.com")
     return Web3(Web3.HTTPProvider(rpc_url))
 
 
-def _ensure_usdc_allowance(chat_id: str, neg_risk: bool = False):
+def _get_token_balances(w3, address: str) -> dict:
+    """Get all supported token balances for an address."""
+    from web3 import Web3
+    balances = {}
+
+    # USDC.e balance
+    usdc_e = w3.eth.contract(address=Web3.to_checksum_address(_USDC_E), abi=_ERC20_ABI)
+    raw = usdc_e.functions.balanceOf(address).call()
+    balances["USDC.e"] = {"raw": raw, "human": raw / 10**6, "address": _USDC_E, "decimals": 6}
+
+    # Native MATIC
+    matic_raw = w3.eth.get_balance(Web3.to_checksum_address(address))
+    balances["MATIC"] = {"raw": matic_raw, "human": float(w3.from_wei(matic_raw, "ether")),
+                         "address": _NATIVE_TOKEN_ADDRESS, "decimals": 18}
+
+    # ERC-20 tokens
+    for addr, info in _SWAP_TOKENS.items():
+        if info["symbol"] == "MATIC":
+            continue  # Already handled above
+        try:
+            token = w3.eth.contract(address=Web3.to_checksum_address(addr), abi=_ERC20_ABI)
+            raw = token.functions.balanceOf(address).call()
+            balances[info["symbol"]] = {"raw": raw, "human": raw / 10**info["decimals"],
+                                        "address": addr, "decimals": info["decimals"]}
+        except Exception as e:
+            log.debug(f"Balance check failed for {info['symbol']}: {e}")
+
+    return balances
+
+
+def _openocean_swap(w3, pk: str, address: str, in_token: str, amount_raw: int,
+                    in_decimals: int, slippage: float = 1.0) -> str:
     """
-    Ensure USDC.e is approved for Polymarket exchange before trading.
-    Also checks if user has USDC.e vs native USDC and warns accordingly.
+    Execute a token swap via OpenOcean DEX aggregator.
+    Returns tx hash on success, raises on failure.
+    """
+    import requests as req
+    from web3 import Web3
+
+    # OpenOcean swap endpoint for Polygon (chain 137)
+    url = "https://open-api.openocean.finance/v4/137/swap"
+    params = {
+        "inTokenAddress": in_token,
+        "outTokenAddress": _USDC_E,
+        "amount": str(amount_raw / 10**in_decimals),  # Human-readable amount
+        "gasPrice": str(w3.from_wei(w3.eth.gas_price, "gwei")),
+        "slippage": str(slippage),
+        "account": address,
+    }
+
+    log.info(f"[SWAP] OpenOcean request: {in_token[:10]}... -> USDC.e, amount={params['amount']}")
+    resp = req.get(url, params=params, timeout=20)
+    data = resp.json()
+
+    if data.get("code") != 200 or not data.get("data"):
+        error_msg = data.get("error", data.get("message", "Unknown swap error"))
+        raise Exception(f"OpenOcean swap failed: {error_msg}")
+
+    swap_data = data["data"]
+    out_amount = float(swap_data.get("outAmount", 0)) / 10**6
+    log.info(f"[SWAP] Quote: {params['amount']} -> {out_amount:.2f} USDC.e")
+
+    # For non-native tokens, we need to approve OpenOcean's router first
+    if in_token.lower() != _NATIVE_TOKEN_ADDRESS.lower():
+        router = Web3.to_checksum_address(swap_data.get("to", ""))
+        token_contract = w3.eth.contract(address=Web3.to_checksum_address(in_token), abi=_ERC20_ABI)
+        current_allowance = token_contract.functions.allowance(address, router).call()
+
+        if current_allowance < amount_raw:
+            log.info(f"[SWAP] Approving {in_token[:10]}... for OpenOcean router {router[:10]}...")
+            nonce = w3.eth.get_transaction_count(address)
+            approve_tx = token_contract.functions.approve(router, _MAX_APPROVAL).build_transaction({
+                "from": address, "nonce": nonce, "gas": 100_000,
+                "gasPrice": w3.eth.gas_price, "chainId": CHAIN_ID,
+            })
+            signed = w3.eth.account.sign_transaction(approve_tx, private_key=pk)
+            tx_hash = w3.eth.send_raw_transaction(signed.raw_transaction)
+            receipt = w3.eth.wait_for_transaction_receipt(tx_hash, timeout=60)
+            if receipt.status != 1:
+                raise Exception(f"Token approval for swap failed")
+            log.info(f"[SWAP] Approval confirmed: {tx_hash.hex()}")
+
+    # Build and send swap transaction
+    nonce = w3.eth.get_transaction_count(address)
+    swap_tx = {
+        "from": address,
+        "to": Web3.to_checksum_address(swap_data["to"]),
+        "data": swap_data["data"],
+        "value": int(swap_data.get("value", 0)),
+        "gas": int(float(swap_data.get("estimatedGas", 300_000)) * 1.3),  # 30% buffer
+        "gasPrice": w3.eth.gas_price,
+        "nonce": nonce,
+        "chainId": CHAIN_ID,
+    }
+
+    signed = w3.eth.account.sign_transaction(swap_tx, private_key=pk)
+    tx_hash = w3.eth.send_raw_transaction(signed.raw_transaction)
+    receipt = w3.eth.wait_for_transaction_receipt(tx_hash, timeout=90)
+
+    if receipt.status != 1:
+        raise Exception(f"Swap transaction reverted: {tx_hash.hex()}")
+
+    log.info(f"[SWAP] Success! tx={tx_hash.hex()}, got ~{out_amount:.2f} USDC.e")
+    return tx_hash.hex()
+
+
+def _auto_swap_to_usdc_e(chat_id: str, needed_amount: float) -> dict:
+    """
+    Auto-swap user's tokens to USDC.e if they don't have enough.
+    Checks USDC.e balance first, then tries to swap from other tokens.
+
+    Returns: {"swapped": bool, "from_token": str, "amount": float, "tx": str, "usdc_e_balance": float}
     """
     import wallet_manager as wm
     from web3 import Web3
 
     chat_str = str(chat_id)
+    pk = wm.get_primary_private_key(chat_str)
+    if not pk:
+        return {"swapped": False, "error": "No wallet found"}
+    if not pk.startswith("0x"):
+        pk = "0x" + pk
 
-    # Check in-memory cache first
+    w3 = _get_w3()
+    address = w3.eth.account.from_key(pk).address
+    balances = _get_token_balances(w3, address)
+
+    usdc_e_bal = balances.get("USDC.e", {}).get("human", 0)
+    log.info(f"[AUTO-SWAP] User {chat_str} needs ${needed_amount:.2f}, has ${usdc_e_bal:.2f} USDC.e")
+
+    # If already enough USDC.e, no swap needed
+    if usdc_e_bal >= needed_amount:
+        return {"swapped": False, "usdc_e_balance": usdc_e_bal}
+
+    # Find the best token to swap from (prioritize stablecoins, then large balances)
+    swap_priority = ["USDC", "WETH", "WBTC", "MATIC"]
+    best_token = None
+    best_value_usd = 0
+
+    for symbol in swap_priority:
+        info = balances.get(symbol)
+        if not info or info["human"] <= 0:
+            continue
+
+        # For MATIC, keep 0.5 MATIC for gas
+        available = info["human"]
+        if symbol == "MATIC":
+            available = max(0, available - 0.5)
+            if available <= 0:
+                continue
+
+        # Rough USD estimation (MATIC~$0.5, WETH~$2000, WBTC~$80000, USDC=$1)
+        price_est = {"USDC": 1, "MATIC": 0.5, "WETH": 2000, "WBTC": 80000}.get(symbol, 0)
+        value_usd = available * price_est
+
+        if value_usd > best_value_usd:
+            best_value_usd = value_usd
+            best_token = {
+                "symbol": symbol,
+                "available": available,
+                "value_usd": value_usd,
+                "address": info["address"],
+                "decimals": info["decimals"],
+                "raw": info["raw"],
+            }
+
+    if not best_token:
+        # Build helpful error with what user has
+        bal_str = ", ".join(f"{s}: {b['human']:.4f}" for s, b in balances.items() if b["human"] > 0)
+        raise Exception(
+            f"Not enough funds to trade. Need ${needed_amount:.2f} USDC.e.\n"
+            f"Your balances: {bal_str or 'all zero'}\n"
+            f"Deposit USDC.e, USDC, MATIC, WETH, or WBTC to: {address}"
+        )
+
+    if best_value_usd < needed_amount * 0.5:
+        raise Exception(
+            f"Not enough value to swap. Your {best_token['symbol']} is worth ~${best_value_usd:.2f}, "
+            f"but you need ${needed_amount:.2f}.\nDeposit more funds to: {address}"
+        )
+
+    log.info(f"[AUTO-SWAP] Swapping {best_token['symbol']} (~${best_value_usd:.2f}) -> USDC.e")
+
+    # For MATIC, calculate amount to swap (keep 0.5 for gas)
+    if best_token["symbol"] == "MATIC":
+        swap_raw = int((best_token["available"]) * 10**18)
+        in_addr = _NATIVE_TOKEN_ADDRESS
+    else:
+        swap_raw = best_token["raw"]
+        in_addr = best_token["address"]
+
+    try:
+        tx_hash = _openocean_swap(w3, pk, address, in_addr, swap_raw, best_token["decimals"])
+
+        # Re-check USDC.e balance after swap
+        usdc_e_contract = w3.eth.contract(address=Web3.to_checksum_address(_USDC_E), abi=_ERC20_ABI)
+        new_balance = usdc_e_contract.functions.balanceOf(address).call() / 10**6
+
+        return {
+            "swapped": True,
+            "from_token": best_token["symbol"],
+            "amount_swapped": best_token["available"],
+            "tx": tx_hash,
+            "usdc_e_balance": new_balance,
+        }
+    except Exception as e:
+        log.error(f"[AUTO-SWAP] Swap failed: {e}")
+        raise Exception(
+            f"Auto-swap from {best_token['symbol']} to USDC.e failed: {str(e)}\n"
+            f"You can manually swap on QuickSwap/Uniswap, or deposit USDC.e directly."
+        )
+
+
+def _ensure_usdc_allowance(chat_id: str, neg_risk: bool = False):
+    """Approve USDC.e spending for Polymarket exchange contract."""
+    import wallet_manager as wm
+    from web3 import Web3
+
+    chat_str = str(chat_id)
     cached = _approved_users.get(chat_str, {})
     exchange_key = "neg_risk" if neg_risk else "ctf"
     if cached.get(exchange_key):
-        return  # Already approved this session
+        return
 
     exchange_addr = _NEG_RISK_CTF_EXCHANGE if neg_risk else _CTF_EXCHANGE
-
     pk = wm.get_primary_private_key(chat_str)
     if not pk:
         return
@@ -407,65 +620,25 @@ def _ensure_usdc_allowance(chat_id: str, neg_risk: bool = False):
         pk = "0x" + pk
 
     w3 = _get_w3()
-    account = w3.eth.account.from_key(pk)
-    address = account.address
+    address = w3.eth.account.from_key(pk).address
+    usdc_e = w3.eth.contract(address=Web3.to_checksum_address(_USDC_E), abi=_ERC20_ABI)
 
-    usdc_e = w3.eth.contract(address=Web3.to_checksum_address(_USDC_E_ADDRESS), abi=_ERC20_ABI)
-    usdc_native = w3.eth.contract(address=Web3.to_checksum_address(_USDC_NATIVE_ADDRESS), abi=_ERC20_ABI)
+    current = usdc_e.functions.allowance(address, Web3.to_checksum_address(exchange_addr)).call()
+    balance = usdc_e.functions.balanceOf(address).call()
 
-    # Check USDC.e balance (what Polymarket needs)
-    usdc_e_balance = usdc_e.functions.balanceOf(address).call()
-    usdc_e_human = usdc_e_balance / 10**6
-
-    # Check native USDC balance
-    native_balance = usdc_native.functions.balanceOf(address).call()
-    native_human = native_balance / 10**6
-
-    log.info(f"[TRADE-PREP] {address[:10]}... USDC.e={usdc_e_human:.2f}, NativeUSDC={native_human:.2f}")
-
-    # If user has native USDC but no USDC.e, they need to convert
-    if usdc_e_balance == 0 and native_balance > 0:
-        log.warning(f"User {chat_str} has ${native_human:.2f} native USDC but $0 USDC.e. "
-                    "Polymarket requires USDC.e. Need to swap.")
-        raise Exception(
-            f"Your wallet has ${native_human:.2f} in native USDC, but Polymarket requires "
-            f"USDC.e (bridged USDC) to trade. Please swap your native USDC to USDC.e on "
-            f"a DEX like QuickSwap or Uniswap, or send USDC.e directly to your wallet.\n\n"
-            f"Your wallet: {address}"
-        )
-
-    if usdc_e_balance == 0:
-        log.warning(f"User {chat_str} has no USDC.e at all")
-        raise Exception(
-            f"Your wallet has $0 USDC.e. Polymarket requires USDC.e (bridged USDC) to trade. "
-            f"Deposit USDC.e to your wallet address: {address}"
-        )
-
-    # Now check and set allowance for USDC.e on the exchange
-    current_allowance = usdc_e.functions.allowance(
-        address, Web3.to_checksum_address(exchange_addr)
-    ).call()
-
-    if current_allowance >= usdc_e_balance:
+    if current >= balance and balance > 0:
         _approved_users.setdefault(chat_str, {})[exchange_key] = True
         log.info(f"USDC.e allowance OK for {address[:10]}...")
         return
 
-    # Need to approve
-    log.info(f"Setting USDC.e approval for {address[:10]}... on exchange {exchange_addr[:10]}...")
-
+    log.info(f"Setting USDC.e approval for {address[:10]}...")
     nonce = w3.eth.get_transaction_count(address)
     tx = usdc_e.functions.approve(
-        Web3.to_checksum_address(exchange_addr),
-        _MAX_APPROVAL
+        Web3.to_checksum_address(exchange_addr), _MAX_APPROVAL
     ).build_transaction({
-        "from": address,
-        "nonce": nonce,
-        "gas": 100_000,
-        "gasPrice": w3.eth.gas_price,
-        "chainId": CHAIN_ID,
+        "from": address, "nonce": nonce, "gas": 100_000,
+        "gasPrice": w3.eth.gas_price, "chainId": CHAIN_ID,
     })
-
     signed = w3.eth.account.sign_transaction(tx, private_key=pk)
     tx_hash = w3.eth.send_raw_transaction(signed.raw_transaction)
     receipt = w3.eth.wait_for_transaction_receipt(tx_hash, timeout=60)
@@ -474,8 +647,7 @@ def _ensure_usdc_allowance(chat_id: str, neg_risk: bool = False):
         _approved_users.setdefault(chat_str, {})[exchange_key] = True
         log.info(f"USDC.e approved! tx={tx_hash.hex()}")
     else:
-        log.error(f"USDC.e approval tx failed: {tx_hash.hex()}")
-        raise Exception(f"USDC.e approval transaction failed")
+        raise Exception("USDC.e approval transaction failed")
 
 
 # ═══════════════════════════════════════════════
@@ -503,18 +675,30 @@ def market_buy(token_id: str, amount: float, neg_risk: bool = False,
     if not chat_id:
         return {"success": False, "error": "chat_id required for trading"}
 
-    # Check user balance first
+    # ── Basic wallet & gas check ──
     bal = check_user_balance(chat_id)
-    if not bal["ready"]:
-        if not bal.get("has_gas"):
-            return {"success": False, "error": f"Need MATIC for gas. Your balance: {bal.get('matic', 0):.4f} MATIC. Send at least 0.01 MATIC to your wallet."}
-        return {"success": False, "error": f"Insufficient USDC. Balance: ${bal.get('usdc', 0):.2f}, needed: ${amount:.2f}"}
-    if bal["usdc"] < amount:
-        return {"success": False, "error": f"Insufficient USDC. Balance: ${bal['usdc']:.2f}, needed: ${amount:.2f}"}
+    if not bal.get("has_gas"):
+        return {"success": False, "error": f"Need MATIC for gas. Your balance: {bal.get('matic', 0):.4f} MATIC. Send at least 0.01 MATIC to your wallet."}
+    if not bal.get("address"):
+        return {"success": False, "error": bal.get("error", "No wallet found")}
+
+    # ── Check total value across all swappable tokens ──
+    # Don't block here if user has other tokens — auto-swap will handle conversion
+    total_value = bal.get("usdc", 0)  # This includes both USDC + USDC.e
+    if total_value < amount:
+        # Check if they have value in other tokens (MATIC, WETH, WBTC)
+        matic_val = max(0, bal.get("matic", 0) - 0.5) * 0.5  # keep 0.5 for gas
+        total_swappable = total_value + matic_val
+        if total_swappable < amount * 0.5:
+            return {"success": False, "error": (
+                f"Insufficient funds. Balance: ${bal.get('usdc', 0):.2f} USDC, "
+                f"{bal.get('matic', 0):.4f} MATIC (~${matic_val:.2f}).\n"
+                f"Need ${amount:.2f}. Deposit USDC.e, USDC, MATIC, WETH, or WBTC to:\n"
+                f"{bal.get('address', 'unknown')}"
+            )}
 
     client = _get_client_for_user(chat_id)
     if not client:
-        # Check if there was a specific init error
         cached_err = _user_clients.get(str(chat_id), {}).get("error")
         if cached_err:
             return {"success": False, "error": f"Wallet init failed: {cached_err}"}
@@ -525,12 +709,23 @@ def market_buy(token_id: str, amount: float, neg_risk: bool = False,
             return {"success": False, "error": "Wallet found but CLOB client init failed. Possible network issue with Polymarket API."}
         return {"success": False, "error": "No wallet found. Use /start to create one, or /import_wallet to restore an existing wallet with your private key."}
 
-    # ── Check USDC.e balance & approve for Polymarket exchange ──
+    # ── Auto-swap other tokens to USDC.e if needed ──
+    try:
+        swap_result = _auto_swap_to_usdc_e(chat_id, amount)
+        if swap_result.get("swapped"):
+            log.info(f"[TRADE] Auto-swapped {swap_result.get('from_token')} -> USDC.e, "
+                     f"new balance: ${swap_result.get('usdc_e_balance', 0):.2f}")
+    except Exception as e:
+        err_msg = str(e)
+        log.error(f"[TRADE] Auto-swap failed: {err_msg}")
+        return {"success": False, "error": err_msg}
+
+    # ── Approve USDC.e spending for Polymarket exchange ──
     try:
         _ensure_usdc_allowance(chat_id, neg_risk)
     except Exception as e:
         err_msg = str(e)
-        if "native USDC" in err_msg or "USDC.e" in err_msg:
+        if "USDC" in err_msg:
             return {"success": False, "error": err_msg}
         log.warning(f"Auto-approve USDC.e failed (continuing anyway): {e}")
 
