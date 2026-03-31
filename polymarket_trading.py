@@ -361,6 +361,8 @@ def get_best_price(token_id: str, side: str = "BUY") -> Optional[float]:
 _USDC_E = "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174"       # USDC.e (bridged) — Polymarket collateral
 _CTF_EXCHANGE = "0x4bFb41d5B3570DeFd03C39a9A4D8dE6Bd8B8982E"
 _NEG_RISK_CTF_EXCHANGE = "0xC5d563A36AE78145C45a50134d48A1215220f80a"
+_NEG_RISK_ADAPTER = "0xd91E80cF2E7be2e162c6513ceD06f1dD0dA35296"
+_CT_CONTRACT = "0x4D97DCd97eC945f40cF65F87097ACe5EA0476045"  # Conditional Tokens (ERC-1155)
 _MAX_APPROVAL = 2**256 - 1
 
 # Supported tokens for auto-swap (address → {symbol, decimals})
@@ -697,6 +699,84 @@ def _ensure_usdc_allowance(chat_id: str, neg_risk: bool = False):
         raise Exception("USDC.e approval transaction failed")
 
 
+# ERC-1155 ABI for Conditional Tokens (setApprovalForAll + isApprovedForAll)
+_ERC1155_ABI = json.loads('[{"inputs":[{"name":"operator","type":"address"},{"name":"approved","type":"bool"}],"name":"setApprovalForAll","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"name":"account","type":"address"},{"name":"operator","type":"address"}],"name":"isApprovedForAll","outputs":[{"name":"","type":"bool"}],"stateMutability":"view","type":"function"}]')
+
+_ct_approved_users = {}  # chat_str -> {"ctf": True, "neg_risk": True}
+
+
+def _ensure_ct_allowance(chat_id: str, neg_risk: bool = False):
+    """
+    Approve Conditional Tokens (ERC-1155) for Polymarket exchange.
+    Required for SELL orders — the exchange needs permission to transfer outcome tokens.
+    """
+    import wallet_manager as wm
+    from web3 import Web3
+
+    chat_str = str(chat_id)
+    ct_key = "neg_risk" if neg_risk else "ctf"
+
+    # Check cache
+    if _ct_approved_users.get(chat_str, {}).get(ct_key):
+        return
+
+    # For selling: approve BOTH the exchange AND the neg risk adapter on the CT contract
+    exchange_addr = _NEG_RISK_CTF_EXCHANGE if neg_risk else _CTF_EXCHANGE
+
+    pk = wm.get_primary_private_key(chat_str)
+    if not pk:
+        return
+    if not pk.startswith("0x"):
+        pk = "0x" + pk
+
+    w3 = _get_w3()
+    address = w3.eth.account.from_key(pk).address
+    ct = w3.eth.contract(address=Web3.to_checksum_address(_CT_CONTRACT), abi=_ERC1155_ABI)
+
+    # Check if already approved
+    already_approved = ct.functions.isApprovedForAll(address, Web3.to_checksum_address(exchange_addr)).call()
+    if already_approved:
+        _ct_approved_users.setdefault(chat_str, {})[ct_key] = True
+        log.info(f"CT approval already set for {address[:10]}... on {ct_key}")
+        return
+
+    log.info(f"Setting CT (ERC-1155) approval for {address[:10]}... -> {exchange_addr[:10]}...")
+    nonce = w3.eth.get_transaction_count(address)
+    tx = ct.functions.setApprovalForAll(
+        Web3.to_checksum_address(exchange_addr), True
+    ).build_transaction({
+        "from": address, "nonce": nonce, "gas": 100_000,
+        "gasPrice": w3.eth.gas_price, "chainId": CHAIN_ID,
+    })
+    signed = w3.eth.account.sign_transaction(tx, private_key=pk)
+    tx_hash = w3.eth.send_raw_transaction(signed.raw_transaction)
+    receipt = w3.eth.wait_for_transaction_receipt(tx_hash, timeout=60)
+
+    if receipt.status == 1:
+        _ct_approved_users.setdefault(chat_str, {})[ct_key] = True
+        log.info(f"CT approved! tx={tx_hash.hex()}")
+    else:
+        raise Exception("Conditional Token approval failed — check MATIC for gas")
+
+    # For neg_risk markets, also approve the adapter
+    if neg_risk:
+        adapter_approved = ct.functions.isApprovedForAll(
+            address, Web3.to_checksum_address(_NEG_RISK_ADAPTER)).call()
+        if not adapter_approved:
+            nonce = w3.eth.get_transaction_count(address)
+            tx2 = ct.functions.setApprovalForAll(
+                Web3.to_checksum_address(_NEG_RISK_ADAPTER), True
+            ).build_transaction({
+                "from": address, "nonce": nonce, "gas": 100_000,
+                "gasPrice": w3.eth.gas_price, "chainId": CHAIN_ID,
+            })
+            signed2 = w3.eth.account.sign_transaction(tx2, private_key=pk)
+            tx_hash2 = w3.eth.send_raw_transaction(signed2.raw_transaction)
+            receipt2 = w3.eth.wait_for_transaction_receipt(tx_hash2, timeout=60)
+            if receipt2.status == 1:
+                log.info(f"Neg-risk adapter approved! tx={tx_hash2.hex()}")
+
+
 # ═══════════════════════════════════════════════
 # ORDER EXECUTION
 # ═══════════════════════════════════════════════
@@ -872,6 +952,13 @@ def market_sell(token_id: str, amount: float, neg_risk: bool = False,
     client = _get_client_for_user(chat_id)
     if not client:
         return {"success": False, "error": "No wallet found. Use /start to create one, or /import_wallet to restore an existing wallet with your private key."}
+
+    # ── Approve Conditional Tokens for exchange (required for selling) ──
+    try:
+        _ensure_ct_allowance(chat_id, neg_risk)
+    except Exception as e:
+        log.error(f"CT approval failed for sell: {e}")
+        return {"success": False, "error": f"Token approval failed: {e}. Need MATIC for gas."}
 
     try:
         from py_clob_client.clob_types import MarketOrderArgs, OrderType
