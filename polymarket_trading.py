@@ -391,13 +391,11 @@ def _get_w3():
         if w3.is_connected():
             return w3
 
-    # Reliable free Polygon RPCs (polygon-rpc.com often returns 401)
+    # Reliable free Polygon RPCs (verified working 2026-03-31)
     fallbacks = [
-        "https://polygon.llamarpc.com",
-        "https://rpc.ankr.com/polygon",
-        "https://polygon.drpc.org",
         "https://polygon-bor-rpc.publicnode.com",
-        "https://polygon-rpc.com",
+        "https://polygon.drpc.org",
+        "https://1rpc.io/matic",
     ]
     for rpc in fallbacks:
         try:
