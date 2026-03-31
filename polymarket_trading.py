@@ -348,11 +348,13 @@ def get_best_price(token_id: str, side: str = "BUY") -> Optional[float]:
 
 
 # ═══════════════════════════════════════════════
-# USDC APPROVAL FOR POLYMARKET EXCHANGE
+# USDC HANDLING FOR POLYMARKET EXCHANGE
 # ═══════════════════════════════════════════════
 
-# Polymarket exchange contract addresses on Polygon
-_USDC_ADDRESS = "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174"  # USDC.e on Polygon
+# Polymarket uses USDC.e (bridged) — NOT native USDC on Polygon
+# This is confirmed in py-clob-client/config.py: collateral="0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174"
+_USDC_E_ADDRESS = "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174"   # USDC.e (bridged) — what Polymarket uses
+_USDC_NATIVE_ADDRESS = "0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359"  # Native USDC — NOT accepted by Polymarket
 _CTF_EXCHANGE = "0x4bFb41d5B3570DeFd03C39a9A4D8dE6Bd8B8982E"
 _NEG_RISK_CTF_EXCHANGE = "0xC5d563A36AE78145C45a50134d48A1215220f80a"
 _MAX_APPROVAL = 2**256 - 1  # Unlimited approval
@@ -361,15 +363,29 @@ _MAX_APPROVAL = 2**256 - 1  # Unlimited approval
 _approved_users = {}  # chat_id -> {"ctf": bool, "neg_risk": bool}
 
 _ERC20_ABI = [
+    {"constant": True, "inputs": [{"name": "", "type": "address"}], "name": "balanceOf", "outputs": [{"name": "", "type": "uint256"}], "type": "function"},
     {"constant": True, "inputs": [{"name": "_owner", "type": "address"}, {"name": "_spender", "type": "address"}], "name": "allowance", "outputs": [{"name": "", "type": "uint256"}], "type": "function"},
     {"constant": False, "inputs": [{"name": "_spender", "type": "address"}, {"name": "_value", "type": "uint256"}], "name": "approve", "outputs": [{"name": "", "type": "bool"}], "type": "function"},
+    {"constant": False, "inputs": [{"name": "_to", "type": "address"}, {"name": "_value", "type": "uint256"}], "name": "transfer", "outputs": [{"name": "", "type": "bool"}], "type": "function"},
 ]
+
+# Polygon USDC native → USDC.e swap via 0x or direct contract
+# Native USDC migrator contract on Polygon (swaps native USDC to USDC.e 1:1)
+_USDC_MIGRATOR = "0x3870546cfd600ba87e4726de9e01d8ee58bba580"  # Unofficial, may not exist
+# We'll use a simple DEX swap via 0x/1inch if direct migration isn't available
+
+
+def _get_w3():
+    """Get a Web3 instance connected to Polygon."""
+    from web3 import Web3
+    rpc_url = os.environ.get("POLYGON_RPC", "https://polygon-rpc.com")
+    return Web3(Web3.HTTPProvider(rpc_url))
 
 
 def _ensure_usdc_allowance(chat_id: str, neg_risk: bool = False):
     """
-    Check USDC allowance for Polymarket exchange contracts and approve if needed.
-    Must be called before placing any trade.
+    Ensure USDC.e is approved for Polymarket exchange before trading.
+    Also checks if user has USDC.e vs native USDC and warns accordingly.
     """
     import wallet_manager as wm
     from web3 import Web3
@@ -390,31 +406,56 @@ def _ensure_usdc_allowance(chat_id: str, neg_risk: bool = False):
     if not pk.startswith("0x"):
         pk = "0x" + pk
 
-    rpc_url = os.environ.get("POLYGON_RPC", "https://polygon-rpc.com")
-    w3 = Web3(Web3.HTTPProvider(rpc_url))
+    w3 = _get_w3()
     account = w3.eth.account.from_key(pk)
     address = account.address
 
-    usdc = w3.eth.contract(
-        address=Web3.to_checksum_address(_USDC_ADDRESS),
-        abi=_ERC20_ABI
-    )
+    usdc_e = w3.eth.contract(address=Web3.to_checksum_address(_USDC_E_ADDRESS), abi=_ERC20_ABI)
+    usdc_native = w3.eth.contract(address=Web3.to_checksum_address(_USDC_NATIVE_ADDRESS), abi=_ERC20_ABI)
 
-    # Check current allowance
-    current = usdc.functions.allowance(address, Web3.to_checksum_address(exchange_addr)).call()
-    min_required = 1_000_000 * 10**6  # $1M in USDC (plenty of headroom)
+    # Check USDC.e balance (what Polymarket needs)
+    usdc_e_balance = usdc_e.functions.balanceOf(address).call()
+    usdc_e_human = usdc_e_balance / 10**6
 
-    if current >= min_required:
-        # Already approved
+    # Check native USDC balance
+    native_balance = usdc_native.functions.balanceOf(address).call()
+    native_human = native_balance / 10**6
+
+    log.info(f"[TRADE-PREP] {address[:10]}... USDC.e={usdc_e_human:.2f}, NativeUSDC={native_human:.2f}")
+
+    # If user has native USDC but no USDC.e, they need to convert
+    if usdc_e_balance == 0 and native_balance > 0:
+        log.warning(f"User {chat_str} has ${native_human:.2f} native USDC but $0 USDC.e. "
+                    "Polymarket requires USDC.e. Need to swap.")
+        raise Exception(
+            f"Your wallet has ${native_human:.2f} in native USDC, but Polymarket requires "
+            f"USDC.e (bridged USDC) to trade. Please swap your native USDC to USDC.e on "
+            f"a DEX like QuickSwap or Uniswap, or send USDC.e directly to your wallet.\n\n"
+            f"Your wallet: {address}"
+        )
+
+    if usdc_e_balance == 0:
+        log.warning(f"User {chat_str} has no USDC.e at all")
+        raise Exception(
+            f"Your wallet has $0 USDC.e. Polymarket requires USDC.e (bridged USDC) to trade. "
+            f"Deposit USDC.e to your wallet address: {address}"
+        )
+
+    # Now check and set allowance for USDC.e on the exchange
+    current_allowance = usdc_e.functions.allowance(
+        address, Web3.to_checksum_address(exchange_addr)
+    ).call()
+
+    if current_allowance >= usdc_e_balance:
         _approved_users.setdefault(chat_str, {})[exchange_key] = True
-        log.info(f"USDC allowance OK for {address[:10]}... on {'neg_risk' if neg_risk else 'ctf'} exchange")
+        log.info(f"USDC.e allowance OK for {address[:10]}...")
         return
 
-    # Need to approve — send approval transaction
-    log.info(f"Setting USDC approval for {address[:10]}... on {'neg_risk' if neg_risk else 'ctf'} exchange")
+    # Need to approve
+    log.info(f"Setting USDC.e approval for {address[:10]}... on exchange {exchange_addr[:10]}...")
 
     nonce = w3.eth.get_transaction_count(address)
-    tx = usdc.functions.approve(
+    tx = usdc_e.functions.approve(
         Web3.to_checksum_address(exchange_addr),
         _MAX_APPROVAL
     ).build_transaction({
@@ -431,10 +472,10 @@ def _ensure_usdc_allowance(chat_id: str, neg_risk: bool = False):
 
     if receipt.status == 1:
         _approved_users.setdefault(chat_str, {})[exchange_key] = True
-        log.info(f"USDC approved! tx={tx_hash.hex()}")
+        log.info(f"USDC.e approved! tx={tx_hash.hex()}")
     else:
-        log.error(f"USDC approval tx failed: {tx_hash.hex()}")
-        raise Exception(f"USDC approval transaction failed: {tx_hash.hex()}")
+        log.error(f"USDC.e approval tx failed: {tx_hash.hex()}")
+        raise Exception(f"USDC.e approval transaction failed")
 
 
 # ═══════════════════════════════════════════════
@@ -484,11 +525,14 @@ def market_buy(token_id: str, amount: float, neg_risk: bool = False,
             return {"success": False, "error": "Wallet found but CLOB client init failed. Possible network issue with Polymarket API."}
         return {"success": False, "error": "No wallet found. Use /start to create one, or /import_wallet to restore an existing wallet with your private key."}
 
-    # ── Auto-approve USDC for Polymarket exchange contracts ──
+    # ── Check USDC.e balance & approve for Polymarket exchange ──
     try:
         _ensure_usdc_allowance(chat_id, neg_risk)
     except Exception as e:
-        log.warning(f"Auto-approve USDC failed (continuing anyway): {e}")
+        err_msg = str(e)
+        if "native USDC" in err_msg or "USDC.e" in err_msg:
+            return {"success": False, "error": err_msg}
+        log.warning(f"Auto-approve USDC.e failed (continuing anyway): {e}")
 
     try:
         from py_clob_client.clob_types import MarketOrderArgs, OrderType
