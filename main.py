@@ -270,8 +270,7 @@ def send_main_menu(chat_id):
         [[{"text": "🔬 Event Research", "callback_data": "quick_research"}],
          [{"text": "💰 Trade", "callback_data": "menu_trading"},
           {"text": "👛 Wallet", "callback_data": "menu_wallet"}],
-         [{"text": "🐋 Whales", "callback_data": "menu_whales"},
-          {"text": "🔄 Copy Trade", "callback_data": "menu_auto_copy"}],
+         [{"text": "🐋 Whales & Copy Trade", "callback_data": "menu_whales"}],
          [{"text": "📊 Portfolio", "callback_data": "menu_portfolio"},
           {"text": "📈 Strategies", "callback_data": "menu_trade"}],
          [{"text": "🔬 Research", "callback_data": "menu_research"},
@@ -2350,32 +2349,54 @@ def show_auto_copy_settings_menu(chat_id):
          [{"text": "← Auto-Copy", "callback_data": "menu_auto_copy"}]])
 
 def show_whales_menu(chat_id):
-    """Show the whale directory — curated list with follow buttons."""
+    """Show the whale directory with copy trade settings."""
     import whale_discovery as wd_mod
     text, buttons = wd_mod.format_directory_page(page=0, per_page=5)
 
-    # Add following count header
     following = ct.get_following_count(str(chat_id))
+    is_pro = user_store.is_degen(str(chat_id))
     limit = user_store.get_wallet_tracking_limit(str(chat_id))
-    is_degen = user_store.is_degen(str(chat_id))
+
+    # Get copy trade settings
+    import copy_executor as _ce
+    ct_settings = _ce.get_auto_copy_settings(str(chat_id))
+    if is_pro and ct_settings and ct_settings.get("enabled"):
+        ct_status = (f"✅ Auto-Copy: <b>ON</b> "
+                     f"(${ct_settings.get('max_per_trade', 25)}/trade, "
+                     f"${ct_settings.get('daily_limit', 200)}/day)")
+    elif is_pro:
+        ct_status = "⏸ Auto-Copy: <b>OFF</b> (available — tap Rules to configure)"
+    else:
+        ct_status = "🔒 Auto-Copy: <b>Pro only</b> — notifications are free!"
+
+    tier_label = "🟢 Pro" if is_pro else "⚪ Free"
 
     header = (
-        f"📊 Following: <b>{following} / {limit}</b> wallets"
-        f"{' 🚀 Degen Mode' if is_degen else ''}\n"
-        f"🔔 You'll get <b>real-time alerts</b> when followed whales trade.\n\n"
+        f"🐋 <b>Whales & Copy Trade</b>\n\n"
+        f"📊 Following: <b>{following}/{limit}</b> wallets  •  {tier_label}\n"
+        f"🔔 Real-time alerts when followed whales trade\n"
+        f"{ct_status}\n\n"
     )
-    onboarding.send_inline(chat_id, header + text, buttons)
+
+    # Add copy trade settings buttons
+    extra_buttons = [
+        [{"text": "⚙️ Copy Trade Rules", "callback_data": "ct_rules"},
+         {"text": "➕ Add Wallet", "callback_data": "whale_add_custom"}],
+    ]
+    if not is_pro:
+        extra_buttons.append([{"text": "🚀 Upgrade to Pro — $79/mo", "callback_data": "degen_subscribe"}])
+    onboarding.send_inline(chat_id, header + text, extra_buttons + buttons)
 
 def show_degen_mode_info(chat_id):
-    """Degen Mode subscription info"""
-    is_degen = user_store.is_degen(chat_id) if hasattr(user_store, 'is_degen') else False
+    """Pro subscription info"""
+    is_pro = user_store.is_degen(str(chat_id)) if hasattr(user_store, 'is_degen') else False
 
-    if is_degen:
+    if is_pro:
         onboarding.send_inline(chat_id,
-            "🚀 <b>Degen Mode — ACTIVE</b>\n\n"
-            "You have unlimited access to:\n"
-            "• Unlimited whale tracking (3+ wallets)\n"
-            "• Advanced portfolio analytics\n"
+            "🚀 <b>Pro Plan — ACTIVE</b>\n\n"
+            "You have full access to:\n"
+            "• Unlimited whale wallet tracking\n"
+            "• Auto-execute copy trades\n"
             "• Priority alerts & notifications\n\n"
             "💰 $79/month billed to your Stripe account.\n"
             "🔄 Cancel anytime in settings.",
@@ -2383,16 +2404,17 @@ def show_degen_mode_info(chat_id):
              [{"text": "← Main Menu", "callback_data": "main_menu"}]])
     else:
         onboarding.send_inline(chat_id,
-            "🚀 <b>Degen Mode — Unlimited Whale Tracking</b>\n\n"
-            "Get the most from Polytragent:\n"
-            "• Unlimited whale wallet tracking (vs. 3 free)\n"
-            "• Advanced portfolio analytics\n"
-            "• Priority alerts & notifications\n"
-            "• Full whale discovery suite\n\n"
-            "💰 <b>$79/month</b>\n"
-            "✅ Cancel anytime. No lock-in.\n\n"
-            "🔗 Set up via Stripe checkout below.",
-            [[{"text": "💳 Upgrade to Degen Mode", "callback_data": "degen_subscribe"}],
+            "🚀 <b>Upgrade to Pro</b>\n\n"
+            "<b>Free plan (current):</b>\n"
+            "• Track up to 20 whale wallets\n"
+            "• Real-time trade notifications\n"
+            "• Manual copy trading\n\n"
+            "<b>Pro plan ($79/mo):</b>\n"
+            "• Unlimited whale wallets\n"
+            "• Auto-execute copy trades\n"
+            "• Priority alerts & analytics\n\n"
+            "✅ Cancel anytime. No lock-in.",
+            [[{"text": "🚀 Upgrade to Pro — $79/mo", "callback_data": "degen_subscribe"}],
              [{"text": "← Main Menu", "callback_data": "main_menu"}]])
 
 def _handle(cmd, chat_id):
@@ -3501,13 +3523,15 @@ def _extended_handle_callback(callback_query):
     # ── DEGEN MODE CALLBACKS (Phase 2) ──
     elif data == "degen_subscribe":
         onboarding.send_inline(chat_id,
-            "🚀 <b>Degen Mode Checkout</b>\n\n"
-            "Unlimited whale tracking + premium features.\n\n"
-            "$79/month, cancel anytime.\n\n"
+            "🚀 <b>Pro Plan Checkout</b>\n\n"
+            "• Unlimited whale wallets\n"
+            "• Auto-execute copy trades\n"
+            "• Priority alerts\n\n"
+            "💰 <b>$79/month</b>, cancel anytime.\n\n"
             "🔗 Opening Stripe checkout...",
             [[{"text": "← Main Menu", "callback_data": "main_menu"}]])
         # TODO: Integrate with Stripe checkout
-        tg.send("🔗 Stripe checkout: [Integration pending - contact support]", chat_id)
+        tg.send("🔗 Stripe checkout: [Integration pending - contact @polytragent]", chat_id)
     elif data == "degen_manage":
         onboarding.send_inline(chat_id,
             "⚙️ <b>Manage Degen Mode</b>\n\n"
@@ -3539,6 +3563,170 @@ def _extended_handle_callback(callback_query):
                 tg.send(ct.format_wallet_detail(w["address"]), chat_id)
                 return
         tg.send("❌ Wallet not found.", chat_id)
+
+    # ── COPY TRADE RULES UI ──
+    elif data == "ct_rules":
+        is_pro = user_store.is_degen(str(chat_id))
+        import copy_executor as _ce
+        settings = _ce.get_auto_copy_settings(str(chat_id))
+
+        # Copy amount per trade
+        amt = settings.get("max_per_trade", 25) if settings else 25
+        daily = settings.get("daily_limit", 200) if settings else 200
+        min_whale = settings.get("min_trade_usd", 500) if settings else 500
+        auto_sell = settings.get("auto_sell_mirror", True) if settings else True
+        auto_exec = _ce.is_auto_copy_enabled(str(chat_id))
+
+        text = (
+            "⚙️ <b>Copy Trade Rules</b>\n\n"
+            f"💰 Copy Amount: <b>${amt}</b> per trade\n"
+            f"📊 Daily Limit: <b>${daily}</b>\n"
+            f"🐋 Min Whale Trade: <b>${min_whale}</b>\n"
+            f"📉 Auto-Sell (mirror): <b>{'ON' if auto_sell else 'OFF'}</b>\n"
+            f"🤖 Auto-Execute: <b>{'ON ✅' if auto_exec else 'OFF'}</b>"
+        )
+        if not is_pro:
+            text += "\n\n🔒 <i>Auto-execute requires Pro ($79/mo). Free users get notifications to trade manually.</i>"
+
+        btns = [
+            [{"text": f"💰 Amount: ${amt}", "callback_data": "ct_set_amount"},
+             {"text": f"📊 Daily: ${daily}", "callback_data": "ct_set_daily"}],
+            [{"text": f"🐋 Min Trade: ${min_whale}", "callback_data": "ct_set_min_whale"},
+             {"text": f"📉 Auto-Sell: {'ON' if auto_sell else 'OFF'}", "callback_data": "ct_toggle_autosell"}],
+        ]
+        if is_pro:
+            btns.append([{"text": f"🤖 Auto-Execute: {'ON ✅' if auto_exec else 'OFF'}", "callback_data": "ct_toggle_autoexec"}])
+        else:
+            btns.append([{"text": "🚀 Upgrade to Pro — $79/mo", "callback_data": "degen_subscribe"}])
+        btns.append([{"text": "← Back to Whales", "callback_data": "menu_whales"}])
+        onboarding.send_inline(chat_id, text, btns)
+
+    elif data == "ct_set_amount":
+        onboarding.send_inline(chat_id,
+            "💰 <b>Set Copy Amount Per Trade</b>\n\nHow much to copy each whale trade with:",
+            [[{"text": "$5", "callback_data": "ct_amt_5"}, {"text": "$10", "callback_data": "ct_amt_10"},
+              {"text": "$25", "callback_data": "ct_amt_25"}, {"text": "$50", "callback_data": "ct_amt_50"}],
+             [{"text": "$100", "callback_data": "ct_amt_100"}, {"text": "$250", "callback_data": "ct_amt_250"}],
+             [{"text": "← Back", "callback_data": "ct_rules"}]])
+
+    elif data.startswith("ct_amt_"):
+        amt = float(data.replace("ct_amt_", ""))
+        import copy_executor as _ce
+        settings = _ce.get_auto_copy_settings(str(chat_id))
+        if settings:
+            _ce.update_auto_copy_settings(str(chat_id), max_per_trade=amt, fixed_amount=amt)
+        else:
+            # Store in user preferences even if auto-copy not enabled
+            user_store.update_user(str(chat_id), ct_copy_amount=amt)
+        tg.send(f"✅ Copy amount set to <b>${amt:.0f}</b> per trade", chat_id)
+        # Show rules menu again
+        _extended_handle_callback(type('obj', (object,), {"data": "ct_rules", "message": type('m', (object,), {"chat": type('c', (object,), {"id": chat_id})()})()})())
+
+    elif data == "ct_set_daily":
+        onboarding.send_inline(chat_id,
+            "📊 <b>Set Daily Spending Limit</b>\n\nMax total across all copy trades per day:",
+            [[{"text": "$50", "callback_data": "ct_daily_50"}, {"text": "$100", "callback_data": "ct_daily_100"},
+              {"text": "$200", "callback_data": "ct_daily_200"}, {"text": "$500", "callback_data": "ct_daily_500"}],
+             [{"text": "$1000", "callback_data": "ct_daily_1000"}, {"text": "No Limit", "callback_data": "ct_daily_99999"}],
+             [{"text": "← Back", "callback_data": "ct_rules"}]])
+
+    elif data.startswith("ct_daily_"):
+        val = float(data.replace("ct_daily_", ""))
+        import copy_executor as _ce
+        settings = _ce.get_auto_copy_settings(str(chat_id))
+        if settings:
+            _ce.update_auto_copy_settings(str(chat_id), daily_limit=val)
+        else:
+            user_store.update_user(str(chat_id), ct_daily_limit=val)
+        label = "No Limit" if val >= 99999 else f"${val:.0f}"
+        tg.send(f"✅ Daily limit set to <b>{label}</b>", chat_id)
+        _extended_handle_callback(type('obj', (object,), {"data": "ct_rules", "message": type('m', (object,), {"chat": type('c', (object,), {"id": chat_id})()})()})())
+
+    elif data == "ct_set_min_whale":
+        onboarding.send_inline(chat_id,
+            "🐋 <b>Min Whale Trade Size</b>\n\nOnly copy trades larger than:",
+            [[{"text": "$500", "callback_data": "ct_minw_500"}, {"text": "$1,000", "callback_data": "ct_minw_1000"},
+              {"text": "$5,000", "callback_data": "ct_minw_5000"}, {"text": "$10,000", "callback_data": "ct_minw_10000"}],
+             [{"text": "← Back", "callback_data": "ct_rules"}]])
+
+    elif data.startswith("ct_minw_"):
+        val = float(data.replace("ct_minw_", ""))
+        import copy_executor as _ce
+        settings = _ce.get_auto_copy_settings(str(chat_id))
+        if settings:
+            _ce.update_auto_copy_settings(str(chat_id), min_trade_usd=val)
+        else:
+            user_store.update_user(str(chat_id), ct_min_whale=val)
+        tg.send(f"✅ Min whale trade size set to <b>${val:,.0f}</b>", chat_id)
+        _extended_handle_callback(type('obj', (object,), {"data": "ct_rules", "message": type('m', (object,), {"chat": type('c', (object,), {"id": chat_id})()})()})())
+
+    elif data == "ct_toggle_autosell":
+        import copy_executor as _ce
+        settings = _ce.get_auto_copy_settings(str(chat_id))
+        current = settings.get("auto_sell_mirror", True) if settings else True
+        new_val = not current
+        if settings:
+            # Update in copy_executor storage
+            data_store = _ce._load()
+            if str(chat_id) in data_store["auto_traders"]:
+                data_store["auto_traders"][str(chat_id)]["auto_sell_mirror"] = new_val
+                _ce._save(data_store)
+        else:
+            user_store.update_user(str(chat_id), ct_auto_sell=new_val)
+        tg.send(f"✅ Auto-sell mirror: <b>{'ON' if new_val else 'OFF'}</b>", chat_id)
+        _extended_handle_callback(type('obj', (object,), {"data": "ct_rules", "message": type('m', (object,), {"chat": type('c', (object,), {"id": chat_id})()})()})())
+
+    elif data == "ct_toggle_autoexec":
+        is_pro = user_store.is_degen(str(chat_id))
+        if not is_pro:
+            onboarding.send_inline(chat_id,
+                "🔒 <b>Auto-Execute requires Pro</b>\n\n"
+                "Upgrade to Pro ($79/mo) to unlock:\n"
+                "• Auto-execute copy trades\n"
+                "• Unlimited whale wallets\n"
+                "• Priority notifications",
+                [[{"text": "🚀 Upgrade to Pro — $79/mo", "callback_data": "degen_subscribe"}],
+                 [{"text": "← Back", "callback_data": "ct_rules"}]])
+        else:
+            import copy_executor as _ce
+            if _ce.is_auto_copy_enabled(str(chat_id)):
+                _ce.disable_auto_copy(str(chat_id))
+                tg.send("⏸ Auto-execute <b>disabled</b>. You'll get notifications only.", chat_id)
+            else:
+                settings = _ce.get_auto_copy_settings(str(chat_id))
+                amt = 25.0
+                daily = 200.0
+                if settings:
+                    amt = settings.get("max_per_trade", 25.0)
+                    daily = settings.get("daily_limit", 200.0)
+                _ce.enable_auto_copy(str(chat_id), max_per_trade=amt, daily_limit=daily)
+                tg.send(f"✅ Auto-execute <b>enabled</b>! Copying trades at ${amt:.0f}/trade, ${daily:.0f}/day max.", chat_id)
+            _extended_handle_callback(type('obj', (object,), {"data": "ct_rules", "message": type('m', (object,), {"chat": type('c', (object,), {"id": chat_id})()})()})())
+
+    # ── ADD CUSTOM WHALE WALLET ──
+    elif data == "whale_add_custom":
+        following = ct.get_following_count(str(chat_id))
+        limit = user_store.get_wallet_tracking_limit(str(chat_id))
+        if following >= limit:
+            is_pro = user_store.is_degen(str(chat_id))
+            if is_pro:
+                tg.send("⚠️ You've reached the maximum tracked wallets.", chat_id)
+            else:
+                onboarding.send_inline(chat_id,
+                    f"⚠️ <b>Wallet Limit Reached</b>\n\n"
+                    f"You're tracking <b>{following}/{limit}</b> wallets on the Free plan.\n\n"
+                    f"Upgrade to Pro for unlimited wallets + auto-trade!",
+                    [[{"text": "🚀 Upgrade to Pro — $79/mo", "callback_data": "degen_subscribe"}],
+                     [{"text": "← Back", "callback_data": "menu_whales"}]])
+        else:
+            tg.send(
+                "➕ <b>Add Custom Whale Wallet</b>\n\n"
+                "Send the Polygon wallet address you want to track:\n\n"
+                "<code>0x1234...abcd</code>\n\n"
+                f"📊 Using {following}/{limit} slots",
+                chat_id)
+            # Set state to expect wallet address
+            user_store.update_user(str(chat_id), pending_action="whale_add_wallet")
 
     # ── SIZING CALLBACKS ──
     elif data == "sizing_fixed":
@@ -3672,6 +3860,29 @@ def _polling_loop():
                             tg.send(f"❌ Wallet error: {e}", cid)
                             _waiting_for_wallet.pop(str(cid), None)
                         continue
+
+                    # Whale wallet add input
+                    if not text.startswith("/") and text.strip().startswith("0x") and len(text.strip()) == 42:
+                        user = user_store.get_user(cid)
+                        if user and user.get("pending_action") == "whale_add_wallet":
+                            user_store.update_user(cid, pending_action="")
+                            addr = text.strip()
+                            try:
+                                ct.add_wallet(addr, alias=f"Custom_{addr[:8]}")
+                                result = ct.follow_wallet(cid, addr)
+                                if result["status"] == "followed":
+                                    tg.send(
+                                        f"✅ <b>Now tracking wallet</b>\n\n"
+                                        f"<code>{addr}</code>\n\n"
+                                        f"🔔 You'll get real-time notifications when this wallet trades.",
+                                        cid)
+                                elif result["status"] == "exists":
+                                    tg.send(f"ℹ️ Already tracking this wallet.", cid)
+                                else:
+                                    tg.send(f"⚠️ {result.get('message', 'Error')}", cid)
+                            except Exception as e:
+                                tg.send(f"❌ Failed to add wallet: {e}", cid)
+                            continue
 
                     # Research link input — auto-trigger Event Research when user sends Polymarket link ANYTIME
                     if not text.startswith("/") and "polymarket.com" in text.lower():

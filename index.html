@@ -24,7 +24,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
 <!-- Schema: SoftwareApplication -->
 <script type="application/ld+json">
-{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Polytragent","applicationCategory":"FinanceApplication","description":"AI-powered research agent for Polymarket prediction markets. Analyzes millions of data points to find edge and mispriced markets.","url":"https://polytragent.com","operatingSystem":"Web, Telegram","offers":{"@type":"Offer","price":"79.99","priceCurrency":"USD","billingIncrement":"P1M","description":"Monthly subscription — full access"}}
+{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Polytragent","applicationCategory":"FinanceApplication","description":"AI-powered research agent for Polymarket prediction markets. Analyzes millions of data points to find edge and mispriced markets.","url":"https://polytragent.com","operatingSystem":"Web, Telegram","offers":[{"@type":"Offer","price":"0","priceCurrency":"USD","description":"Free plan — 20 whale wallets, manual copy trading"},{"@type":"Offer","price":"79","priceCurrency":"USD","billingIncrement":"P1M","description":"Pro plan — unlimited wallets, auto copy trading"}]}
 </script>
 <!-- Schema: Organization -->
 <script type="application/ld+json">
@@ -419,7 +419,7 @@ input[type="range"]:active::-webkit-slider-thumb{background:var(--green);cursor:
   </ul>
   <div class="nav-ctas">
     <a href="#pricing" class="btn-outline">See pricing</a>
-    <a href="https://t.me/bmpolybot" target="_blank" class="btn-solid">Get started →</a>
+    <a href="https://t.me/bmpolybot" target="_blank" class="btn-solid">Start Trading Free →</a>
   </div>
 </nav>
 
@@ -444,12 +444,12 @@ input[type="range"]:active::-webkit-slider-thumb{background:var(--green);cursor:
   <div class="hero-left">
     <div class="hero-tag"><span class="pulse-dot"></span> Polymarket AI Research Agent — Now Live</div>
     <h1>Start Trading on Polymarket with AI. For free.</h1>
-    <p class="hero-sub">Send a Polymarket link. Get instant AI research — every sub-market analyzed, cross-referenced with forecasters, scored against millions of data points. Spot the edge. Enter the trade. Profit.</p>
+    <p class="hero-sub">AI research, whale tracking & copy trading — all in one Telegram bot. Track up to 20 whale wallets free, get real-time alerts when they trade, and copy their moves with one tap. Spot the edge. Enter the trade. Profit.</p>
     <div class="hero-ctas">
-      <a href="https://t.me/bmpolybot" target="_blank" class="btn-sl">Start Trading Free →</a>
+      <a href="https://t.me/bmpolybot" target="_blank" class="btn-sl">Start Trading for Free →</a>
       <a href="#how-it-works" class="btn-ol">See how it works</a>
     </div>
-    <div style="font-family:var(--font-mono);font-size:11px;color:var(--gray);letter-spacing:.5px;margin-bottom:40px;">78% Win Rate &nbsp;•&nbsp; &lt;10s Analysis &nbsp;•&nbsp; 20 Free Wallets &nbsp;•&nbsp; $0 Forever</div>
+    <div style="font-family:var(--font-mono);font-size:11px;color:var(--gray);letter-spacing:.5px;margin-bottom:40px;">78% Win Rate &nbsp;•&nbsp; &lt;10s Analysis &nbsp;•&nbsp; 20 Free Whale Wallets &nbsp;•&nbsp; Copy Trading &nbsp;•&nbsp; $0 to Start</div>
     <div class="hero-stats">
       <div><div class="stat-n">78%</div><div class="stat-l">Prediction win rate</div></div>
       <div><div class="stat-n">M+</div><div class="stat-l">Data points analyzed</div></div>
@@ -667,8 +667,8 @@ input[type="range"]:active::-webkit-slider-thumb{background:var(--green);cursor:
 <section class="pricing-section" id="pricing">
   <div class="ph rev2">
     <div class="snum" style="text-align:center;margin-bottom:12px;">06 — Pricing</div>
-    <h2>Start free.<br>Go Degen.</h2>
-    <p>Free for up to 20 wallets. Upgrade to Degen Mode for unlimited access.</p>
+    <h2>Start free.<br>Go Pro.</h2>
+    <p>Trade for free with 20 whale wallets. Go Pro for unlimited wallets + auto-trading.</p>
   </div>
   <div class="pc-two-col rev2">
     <!-- Free tier -->
@@ -677,38 +677,38 @@ input[type="range"]:active::-webkit-slider-thumb{background:var(--green);cursor:
       <div class="pname">Starter</div>
       <div class="pprice">$0</div>
       <div class="pper">forever · no credit card</div>
-      <span class="panc">Up to 20 wallets tracked</span>
-      <a href="https://t.me/bmpolybot" target="_blank" class="pc-free">Start free on Telegram →</a>
+      <span class="panc">20 whale wallets · manual copy trading</span>
+      <a href="https://t.me/bmpolybot" target="_blank" class="pc-free">Start Trading for Free →</a>
       <ul class="pf" style="margin-top:24px;">
-        <li><span class="pck">✓</span> Up to 20 wallets</li>
-        <li><span class="pck">✓</span> /research queries</li>
-        <li><span class="pck">✓</span> AI edge scores</li>
+        <li><span class="pck">✓</span> Track up to 20 whale wallets</li>
+        <li><span class="pck">✓</span> Real-time trade notifications</li>
+        <li><span class="pck">✓</span> One-tap manual copy trading</li>
+        <li><span class="pck">✓</span> AI research & edge scores</li>
         <li><span class="pck">✓</span> Prediction tracking</li>
         <li><span class="pck">✓</span> Telegram delivery</li>
         <li style="color:#555;"><span style="margin-right:8px;">✕</span> Unlimited wallets</li>
+        <li style="color:#555;"><span style="margin-right:8px;">✕</span> Auto-execute copy trades</li>
         <li style="color:#555;"><span style="margin-right:8px;">✕</span> Priority AI processing</li>
-        <li style="color:#555;"><span style="margin-right:8px;">✕</span> Calibration bias reports</li>
       </ul>
     </div>
-    <!-- Degen Mode -->
+    <!-- Pro -->
     <div class="pc-card pc-card-featured">
-      <div class="pbadge">Degen Mode</div>
+      <div class="pbadge">Pro</div>
       <div class="pname">Monthly</div>
-      <div class="pprice">$79.99</div>
+      <div class="pprice">$79</div>
       <div class="pper">per month · cancel any time</div>
-      <span class="panc">Unlimited wallets · all features</span>
-      <button onclick="startCheckout()" class="pc-main" id="degenBtn">Go Degen — $79.99/mo →</button>
+      <span class="panc">Unlimited wallets · auto copy trading</span>
+      <button onclick="startCheckout()" class="pc-main" id="degenBtn">Go Pro — $79/mo →</button>
       <ul class="pf" style="margin-top:24px;">
-        <li><span class="pck">✓</span> <strong>Unlimited</strong> wallets</li>
-        <li><span class="pck">✓</span> Unlimited /research queries</li>
-        <li><span class="pck">✓</span> Full AI analysis with edge scores</li>
-        <li><span class="pck">✓</span> Manifold cross-reference</li>
+        <li><span class="pck">✓</span> <strong>Unlimited</strong> whale wallets</li>
+        <li><span class="pck">✓</span> <strong>Auto-execute</strong> copy trades</li>
+        <li><span class="pck">✓</span> Real-time trade notifications</li>
+        <li><span class="pck">✓</span> AI research & edge scores</li>
+        <li><span class="pck">✓</span> Copy trade rules & limits</li>
+        <li><span class="pck">✓</span> Auto-sell mirror (whale exits = you exit)</li>
         <li><span class="pck">✓</span> Prediction tracking</li>
-        <li><span class="pck">✓</span> Telegram delivery</li>
-        <li><span class="pck">✓</span> Direct trade links</li>
         <li><span class="pck">✓</span> Full accuracy dashboard</li>
         <li><span class="pck">✓</span> Calibration bias reports</li>
-        <li><span class="pck">✓</span> Topic-level win rates</li>
         <li><span class="pck">✓</span> Historical P&L tracking</li>
         <li><span class="pck">✓</span> Priority AI processing</li>
       </ul>
@@ -817,15 +817,15 @@ input[type="range"]:active::-webkit-slider-thumb{background:var(--green);cursor:
 <section class="ctas">
   <div class="ctl rev2">
     <div class="snum" style="margin-bottom:20px;">Get started</div>
-    <h2>Stop guessing.<br>Start researching<br>with AI.</h2>
-    <p style="font-size:15px;color:var(--gray);font-weight:300;line-height:1.7;margin:24px 0 32px;max-width:360px;">Send your first /research command and get AI-powered edge detection in seconds. No setup required.</p>
+    <h2>Stop guessing.<br>Start copy trading<br>whales with AI.</h2>
+    <p style="font-size:15px;color:var(--gray);font-weight:300;line-height:1.7;margin:24px 0 32px;max-width:360px;">Track whale wallets, get instant trade alerts, and copy their moves — all free. No setup required, just open Telegram.</p>
     <div style="display:flex;gap:12px;flex-wrap:wrap;">
-      <a href="https://t.me/bmpolybot" target="_blank" class="btn-sl">Start researching →</a>
+      <a href="https://t.me/bmpolybot" target="_blank" class="btn-sl">Start Trading for Free →</a>
     </div>
     <div class="trnote">
-      <span>Telegram-native</span>
-      <span>Cancel anytime</span>
-      <span>Self-improving AI</span>
+      <span>20 Free Wallets</span>
+      <span>Real-time Alerts</span>
+      <span>Copy Trading</span>
     </div>
   </div>
   <div class="ctr" aria-hidden="true">
@@ -876,11 +876,11 @@ async function startCheckout() {
       window.location.href = data.url;
     } else {
       alert(data.error || 'Could not start checkout. Please try again.');
-      if (btn) { btn.disabled = false; btn.textContent = 'Go Degen — $79.99/mo →'; }
+      if (btn) { btn.disabled = false; btn.textContent = 'Go Pro — $79/mo →'; }
     }
   } catch (e) {
     alert('Could not connect to checkout. Please try again.');
-    if (btn) { btn.disabled = false; btn.textContent = 'Go Degen — $79.99/mo →'; }
+    if (btn) { btn.disabled = false; btn.textContent = 'Go Pro — $79/mo →'; }
   }
 }
 
