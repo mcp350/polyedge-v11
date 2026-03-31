@@ -348,6 +348,96 @@ def get_best_price(token_id: str, side: str = "BUY") -> Optional[float]:
 
 
 # ═══════════════════════════════════════════════
+# USDC APPROVAL FOR POLYMARKET EXCHANGE
+# ═══════════════════════════════════════════════
+
+# Polymarket exchange contract addresses on Polygon
+_USDC_ADDRESS = "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174"  # USDC.e on Polygon
+_CTF_EXCHANGE = "0x4bFb41d5B3570DeFd03C39a9A4D8dE6Bd8B8982E"
+_NEG_RISK_CTF_EXCHANGE = "0xC5d563A36AE78145C45a50134d48A1215220f80a"
+_MAX_APPROVAL = 2**256 - 1  # Unlimited approval
+
+# Track which users we've already approved for (avoid redundant txns)
+_approved_users = {}  # chat_id -> {"ctf": bool, "neg_risk": bool}
+
+_ERC20_ABI = [
+    {"constant": True, "inputs": [{"name": "_owner", "type": "address"}, {"name": "_spender", "type": "address"}], "name": "allowance", "outputs": [{"name": "", "type": "uint256"}], "type": "function"},
+    {"constant": False, "inputs": [{"name": "_spender", "type": "address"}, {"name": "_value", "type": "uint256"}], "name": "approve", "outputs": [{"name": "", "type": "bool"}], "type": "function"},
+]
+
+
+def _ensure_usdc_allowance(chat_id: str, neg_risk: bool = False):
+    """
+    Check USDC allowance for Polymarket exchange contracts and approve if needed.
+    Must be called before placing any trade.
+    """
+    import wallet_manager as wm
+    from web3 import Web3
+
+    chat_str = str(chat_id)
+
+    # Check in-memory cache first
+    cached = _approved_users.get(chat_str, {})
+    exchange_key = "neg_risk" if neg_risk else "ctf"
+    if cached.get(exchange_key):
+        return  # Already approved this session
+
+    exchange_addr = _NEG_RISK_CTF_EXCHANGE if neg_risk else _CTF_EXCHANGE
+
+    pk = wm.get_primary_private_key(chat_str)
+    if not pk:
+        return
+    if not pk.startswith("0x"):
+        pk = "0x" + pk
+
+    rpc_url = os.environ.get("POLYGON_RPC", "https://polygon-rpc.com")
+    w3 = Web3(Web3.HTTPProvider(rpc_url))
+    account = w3.eth.account.from_key(pk)
+    address = account.address
+
+    usdc = w3.eth.contract(
+        address=Web3.to_checksum_address(_USDC_ADDRESS),
+        abi=_ERC20_ABI
+    )
+
+    # Check current allowance
+    current = usdc.functions.allowance(address, Web3.to_checksum_address(exchange_addr)).call()
+    min_required = 1_000_000 * 10**6  # $1M in USDC (plenty of headroom)
+
+    if current >= min_required:
+        # Already approved
+        _approved_users.setdefault(chat_str, {})[exchange_key] = True
+        log.info(f"USDC allowance OK for {address[:10]}... on {'neg_risk' if neg_risk else 'ctf'} exchange")
+        return
+
+    # Need to approve — send approval transaction
+    log.info(f"Setting USDC approval for {address[:10]}... on {'neg_risk' if neg_risk else 'ctf'} exchange")
+
+    nonce = w3.eth.get_transaction_count(address)
+    tx = usdc.functions.approve(
+        Web3.to_checksum_address(exchange_addr),
+        _MAX_APPROVAL
+    ).build_transaction({
+        "from": address,
+        "nonce": nonce,
+        "gas": 100_000,
+        "gasPrice": w3.eth.gas_price,
+        "chainId": CHAIN_ID,
+    })
+
+    signed = w3.eth.account.sign_transaction(tx, private_key=pk)
+    tx_hash = w3.eth.send_raw_transaction(signed.raw_transaction)
+    receipt = w3.eth.wait_for_transaction_receipt(tx_hash, timeout=60)
+
+    if receipt.status == 1:
+        _approved_users.setdefault(chat_str, {})[exchange_key] = True
+        log.info(f"USDC approved! tx={tx_hash.hex()}")
+    else:
+        log.error(f"USDC approval tx failed: {tx_hash.hex()}")
+        raise Exception(f"USDC approval transaction failed: {tx_hash.hex()}")
+
+
+# ═══════════════════════════════════════════════
 # ORDER EXECUTION
 # ═══════════════════════════════════════════════
 
@@ -393,6 +483,12 @@ def market_buy(token_id: str, amount: float, neg_risk: bool = False,
         if _has_wallet:
             return {"success": False, "error": "Wallet found but CLOB client init failed. Possible network issue with Polymarket API."}
         return {"success": False, "error": "No wallet found. Use /start to create one, or /import_wallet to restore an existing wallet with your private key."}
+
+    # ── Auto-approve USDC for Polymarket exchange contracts ──
+    try:
+        _ensure_usdc_allowance(chat_id, neg_risk)
+    except Exception as e:
+        log.warning(f"Auto-approve USDC failed (continuing anyway): {e}")
 
     try:
         from py_clob_client.clob_types import MarketOrderArgs, OrderType
