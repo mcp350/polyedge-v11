@@ -1760,10 +1760,14 @@ def _execute_quick_trade(chat_id, amount):
     except Exception as e:
         msg = f"❌ <b>Trade Error</b>\n\n{e}"
 
+    # Cache slug for "Buy More" button
+    _rbuy_slug_cache[hash(slug) % 100000] = slug
+    buy_more_cb = f"rbuy_{hash(slug) % 100000}_{outcome}"
+
     onboarding.send_inline(chat_id, msg,
-        [[{"text": "🔥 More Events", "callback_data": "trending_0"},
+        [[{"text": f"🔄 Buy More {outcome}", "callback_data": buy_more_cb},
           {"text": "📊 Positions", "callback_data": "trading_positions"}],
-         [{"text": "💰 Trade Again", "callback_data": "menu_trading"},
+         [{"text": "🔥 More Events", "callback_data": "trending_0"},
           {"text": "← Main Menu", "callback_data": "main_menu"}]])
 
 
@@ -1782,16 +1786,80 @@ def show_buy_prompt(chat_id):
 
 def show_sell_prompt(chat_id):
     """Show positions to sell from"""
-    positions = trading.get_positions()
+    positions = trading.get_positions(chat_id=str(chat_id))
     if not positions:
         tg.send("📭 No open positions to sell.", chat_id)
         show_trading_menu(chat_id)
         return
 
-    _waiting_for_trade[str(chat_id)] = {"action": "sell", "step": "market"}
-    msg = "🟥 <b>Sell Position</b>\n\nSend a Polymarket event link for the position you want to close.\n\n"
-    msg += trading.format_positions(positions)
-    tg.send(msg, chat_id)
+    _waiting_for_trade[str(chat_id)] = {"action": "sell", "step": "market", "positions": positions}
+
+    # Build sellable position list with buttons
+    msg = "🟥 <b>Sell Position</b>\n\nSelect a position to sell:\n\n"
+    buttons = []
+    for i, pos in enumerate(positions[:10]):
+        title = pos.get("title", pos.get("question", pos.get("market", "Unknown")))[:50]
+        outcome = pos.get("outcome", pos.get("side", ""))
+        size = float(pos.get("size", pos.get("amount", 0)) or 0)
+        slug = pos.get("slug", pos.get("market_slug", ""))
+        msg += f"{i+1}. <b>{title}</b> ({outcome})\n   📊 {size:.1f} shares\n\n"
+        if slug:
+            buttons.append([{"text": f"🟥 Sell #{i+1}: {outcome} ({size:.1f})", "callback_data": f"sell_pos_{i}"}])
+
+    if buttons:
+        buttons.append([{"text": "← Trading", "callback_data": "menu_trading"}])
+        onboarding.send_inline(chat_id, msg, buttons)
+    else:
+        msg += "\nSend a Polymarket event link for the position you want to close."
+        msg += "\n\n" + trading.format_positions(positions)
+        tg.send(msg, chat_id)
+
+
+def _execute_sell(chat_id, shares):
+    """Execute sell from the direct position sell flow"""
+    chat_str = str(chat_id)
+    state = _waiting_for_trade.get(chat_str)
+    if not state:
+        tg.send("❌ Sell session expired. Start again.", chat_id)
+        return
+
+    slug = state.get("slug", "")
+    outcome = state.get("outcome", "")
+    question = state.get("question", "Unknown")
+    token_id = state.get("token_id", "")
+    neg_risk = state.get("neg_risk", False)
+    _waiting_for_trade.pop(chat_str, None)
+
+    tg.send(f"⏳ Selling {shares:.1f} shares of <b>{outcome}</b>...\n📌 {question}", chat_id)
+
+    try:
+        if token_id:
+            result = trading.market_sell(
+                token_id=token_id, amount=shares,
+                neg_risk=neg_risk, chat_id=chat_str,
+                market_question=question,
+            )
+        else:
+            result = trading.quick_sell(
+                market_slug_or_url=slug, outcome=outcome,
+                shares=shares, chat_id=chat_str,
+            )
+
+        if result and result.get("success"):
+            msg = (f"✅ <b>Sold!</b>\n\n"
+                   f"📌 {question}\n"
+                   f"🎯 {outcome} — {shares:.1f} shares\n"
+                   f"🧾 Order ID: <code>{result.get('order_id', 'N/A')[:12]}...</code>")
+        else:
+            error = result.get("error", "Unknown error") if result else "No response"
+            msg = f"❌ <b>Sell Failed</b>\n\n📌 {question}\n\nError: {error}"
+    except Exception as e:
+        msg = f"❌ <b>Sell Error</b>\n\n{e}"
+
+    onboarding.send_inline(chat_id, msg,
+        [[{"text": "📊 Positions", "callback_data": "trading_positions"},
+          {"text": "💰 Trade Again", "callback_data": "menu_trading"}],
+         [{"text": "← Main Menu", "callback_data": "main_menu"}]])
 
 
 def handle_trade_input(chat_id, text):
@@ -1828,6 +1896,26 @@ def handle_trade_input(chat_id, text):
             f"📊 <b>{market['question']}</b>\n\n"
             "Select outcome:",
             buttons)
+        return True
+
+    elif step == "amount" and action == "sell" and state.get("max_shares"):
+        # Direct position sell — user typed share count
+        text_clean = text.strip().lower()
+        if text_clean == "all":
+            _execute_sell(chat_id, state["max_shares"])
+            return True
+        try:
+            shares = float(text_clean.replace(",", ""))
+            if shares <= 0:
+                tg.send("❌ Enter a positive number of shares.", chat_id)
+                return True
+            if shares > state["max_shares"]:
+                tg.send(f"❌ You only have {state['max_shares']:.1f} shares.", chat_id)
+                return True
+        except ValueError:
+            tg.send("❌ Enter a number of shares (e.g., 5 or 'all')", chat_id)
+            return True
+        _execute_sell(chat_id, shares)
         return True
 
     elif step == "amount_quick":
@@ -3167,6 +3255,49 @@ def _extended_handle_callback(callback_query):
         show_buy_prompt(chat_id)
     elif data == "trading_sell_prompt":
         show_sell_prompt(chat_id)
+    elif data.startswith("sell_pos_"):
+        # Direct sell from position list
+        try:
+            idx = int(data.replace("sell_pos_", ""))
+            state = _waiting_for_trade.get(str(chat_id), {})
+            positions = state.get("positions", [])
+            if idx < len(positions):
+                pos = positions[idx]
+                slug = pos.get("slug", pos.get("market_slug", ""))
+                outcome = pos.get("outcome", pos.get("side", ""))
+                size = float(pos.get("size", pos.get("amount", 0)) or 0)
+                title = pos.get("title", pos.get("question", "Unknown"))[:60]
+                token_id = pos.get("tokenId", pos.get("token_id", ""))
+
+                _waiting_for_trade[str(chat_id)] = {
+                    "action": "sell", "step": "amount",
+                    "slug": slug, "outcome": outcome,
+                    "question": title, "token_id": token_id,
+                    "max_shares": size,
+                    "neg_risk": pos.get("neg_risk", pos.get("negRisk", False)),
+                }
+                onboarding.send_inline(chat_id,
+                    f"🟥 <b>Sell {outcome}</b>\n\n"
+                    f"📌 {title}\n"
+                    f"📊 You have: <b>{size:.1f} shares</b>\n\n"
+                    f"Enter number of shares to sell (or 'all'):",
+                    [[{"text": f"Sell All ({size:.1f})", "callback_data": f"sell_all_{idx}"},
+                      {"text": "← Cancel", "callback_data": "menu_trading"}]])
+            else:
+                tg.send("❌ Position expired. Tap Sell again.", chat_id)
+        except Exception as e:
+            tg.send(f"❌ Error: {e}", chat_id)
+    elif data.startswith("sell_all_"):
+        # Sell all shares of a position
+        try:
+            idx = int(data.replace("sell_all_", ""))
+            state = _waiting_for_trade.get(str(chat_id), {})
+            if state.get("max_shares"):
+                _execute_sell(chat_id, state["max_shares"])
+            else:
+                tg.send("❌ Sell session expired. Start again.", chat_id)
+        except Exception as e:
+            tg.send(f"❌ Error: {e}", chat_id)
     elif data == "trading_positions":
         show_trading_positions(chat_id)
     elif data == "trading_orders":
