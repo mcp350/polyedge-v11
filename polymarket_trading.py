@@ -516,6 +516,28 @@ def _openocean_swap(w3, pk: str, address: str, in_token: str, amount_raw: int,
     return tx_hash.hex()
 
 
+def _get_token_price_usd(token_address: str, decimals: int) -> Optional[float]:
+    """Get token price in USD from OpenOcean quote (1 unit -> USDC.e)."""
+    try:
+        import requests as req
+        # Quote swapping 1 token unit to USDC.e
+        url = "https://open-api.openocean.finance/v4/137/quote"
+        params = {
+            "inTokenAddress": token_address,
+            "outTokenAddress": _USDC_E,
+            "amount": "1",
+            "gasPrice": "50",
+        }
+        resp = req.get(url, params=params, timeout=8)
+        data = resp.json()
+        if data.get("code") == 200 and data.get("data"):
+            out_amount = float(data["data"].get("outAmount", 0)) / 10**6
+            return out_amount
+    except Exception as e:
+        log.debug(f"Price fetch failed for {token_address[:10]}: {e}")
+    return None
+
+
 def _auto_swap_to_usdc_e(chat_id: str, needed_amount: float) -> dict:
     """
     Auto-swap user's tokens to USDC.e if they don't have enough.
@@ -561,8 +583,11 @@ def _auto_swap_to_usdc_e(chat_id: str, needed_amount: float) -> dict:
             if available <= 0:
                 continue
 
-        # Rough USD estimation (MATIC~$0.5, WETH~$2000, WBTC~$80000, USDC=$1)
-        price_est = {"USDC": 1, "MATIC": 0.5, "WETH": 2000, "WBTC": 80000}.get(symbol, 0)
+        # USD estimation — fetch live price from OpenOcean for accuracy
+        price_est = _get_token_price_usd(info["address"], info["decimals"])
+        if price_est is None:
+            # Fallback rough estimates
+            price_est = {"USDC": 1, "MATIC": 0.10, "WETH": 2000, "WBTC": 80000}.get(symbol, 0)
         value_usd = available * price_est
 
         if value_usd > best_value_usd:
@@ -709,7 +734,7 @@ def market_buy(token_id: str, amount: float, neg_risk: bool = False,
     total_value = bal.get("usdc", 0)  # This includes both USDC + USDC.e
     if total_value < amount:
         # Check if they have value in other tokens (MATIC, WETH, WBTC)
-        matic_val = max(0, bal.get("matic", 0) - 0.5) * 0.5  # keep 0.5 for gas
+        matic_val = max(0, bal.get("matic", 0) - 0.5) * 0.10  # keep 0.5 for gas, MATIC ~$0.10
         total_swappable = total_value + matic_val
         if total_swappable < amount * 0.5:
             return {"success": False, "error": (
@@ -751,12 +776,39 @@ def market_buy(token_id: str, amount: float, neg_risk: bool = False,
             return {"success": False, "error": err_msg}
         log.warning(f"Auto-approve USDC.e failed (continuing anyway): {e}")
 
+    # ── Final USDC.e balance check before order ──
+    try:
+        from web3 import Web3 as _W3
+        _w3 = _get_w3()
+        import wallet_manager as _wm_check
+        _wallet = _wm_check.get_primary_wallet(str(chat_id))
+        if _wallet:
+            _usdc_e_contract = _w3.eth.contract(
+                address=_W3.to_checksum_address(_USDC_E), abi=_ERC20_ABI)
+            _usdc_e_bal = _usdc_e_contract.functions.balanceOf(
+                _W3.to_checksum_address(_wallet["address"])).call() / 10**6
+            log.info(f"[TRADE] Pre-order USDC.e balance: ${_usdc_e_bal:.2f}, order: ${amount:.2f}")
+            if _usdc_e_bal < amount * 0.95:  # 5% tolerance for rounding
+                return {"success": False, "error": (
+                    f"Insufficient USDC.e after swap. Have: ${_usdc_e_bal:.2f}, need: ${amount:.2f}.\n"
+                    f"Your wallet may not have enough funds. Deposit USDC.e to:\n"
+                    f"{_wallet['address']}"
+                )}
+    except Exception as e:
+        log.warning(f"Pre-order balance check failed (continuing): {e}")
+
     try:
         from py_clob_client.clob_types import MarketOrderArgs, OrderType
         from py_clob_client.order_builder.constants import BUY
 
         # Calculate fee (1% of requested amount)
+        # Polymarket minimum order is $1, so ensure net amount stays >= 1.0
         net_amount, fee_amount = calculate_fee(amount, side="BUY")
+        if net_amount < 1.0:
+            net_amount = 1.0
+            fee_amount = round(amount - 1.0, 6)
+            if fee_amount < 0:
+                fee_amount = 0
 
         from py_clob_client.clob_types import PartialCreateOrderOptions
         options = PartialCreateOrderOptions(tick_size=tick_size, neg_risk=neg_risk)
