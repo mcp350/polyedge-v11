@@ -1040,7 +1040,7 @@ def home():
 
 @app.route("/health")
 def health():
-    return jsonify({"status": "ok", "service": "polytragent", "version": "v12.4", "build": "2026-03-31-rpc-fix"})
+    return jsonify({"status": "ok", "service": "polytragent", "version": "v12.5", "build": "2026-03-31-rpc-verified"})
 
 @app.route("/diag")
 def diag():
