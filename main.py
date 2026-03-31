@@ -3848,6 +3848,14 @@ def main():
     except Exception as e:
         print(f"[BOOT] Leaderboard init error: {e}")
 
+    # Start real-time whale trade listener (WebSocket → Polygon OrderFilled events)
+    try:
+        import whale_realtime as wrt
+        wrt.start_listener(use_http_fallback=True)  # HTTP fallback more reliable on Railway
+        print(f"[BOOT] 🐋 Whale realtime listener: STARTED")
+    except Exception as e:
+        print(f"[BOOT] Whale realtime listener failed: {e}")
+
     # Initialize trading engine
     trade_status = "🟢 LIVE" if trading.is_trading_enabled() else "⚪ Disabled (set POLY_* env vars)"
     trade_addr = trading.get_wallet_address() or "N/A"
