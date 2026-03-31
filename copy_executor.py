@@ -53,7 +53,7 @@ def enable_auto_copy(chat_id: str, max_per_trade: float = 25.0,
                      daily_limit: float = 200.0) -> dict:
     """
     Enable auto copy trading for a user.
-    Requires Pro subscription ($79/month).
+    Requires Degen Mode subscription ($79/month).
 
     Args:
         chat_id: User's Telegram chat ID
@@ -62,7 +62,7 @@ def enable_auto_copy(chat_id: str, max_per_trade: float = 25.0,
     """
     # Auto-copy requires Pro ($79/mo)
     if not user_store.is_degen(str(chat_id)):
-        return {"success": False, "error": "Pro subscription required for auto-trade. Upgrade for $79/month to unlock auto-copy trading."}
+        return {"success": False, "error": "Degen Mode subscription required for auto-trade. Upgrade for $79.99/month to unlock auto-copy trading."}
 
     data = _load()
     chat_str = str(chat_id)
@@ -128,7 +128,7 @@ def update_auto_copy_settings(chat_id: str, **kwargs) -> dict:
 
 
 def is_auto_copy_enabled(chat_id: str) -> bool:
-    """Check if auto-copy is active for a user. Requires Pro subscription."""
+    """Check if auto-copy is active for a user. Requires Degen Mode subscription."""
     if not user_store.is_degen(str(chat_id)):
         return False
     settings = get_auto_copy_settings(chat_id)
@@ -205,9 +205,9 @@ def execute_copy_trade(chat_id: str, signal: dict) -> dict:
     if not settings or not settings.get("enabled"):
         return {"success": False, "error": "Auto-copy not enabled", "skipped": True}
 
-    # Auto-trade requires Pro subscription
+    # Auto-trade requires Degen Mode subscription
     if not user_store.is_degen(chat_str):
-        return {"success": False, "error": "Pro required for auto-trade", "skipped": True}
+        return {"success": False, "error": "Degen Mode required for auto-trade", "skipped": True}
 
     # Reset daily counter if needed
     settings = _reset_daily_if_needed(settings)

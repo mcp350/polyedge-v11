@@ -29,8 +29,8 @@ POLYGON_WSS_URL = os.environ.get("POLYGON_WSS_URL", "")  # wss:// for real-time 
 # ── Stripe (Degen Mode) ──
 STRIPE_SECRET_KEY = os.environ.get("STRIPE_SECRET_KEY", "")
 STRIPE_WEBHOOK_SECRET = os.environ.get("STRIPE_WEBHOOK_SECRET", "")
-STRIPE_DEGEN_PRICE_ID = os.environ.get("STRIPE_DEGEN_PRICE_ID", "prod_UCXYwONuXcypKS")
-DEGEN_MODE_PRICE = 79  # $79/month for degen mode
+STRIPE_DEGEN_PRICE_ID = os.environ.get("STRIPE_DEGEN_PRICE_ID", "price_1TE8TFKw9xinQ3R3rhgqV1X3")
+DEGEN_MODE_PRICE = 79.99  # $79.99/month for Degen Mode
 BOT_DOMAIN = os.environ.get("BOT_DOMAIN", "https://polytragent.com")
 
 # ── Trading Fees ──

@@ -24,7 +24,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
 <!-- Schema: SoftwareApplication -->
 <script type="application/ld+json">
-{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Polytragent","applicationCategory":"FinanceApplication","description":"AI-powered research agent for Polymarket prediction markets. Analyzes millions of data points to find edge and mispriced markets.","url":"https://polytragent.com","operatingSystem":"Web, Telegram","offers":[{"@type":"Offer","price":"0","priceCurrency":"USD","description":"Free plan — 20 whale wallets, manual copy trading"},{"@type":"Offer","price":"79","priceCurrency":"USD","billingIncrement":"P1M","description":"Pro plan — unlimited wallets, auto copy trading"}]}
+{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Polytragent","applicationCategory":"FinanceApplication","description":"AI-powered research agent for Polymarket prediction markets. Analyzes millions of data points to find edge and mispriced markets.","url":"https://polytragent.com","operatingSystem":"Web, Telegram","offers":[{"@type":"Offer","price":"0","priceCurrency":"USD","description":"Free plan — 5 researches/day, 20 whale wallets, notifications only"},{"@type":"Offer","price":"79.99","priceCurrency":"USD","billingIncrement":"P1M","description":"Degen Mode — unlimited research, unlimited wallets, auto copy trading"}]}
 </script>
 <!-- Schema: Organization -->
 <script type="application/ld+json">
@@ -667,8 +667,8 @@ input[type="range"]:active::-webkit-slider-thumb{background:var(--green);cursor:
 <section class="pricing-section" id="pricing">
   <div class="ph rev2">
     <div class="snum" style="text-align:center;margin-bottom:12px;">06 — Pricing</div>
-    <h2>Start free.<br>Go Pro.</h2>
-    <p>Trade for free with 20 whale wallets. Go Pro for unlimited wallets + auto-trading.</p>
+    <h2>Start free.<br>Go Degen.</h2>
+    <p>Trade for free with 5 daily researches & 20 whale wallets. Go Degen for unlimited everything + auto-trading.</p>
   </div>
   <div class="pc-two-col rev2">
     <!-- Free tier -->
@@ -677,36 +677,35 @@ input[type="range"]:active::-webkit-slider-thumb{background:var(--green);cursor:
       <div class="pname">Starter</div>
       <div class="pprice">$0</div>
       <div class="pper">forever · no credit card</div>
-      <span class="panc">20 whale wallets · manual copy trading</span>
+      <span class="panc">5 researches/day · 20 wallets · notifications</span>
       <a href="https://t.me/bmpolybot" target="_blank" class="pc-free">Start Trading for Free →</a>
       <ul class="pf" style="margin-top:24px;">
+        <li><span class="pck">✓</span> 5 event researches per day</li>
         <li><span class="pck">✓</span> Track up to 20 whale wallets</li>
         <li><span class="pck">✓</span> Real-time trade notifications</li>
         <li><span class="pck">✓</span> One-tap manual copy trading</li>
-        <li><span class="pck">✓</span> AI research & edge scores</li>
-        <li><span class="pck">✓</span> Prediction tracking</li>
+        <li><span class="pck">✓</span> AI edge scores</li>
         <li><span class="pck">✓</span> Telegram delivery</li>
+        <li style="color:#555;"><span style="margin-right:8px;">✕</span> Unlimited research</li>
         <li style="color:#555;"><span style="margin-right:8px;">✕</span> Unlimited wallets</li>
         <li style="color:#555;"><span style="margin-right:8px;">✕</span> Auto-execute copy trades</li>
-        <li style="color:#555;"><span style="margin-right:8px;">✕</span> Priority AI processing</li>
       </ul>
     </div>
-    <!-- Pro -->
+    <!-- Degen Mode -->
     <div class="pc-card pc-card-featured">
-      <div class="pbadge">Pro</div>
+      <div class="pbadge">Degen Mode</div>
       <div class="pname">Monthly</div>
-      <div class="pprice">$79</div>
+      <div class="pprice">$79.99</div>
       <div class="pper">per month · cancel any time</div>
-      <span class="panc">Unlimited wallets · auto copy trading</span>
-      <button onclick="startCheckout()" class="pc-main" id="degenBtn">Go Pro — $79/mo →</button>
+      <span class="panc">Unlimited research · unlimited wallets · auto-trade</span>
+      <button onclick="startCheckout()" class="pc-main" id="degenBtn">Go Degen — $79.99/mo →</button>
       <ul class="pf" style="margin-top:24px;">
+        <li><span class="pck">✓</span> <strong>Unlimited</strong> event research</li>
         <li><span class="pck">✓</span> <strong>Unlimited</strong> whale wallets</li>
         <li><span class="pck">✓</span> <strong>Auto-execute</strong> copy trades</li>
         <li><span class="pck">✓</span> Real-time trade notifications</li>
-        <li><span class="pck">✓</span> AI research & edge scores</li>
         <li><span class="pck">✓</span> Copy trade rules & limits</li>
         <li><span class="pck">✓</span> Auto-sell mirror (whale exits = you exit)</li>
-        <li><span class="pck">✓</span> Prediction tracking</li>
         <li><span class="pck">✓</span> Full accuracy dashboard</li>
         <li><span class="pck">✓</span> Calibration bias reports</li>
         <li><span class="pck">✓</span> Historical P&L tracking</li>
@@ -876,11 +875,11 @@ async function startCheckout() {
       window.location.href = data.url;
     } else {
       alert(data.error || 'Could not start checkout. Please try again.');
-      if (btn) { btn.disabled = false; btn.textContent = 'Go Pro — $79/mo →'; }
+      if (btn) { btn.disabled = false; btn.textContent = 'Go Degen — $79.99/mo →'; }
     }
   } catch (e) {
     alert('Could not connect to checkout. Please try again.');
-    if (btn) { btn.disabled = false; btn.textContent = 'Go Pro — $79/mo →'; }
+    if (btn) { btn.disabled = false; btn.textContent = 'Go Degen — $79.99/mo →'; }
   }
 }
 
