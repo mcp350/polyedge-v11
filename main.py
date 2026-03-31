@@ -31,6 +31,19 @@ import copy_executor as ce
 _last_update_id = 0
 _locks = {}
 
+
+def _ensure_wallet_tracker_synced(chat_id):
+    """Auto-sync wallet_tracker if wallet_manager has a wallet but tracker doesn't."""
+    cid = str(chat_id)
+    if not wt.get_wallet(cid):
+        wallet = wm.get_primary_wallet(cid)
+        if wallet:
+            try:
+                wt.connect_wallet(cid, wallet["address"])
+                log.info(f"Auto-synced wallet_tracker for {cid}: {wallet['address']}")
+            except Exception as e:
+                log.warning(f"wallet_tracker auto-sync failed for {cid}: {e}")
+
 # ── SINGLE INSTANCE ENFORCEMENT ──
 _PID_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".bot.pid")
 
@@ -293,6 +306,7 @@ def show_portfolio_menu(chat_id):
 def show_portfolio_dashboard(chat_id):
     """Spec Section 5.1 — Portfolio Dashboard with live wallet data"""
     try:
+        _ensure_wallet_tracker_synced(chat_id)
         # Check for connected wallet first
         wallet_data = wt.get_portfolio_data(str(chat_id))
 
@@ -371,6 +385,7 @@ def show_portfolio_dashboard(chat_id):
 
 def show_portfolio_positions(chat_id):
     """Spec Section 5.2 — Open Positions Detail (live from wallet)"""
+    _ensure_wallet_tracker_synced(chat_id)
     wallet = wt.get_wallet(str(chat_id))
     if wallet:
         # ── LIVE WALLET POSITIONS ──
@@ -1723,13 +1738,20 @@ def _execute_quick_trade(chat_id, amount):
             chat_id=str(chat_id)
         )
         if result and result.get("success"):
-            shares = amount / (state["price"] / 100) if state["price"] > 0 else 0
+            price_cents = state.get("price", 0)
+            if price_cents > 0:
+                shares = amount / (price_cents / 100)
+                price_line = f"🎯 {outcome} @ {price_cents}¢\n"
+                shares_line = f"📊 ~{shares:.0f} shares\n\n"
+            else:
+                price_line = f"🎯 {outcome}\n"
+                shares_line = "\n"
             msg = (
                 f"✅ <b>Trade Executed!</b>\n\n"
                 f"📌 {question}\n"
-                f"🎯 {outcome} @ {state['price']}¢\n"
+                f"{price_line}"
                 f"💰 Amount: ${amount:.2f}\n"
-                f"📊 ~{shares:.0f} shares\n\n"
+                f"{shares_line}"
                 f"🧾 Order ID: <code>{result.get('order_id', 'N/A')[:12]}...</code>"
             )
         else:
@@ -1881,7 +1903,7 @@ def handle_trade_input(chat_id, text):
 def show_trading_positions(chat_id):
     """Show live positions from the trading wallet"""
     tg.send("📊 Loading positions...", chat_id)
-    positions = trading.get_positions()
+    positions = trading.get_positions(chat_id=str(chat_id))
     msg = trading.format_positions(positions)
     onboarding.send_inline(chat_id, msg,
         [[{"text": "🔄 Refresh", "callback_data": "trading_positions"},
@@ -2153,6 +2175,13 @@ def handle_wallet_input(chat_id, text):
         result = wm.import_wallet(chat_str, text.strip())
         _waiting_for_wallet.pop(chat_str, None)
         if result["success"]:
+            # Auto-connect to wallet_tracker for portfolio/positions
+            try:
+                import wallet_tracker
+                wallet_tracker.connect_wallet(chat_str, result['address'])
+                log.info(f"Auto-connected wallet_tracker for {chat_str}: {result['address']}")
+            except Exception as e:
+                log.warning(f"Failed to auto-connect wallet_tracker: {e}")
             tg.send(
                 f"✅ <b>Wallet Imported!</b>\n\n"
                 f"Address: <code>{result['address']}</code>\n"
@@ -2482,6 +2511,12 @@ def _handle(cmd, chat_id):
     elif cmd == "/create_wallet":
         result = wm.create_wallet(str(chat_id))
         if result["success"]:
+            # Auto-connect to wallet_tracker for portfolio/positions
+            try:
+                import wallet_tracker
+                wallet_tracker.connect_wallet(str(chat_id), result['address'])
+            except Exception as e:
+                log.warning(f"Failed to auto-connect wallet_tracker: {e}")
             tg.send(
                 f"✅ <b>Wallet Created!</b>\n\n"
                 f"Address: <code>{result['address']}</code>\n\n"
@@ -3096,10 +3131,23 @@ def _extended_handle_callback(callback_query):
                     "Admin needs to set POLY_API_KEY, POLY_API_SECRET, POLY_API_PASSPHRASE, POLY_PRIVATE_KEY.",
                     [[{"text": "← Main Menu", "callback_data": "main_menu"}]])
             else:
+                # Fetch market data for price display
+                _rbuy_price = 0
+                _rbuy_question = slug.replace("-", " ")[:60]
+                try:
+                    _rbuy_market = trading.resolve_market_tokens(slug)
+                    if _rbuy_market:
+                        _rbuy_question = _rbuy_market.get("question", _rbuy_question)
+                        for t in _rbuy_market.get("tokens", []):
+                            if t["outcome"].lower() == outcome.lower():
+                                _rbuy_price = int(float(t.get("price", 0)) * 100)
+                                break
+                except Exception:
+                    pass
                 _waiting_for_trade[str(chat_id)] = {
                     "action": "buy", "step": "amount_quick",
-                    "slug": slug, "question": slug.replace("-", " ")[:60],
-                    "outcome": outcome, "price": 0,
+                    "slug": slug, "question": _rbuy_question,
+                    "outcome": outcome, "price": _rbuy_price,
                 }
                 onboarding.send_inline(chat_id,
                     f"🟩 <b>Buy {outcome}</b> on this event\n\n"
