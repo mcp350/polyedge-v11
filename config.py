@@ -11,7 +11,7 @@ ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
 # CLOB_AUTH_HOST: used for ECDSA signature generation (must match what Polymarket expects)
 # CLOB_BASE: actual HTTP destination for trade requests (EU proxy to bypass US geoblock)
 CLOB_PROXY_URL = os.environ.get("CLOB_PROXY_URL", "http://13.49.25.66")
-CLOB_AUTH_HOST = "https://clob.polymarket.com"   # for signing only — never change
+CLOB_AUTH_HOST = os.environ.get("CLOB_PROXY_URL", "http://13.49.25.66")  # Everything through proxy
 CLOB_BASE = os.environ.get("CLOB_PROXY_URL", "http://13.49.25.66")  # EU proxy
 
 # ── Polymarket Trading API (builders.polymarket.com) ──

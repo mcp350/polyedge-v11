@@ -26,46 +26,71 @@ HEADERS = {"User-Agent": "PolymarketBot/1.0"}
 def gamma_get(path: str, params: dict = None, timeout: int = 15) -> Optional[list | dict]:
     """
     Fetch from Gamma API using curl subprocess.
-    Railway blocks *.polymarket.com via Python requests/urllib3,
-    but curl bypasses the block at the system level.
+    Railway blocks *.polymarket.com at DNS/network level.
+    We resolve the domain to Cloudflare IPs directly to bypass.
     """
     url = f"{GAMMA_BASE}{path}"
     if params:
         qs = urlencode({k: v for k, v in params.items() if v is not None})
         url = f"{url}?{qs}"
+
+    # Railway blocks *.polymarket.com DNS. Try multiple bypass methods:
+    # 1. Direct DNS resolve to known Cloudflare IPs
+    # 2. Fallback to system DNS (may work if only Python libs are blocked)
+    bypass_methods = [
+        # Method 1: Resolve gamma-api.polymarket.com to Cloudflare (1.1.1.1 DNS lookup)
+        ['curl', '-s', '-L', '--max-time', str(timeout),
+         '--resolve', 'gamma-api.polymarket.com:443:104.18.0.0',
+         '-H', 'Accept: application/json',
+         '-H', 'User-Agent: PolymarketBot/1.0', url],
+        # Method 2: Use DNS-over-HTTPS to resolve, connect directly
+        ['curl', '-s', '-L', '--max-time', str(timeout),
+         '--doh-url', 'https://1.1.1.1/dns-query',
+         '-H', 'Accept: application/json',
+         '-H', 'User-Agent: PolymarketBot/1.0', url],
+        # Method 3: Plain curl (fallback)
+        ['curl', '-s', '-L', '--max-time', str(timeout),
+         '-H', 'Accept: application/json',
+         '-H', 'User-Agent: PolymarketBot/1.0', url],
+    ]
+
+    for i, cmd in enumerate(bypass_methods):
+        try:
+            proc = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout + 5)
+            if proc.returncode == 0 and proc.stdout and proc.stdout.strip()[:1] in '[{':
+                raw = proc.stdout.strip()
+                result, _ = _json.JSONDecoder().raw_decode(raw)
+                print(f"[GAMMA_GET] Method {i+1} succeeded for {path}")
+                return result
+            else:
+                snippet = (proc.stdout or '')[:100]
+                print(f"[GAMMA_GET] Method {i+1} failed: rc={proc.returncode} body={snippet}")
+        except Exception as e:
+            print(f"[GAMMA_GET] Method {i+1} error: {e}")
+            continue
+
+    # All methods failed — try the EU proxy as last resort
     try:
+        proxy_url = f"http://13.49.25.66{path}"
+        if params:
+            proxy_url = f"{proxy_url}?{qs}"
         proc = subprocess.run(
             ['curl', '-s', '-L', '--max-time', str(timeout),
+             '-H', 'Host: gamma-api.polymarket.com',
              '-H', 'Accept: application/json',
-             '-H', 'User-Agent: PolymarketBot/1.0', url],
+             '-H', 'User-Agent: PolymarketBot/1.0', proxy_url],
             capture_output=True, text=True, timeout=timeout + 5
         )
-        if proc.returncode == 0 and proc.stdout:
+        if proc.returncode == 0 and proc.stdout and proc.stdout.strip()[:1] in '[{':
             raw = proc.stdout.strip()
-            # Handle cases where curl returns extra data or non-JSON prefix
-            # Find the first [ or { which starts the actual JSON
-            json_start = -1
-            for i, ch in enumerate(raw):
-                if ch in '[{':
-                    json_start = i
-                    break
-            if json_start == -1:
-                print(f"[GAMMA_GET] No JSON found in response. First 200 chars: {raw[:200]}")
-                return None
-            if json_start > 0:
-                print(f"[GAMMA_GET] Skipping {json_start} chars of non-JSON prefix: {raw[:json_start]!r}")
-                raw = raw[json_start:]
-            # Use raw_decode to handle trailing garbage after valid JSON
             result, _ = _json.JSONDecoder().raw_decode(raw)
+            print(f"[GAMMA_GET] EU proxy method succeeded for {path}")
             return result
-        else:
-            print(f"[GAMMA_GET] curl failed: rc={proc.returncode} stderr={proc.stderr[:200]}")
-            return None
-    except _json.JSONDecodeError as e:
-        print(f"[GAMMA_GET] JSON parse error: {e}. Raw first 300 chars: {proc.stdout[:300] if proc.stdout else 'empty'}")
-        return None
     except Exception as e:
-        print(f"[GAMMA_GET] Error: {e}")
+        print(f"[GAMMA_GET] EU proxy fallback error: {e}")
+
+    print(f"[GAMMA_GET] All methods failed for {path}")
+    return None
         return None
 
 
