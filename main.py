@@ -1498,6 +1498,7 @@ def _fetch_trending_markets(limit=20):
     """
     import time as _time
     import traceback as _tb
+    import polymarket_api as papi
     now = _time.time()
     if _trending_cache["markets"] and now - _trending_cache["ts"] < 120:
         print(f"[TRADE] Returning {len(_trending_cache['markets'])} cached trending markets")
@@ -1521,7 +1522,7 @@ def _fetch_trending_markets(limit=20):
         if isinstance(raw_markets, list):
             for m in raw_markets:
                 try:
-                    parsed = polymarket_api.parse_market(m)
+                    parsed = papi.parse_market(m)
                     if parsed and parsed["volume"] > 0:
                         markets.append(parsed)
                 except Exception as e:
@@ -3541,6 +3542,76 @@ def _polling_loop():
             print(f"[BOT] poll error: {e}"); time.sleep(5)
 
 # ═══════════════════════════════════════════════
+# EU PROXY NGINX FIX
+# ═══════════════════════════════════════════════
+
+def _fix_eu_proxy_nginx():
+    """
+    Auto-fix the EU proxy nginx config to allow POLY_* headers (underscores).
+    Requires EC2_SSH_KEY env var with the base64-encoded SSH private key.
+    Only runs once per deployment — checks if fix is already applied.
+    """
+    import subprocess, base64, tempfile
+    ssh_key_b64 = os.environ.get("EC2_SSH_KEY", "")
+    proxy_host = "13.49.25.66"
+    if not ssh_key_b64:
+        print("[PROXY-FIX] EC2_SSH_KEY not set — skipping nginx fix")
+        print("[PROXY-FIX] To enable: add EC2_SSH_KEY env var in Railway (base64 of .pem key)")
+        return
+
+    # Write the SSH key to a temp file
+    try:
+        key_data = base64.b64decode(ssh_key_b64)
+    except Exception:
+        key_data = ssh_key_b64.encode()  # Maybe it's not base64
+
+    with tempfile.NamedTemporaryFile(mode='wb', suffix='.pem', delete=False) as f:
+        f.write(key_data)
+        key_file = f.name
+    os.chmod(key_file, 0o600)
+
+    # Check if fix is already applied
+    check_cmd = [
+        "ssh", "-i", key_file, "-o", "StrictHostKeyChecking=no",
+        "-o", "ConnectTimeout=10", "-o", "BatchMode=yes",
+        f"ubuntu@{proxy_host}",
+        "grep -c 'underscores_in_headers' /etc/nginx/sites-available/clob-proxy"
+    ]
+    try:
+        result = subprocess.run(check_cmd, capture_output=True, text=True, timeout=15)
+        count = int(result.stdout.strip()) if result.stdout.strip().isdigit() else 0
+        if count > 0:
+            print("[PROXY-FIX] nginx already has underscores_in_headers — no fix needed")
+            os.unlink(key_file)
+            return
+    except Exception as e:
+        print(f"[PROXY-FIX] SSH check failed: {e}")
+        os.unlink(key_file)
+        return
+
+    # Apply the fix
+    fix_cmd = [
+        "ssh", "-i", key_file, "-o", "StrictHostKeyChecking=no",
+        "-o", "ConnectTimeout=10", "-o", "BatchMode=yes",
+        f"ubuntu@{proxy_host}",
+        "sudo sed -i 's/server {/server {\\n    underscores_in_headers on;/' "
+        "/etc/nginx/sites-available/clob-proxy && "
+        "sudo nginx -t && "
+        "sudo systemctl reload nginx"
+    ]
+    try:
+        result = subprocess.run(fix_cmd, capture_output=True, text=True, timeout=20)
+        if result.returncode == 0:
+            print("[PROXY-FIX] ✅ nginx fixed — underscores_in_headers on")
+        else:
+            print(f"[PROXY-FIX] ❌ Fix failed: {result.stderr[:200]}")
+    except Exception as e:
+        print(f"[PROXY-FIX] ❌ SSH fix failed: {e}")
+    finally:
+        os.unlink(key_file)
+
+
+# ═══════════════════════════════════════════════
 # MAIN
 # ═══════════════════════════════════════════════
 
@@ -3572,6 +3643,12 @@ def main():
         web_server.start_server(port=8080)
     except Exception as e:
         print(f"[BOOT] Web server error: {e}")
+
+    # Auto-fix EU proxy nginx config (add underscores_in_headers on)
+    try:
+        _fix_eu_proxy_nginx()
+    except Exception as e:
+        print(f"[BOOT] EU proxy fix skipped: {e}")
 
     # Try to start admin dashboard on 8081
     try:
