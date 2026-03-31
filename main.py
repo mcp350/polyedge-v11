@@ -262,20 +262,24 @@ def send_main_menu(chat_id):
     is_degen = user_store.is_degen(chat_id) if hasattr(user_store, 'is_degen') else False
     degen_badge = "🚀 Degen Active" if is_degen else ""
 
+    buttons = [
+        [{"text": "🔬 Event Research", "callback_data": "quick_research"}],
+        [{"text": "💰 Trade", "callback_data": "menu_trading"},
+         {"text": "👛 Wallet", "callback_data": "menu_wallet"}],
+        [{"text": "🐋 Whales", "callback_data": "menu_whales"},
+         {"text": "📊 Portfolio", "callback_data": "menu_portfolio"}],
+        [{"text": "📈 Strategies", "callback_data": "menu_trade"},
+         {"text": "🔬 Research", "callback_data": "menu_research"}],
+        [{"text": "⚙️ Settings", "callback_data": "menu_settings"},
+         {"text": "🚀 Pro", "callback_data": "degen_subscribe"} if not is_degen else {"text": "🚀 Pro ✓", "callback_data": "degen_manage"}],
+    ]
+
     onboarding.send_inline(chat_id,
         f"🤖 <b>Polytragent</b>{greeting}\n\n"
         "Your AI-Powered Polymarket Trading Agent.\n"
         f"Trading: {trade_status} {degen_badge}\n\n"
         "Select a section below to get started.",
-        [[{"text": "🔬 Event Research", "callback_data": "quick_research"}],
-         [{"text": "💰 Trade", "callback_data": "menu_trading"},
-          {"text": "👛 Wallet", "callback_data": "menu_wallet"}],
-         [{"text": "🐋 Whales & Copy Trade", "callback_data": "menu_whales"}],
-         [{"text": "📊 Portfolio", "callback_data": "menu_portfolio"},
-          {"text": "📈 Strategies", "callback_data": "menu_trade"}],
-         [{"text": "🔬 Research", "callback_data": "menu_research"},
-          {"text": "⚙️ Settings", "callback_data": "menu_settings"}],
-         [{"text": "🚀 Degen Mode", "callback_data": "degen_subscribe"}] if not is_degen else []])
+        buttons)
 
 # ═══════════════════════════════════════════════
 # SECTION 1: PORTFOLIO
