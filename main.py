@@ -336,15 +336,17 @@ def send_main_menu(chat_id):
     degen_badge = "🚀 Degen Active" if is_degen else ""
 
     buttons = [
-        [{"text": "🔬 Event Research", "callback_data": "quick_research"}],
+        [{"text": "🔬 Event Research", "callback_data": "quick_research"},
+         {"text": "🏆 Top Picks", "callback_data": "run_top10"}],
         [{"text": "💰 Trade", "callback_data": "menu_trading"},
-         {"text": "👛 Wallet", "callback_data": "menu_wallet"}],
+         {"text": "💳 Wallet", "callback_data": "menu_wallet"}],
         [{"text": "🐋 Whales", "callback_data": "menu_whales"},
-         {"text": "📊 Portfolio", "callback_data": "menu_portfolio"}],
-        [{"text": "📈 Strategies", "callback_data": "menu_trade"},
-         {"text": "🔬 Research", "callback_data": "menu_research"}],
-        [{"text": "⚙️ Settings", "callback_data": "menu_settings"},
-         {"text": "🚀 Degen Mode", "callback_data": "degen_subscribe"} if not is_degen else {"text": "🚀 Degen ✓", "callback_data": "degen_manage"}],
+         {"text": "📋 Copy Trade", "callback_data": "menu_auto_copy"}],
+        [{"text": "📊 Portfolio", "callback_data": "menu_portfolio"},
+         {"text": "📈 Strategies", "callback_data": "menu_trade"}],
+        [{"text": "🔬 Research", "callback_data": "menu_research"},
+         {"text": "⚙️ Settings", "callback_data": "menu_settings"}],
+        [{"text": "🚀 Degen Mode", "callback_data": "degen_subscribe"} if not is_degen else {"text": "🚀 Degen ✓", "callback_data": "degen_manage"}],
     ]
 
     onboarding.send_inline(chat_id,
