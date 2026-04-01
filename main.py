@@ -2455,10 +2455,11 @@ def show_whales_menu(chat_id):
         f"{ct_status}\n\n"
     )
 
-    # Add copy trade settings buttons
+    # Add top buttons
     extra_buttons = [
-        [{"text": "⚙️ Copy Trade Rules", "callback_data": "ct_rules"},
+        [{"text": "🏆 Top Picks", "callback_data": "tp_page_0"},
          {"text": "➕ Add Wallet", "callback_data": "whale_add_custom"}],
+        [{"text": "⚙️ Copy Trade Rules", "callback_data": "ct_rules"}],
     ]
     if not is_pro:
         extra_buttons.append([{"text": "🚀 Upgrade to Degen Mode — $79.99/mo", "callback_data": "degen_subscribe"}])
@@ -3555,6 +3556,40 @@ def _extended_handle_callback(callback_query):
         else:
             tg.send("❌ Invalid copy trade action.", chat_id)
 
+    # ── TOP PICKS CALLBACKS ──
+    elif data.startswith("tp_page_"):
+        import top_picks as _tp
+        page = int(data.replace("tp_page_", ""))
+        text, buttons = _tp.format_top_picks_page(page=page, per_page=5)
+        onboarding.send_inline(chat_id, text, buttons)
+
+    elif data.startswith("tp_detail_"):
+        import top_picks as _tp
+        rank = int(data.replace("tp_detail_", ""))
+        text, buttons = _tp.format_pick_detail(rank)
+        onboarding.send_inline(chat_id, text, buttons)
+
+    elif data.startswith("tp_follow_"):
+        import top_picks as _tp
+        rank = int(data.replace("tp_follow_", ""))
+        pick = _tp.get_pick_by_rank(rank)
+        if pick:
+            ct.add_wallet(pick["address"], alias=pick["name"])
+            result = ct.follow_wallet(str(chat_id), pick["address"])
+            if result["status"] == "followed":
+                tg.send(f"✅ <b>Now following #{pick['rank']} {pick['name']}</b>\n\n🔔 You'll get notified when they trade.", chat_id)
+            elif result["status"] == "exists":
+                tg.send(f"ℹ️ Already following <b>{pick['name']}</b>.", chat_id)
+            else:
+                tg.send(f"⚠️ {result.get('message', 'Error')}", chat_id)
+        else:
+            tg.send("❌ Pick not found.", chat_id)
+
+    elif data == "tp_refresh":
+        import top_picks as _tp
+        tg.send("🔄 Refreshing top picks... This takes ~1-2 minutes.", chat_id)
+        _tp.refresh_in_background()
+
     # ── WHALE DIRECTORY CALLBACKS (Phase 2) ──
     elif data == "menu_whales":
         show_whales_menu(chat_id)
@@ -4163,6 +4198,15 @@ def main():
         print(f"[BOOT] 🐋 Whale realtime listener: STARTED")
     except Exception as e:
         print(f"[BOOT] Whale realtime listener failed: {e}")
+
+    # Start Top Picks auto-refresh (24h cycle)
+    try:
+        import top_picks as _tp
+        _tp.refresh_in_background()
+        _tp.start_auto_refresh()
+        print(f"[BOOT] 🏆 Top Picks: initial refresh + 24h scheduler started")
+    except Exception as e:
+        print(f"[BOOT] Top Picks init error: {e}")
 
     # Initialize trading engine
     trade_status = "🟢 LIVE" if trading.is_trading_enabled() else "⚪ Disabled (set POLY_* env vars)"
