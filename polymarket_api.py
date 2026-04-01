@@ -90,8 +90,7 @@ def gamma_get(path: str, params: dict = None, timeout: int = 15) -> Optional[lis
         print(f"[GAMMA_GET] EU proxy fallback error: {e}")
 
     print(f"[GAMMA_GET] All methods failed for {path}")
-
-        return None
+    return None
 
 
 def _get(url: str, params: dict = None, retries: int = 3) -> Optional[dict]:

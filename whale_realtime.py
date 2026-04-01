@@ -206,16 +206,23 @@ def process_order_filled(event, contract_address: str):
         maker_asset_id = args.get("makerAssetId", 0)
         taker_asset_id = args.get("takerAssetId", 0)
 
-        # Determine trade value in USD
-        # If whale is maker: they're selling makerAssetId for takerAssetId
-        # If whale is taker: they're buying takerAssetId for makerAssetId
-        if role == "maker":
+        # Determine BUY/SELL and USD value from asset IDs:
+        # makerAssetId=0 means maker is spending USDC (buying outcome tokens)
+        # takerAssetId=0 means taker is sending USDC to maker (maker is selling outcome tokens)
+        if maker_asset_id == 0:
+            # USDC (makerAsset) swapped for outcome token (takerAsset)
             value_usd = maker_amount
-            asset_id = maker_asset_id
-            side = "SELL"
-        else:
-            value_usd = taker_amount
             asset_id = taker_asset_id
+            side = "BUY" if role == "maker" else "SELL"
+        elif taker_asset_id == 0:
+            # Outcome token (makerAsset) swapped for USDC (takerAsset)
+            value_usd = taker_amount
+            asset_id = maker_asset_id
+            side = "SELL" if role == "maker" else "BUY"
+        else:
+            # Token-to-token swap (rare); use larger amount as USD proxy
+            value_usd = max(maker_amount, taker_amount)
+            asset_id = taker_asset_id if role == "maker" else maker_asset_id
             side = "BUY"
 
         # Skip small trades
