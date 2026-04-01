@@ -397,51 +397,63 @@ def _run_http_fallback():
     rpc_url = config.POLYGON_RPC_URL
     print(f"[WHALE-RT] Starting HTTP fallback listener (RPC: {rpc_url})")
 
-    try:
-        w3 = Web3(Web3.HTTPProvider(rpc_url, request_kwargs={"timeout": 30}))
-        if not w3.is_connected():
-            print("[WHALE-RT] HTTP RPC not connected, falling back to scheduled polling")
-            _listener_running = False
-            return
+    reconnect_delay = 15
+    whale_refresh_interval = 300  # Refresh whale set every 5 min
+    last_whale_refresh = time.time()
 
-        ctf_contract = w3.eth.contract(address=CTF_EXCHANGE, abi=CTF_ABI)
-        neg_risk_contract = w3.eth.contract(address=NEG_RISK_CTF_EXCHANGE, abi=CTF_ABI)
-        last_block = w3.eth.block_number
+    while not _stop_event.is_set():
+        try:
+            w3 = Web3(Web3.HTTPProvider(rpc_url, request_kwargs={"timeout": 30}))
+            if not w3.is_connected():
+                raise ConnectionError(f"HTTP RPC not connected: {rpc_url}")
 
-        print(f"[WHALE-RT] HTTP fallback started at block {last_block}")
+            ctf_contract = w3.eth.contract(address=CTF_EXCHANGE, abi=CTF_ABI)
+            neg_risk_contract = w3.eth.contract(address=NEG_RISK_CTF_EXCHANGE, abi=CTF_ABI)
+            last_block = w3.eth.block_number
+            reconnect_delay = 15  # Reset on successful connection
 
-        while not _stop_event.is_set():
-            try:
-                current_block = w3.eth.block_number
-                if current_block > last_block:
-                    # Fetch events from last_block+1 to current_block
-                    from_block = last_block + 1
-                    to_block = min(current_block, from_block + 100)  # Max 100 blocks per query
+            print(f"[WHALE-RT] HTTP fallback connected at block {last_block}")
 
-                    for contract, addr in [(ctf_contract, CTF_EXCHANGE), (neg_risk_contract, NEG_RISK_CTF_EXCHANGE)]:
-                        try:
-                            events = contract.events.OrderFilled.get_logs(
-                                fromBlock=from_block, toBlock=to_block
-                            )
-                            for event in events:
-                                process_order_filled(event, addr)
-                        except Exception as e:
-                            print(f"[WHALE-RT] HTTP poll error for {addr[:10]}: {e}")
+            while not _stop_event.is_set():
+                try:
+                    current_block = w3.eth.block_number
+                    if current_block > last_block:
+                        # Fetch events from last_block+1 to current_block
+                        from_block = last_block + 1
+                        to_block = min(current_block, from_block + 100)  # Max 100 blocks per query
 
-                    last_block = to_block
+                        for contract, addr in [(ctf_contract, CTF_EXCHANGE), (neg_risk_contract, NEG_RISK_CTF_EXCHANGE)]:
+                            try:
+                                events = contract.events.OrderFilled.get_logs(
+                                    fromBlock=from_block, toBlock=to_block
+                                )
+                                for event in events:
+                                    process_order_filled(event, addr)
+                            except Exception as e:
+                                print(f"[WHALE-RT] HTTP poll error for {addr[:10]}: {e}")
 
-                # Refresh whale set periodically
-                refresh_whale_set()
+                        last_block = to_block
 
-            except Exception as e:
-                print(f"[WHALE-RT] HTTP poll error: {e}")
+                    # Refresh whale set every 5 min (not every loop iteration)
+                    if time.time() - last_whale_refresh > whale_refresh_interval:
+                        refresh_whale_set()
+                        last_whale_refresh = time.time()
 
-            _stop_event.wait(15)  # Poll every 15 seconds
+                except Exception as e:
+                    print(f"[WHALE-RT] HTTP poll error: {e}")
+                    break  # reconnect outer loop
 
-    except Exception as e:
-        print(f"[WHALE-RT] HTTP fallback failed: {e}")
+                _stop_event.wait(15)  # Poll every 15 seconds
+
+        except Exception as e:
+            print(f"[WHALE-RT] HTTP fallback connection error: {e}")
+            if not _stop_event.is_set():
+                print(f"[WHALE-RT] Retrying in {reconnect_delay}s...")
+                _stop_event.wait(reconnect_delay)
+                reconnect_delay = min(reconnect_delay * 2, 300)  # backoff up to 5 min
 
     _listener_running = False
+    print("[WHALE-RT] HTTP fallback stopped.")
 
 
 # ═══════════════════════════════════════════════
