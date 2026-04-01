@@ -31,6 +31,19 @@ import copy_executor as ce
 _last_update_id = 0
 _locks = {}
 
+
+def _ensure_wallet_tracker_synced(chat_id):
+    """Auto-sync wallet_tracker if wallet_manager has a wallet but tracker doesn't."""
+    cid = str(chat_id)
+    if not wt.get_wallet(cid):
+        wallet = wm.get_primary_wallet(cid)
+        if wallet:
+            try:
+                wt.connect_wallet(cid, wallet["address"])
+                log.info(f"Auto-synced wallet_tracker for {cid}: {wallet['address']}")
+            except Exception as e:
+                log.warning(f"wallet_tracker auto-sync failed for {cid}: {e}")
+
 # ── SINGLE INSTANCE ENFORCEMENT ──
 _PID_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".bot.pid")
 
@@ -116,9 +129,65 @@ def _run_locked(name, chat_id, fn):
 
 _waiting_for_research_link = {}  # chat_id -> True when waiting for link
 
+# ── Research Rate Limiting ──
+FREE_RESEARCH_LIMIT = 5  # free users: 5 per day
+_research_usage = {}  # chat_id -> {"date": "2026-03-31", "count": 3}
+
+def _check_research_limit(chat_id) -> bool:
+    """Check if user can do another research. Returns True if allowed."""
+    cid = str(chat_id)
+    is_degen = user_store.is_degen(cid) if hasattr(user_store, 'is_degen') else False
+    if is_degen:
+        return True  # unlimited
+
+    from datetime import date
+    today = date.today().isoformat()
+    usage = _research_usage.get(cid, {"date": "", "count": 0})
+    if usage["date"] != today:
+        usage = {"date": today, "count": 0}
+    return usage["count"] < FREE_RESEARCH_LIMIT
+
+def _increment_research_usage(chat_id):
+    """Track research usage for rate limiting."""
+    cid = str(chat_id)
+    from datetime import date
+    today = date.today().isoformat()
+    usage = _research_usage.get(cid, {"date": "", "count": 0})
+    if usage["date"] != today:
+        usage = {"date": today, "count": 0}
+    usage["count"] += 1
+    _research_usage[cid] = usage
+
+def _get_research_remaining(chat_id) -> int:
+    """Get remaining research queries for today."""
+    cid = str(chat_id)
+    is_degen = user_store.is_degen(cid) if hasattr(user_store, 'is_degen') else False
+    if is_degen:
+        return 999
+    from datetime import date
+    today = date.today().isoformat()
+    usage = _research_usage.get(cid, {"date": "", "count": 0})
+    if usage["date"] != today:
+        return FREE_RESEARCH_LIMIT
+    return max(0, FREE_RESEARCH_LIMIT - usage["count"])
+
 def show_quick_research_prompt(chat_id):
     """Prompt user to send a Polymarket event link for full AI analysis"""
+    remaining = _get_research_remaining(str(chat_id))
+    is_degen = user_store.is_degen(str(chat_id)) if hasattr(user_store, 'is_degen') else False
+
+    if remaining <= 0 and not is_degen:
+        onboarding.send_inline(chat_id,
+            "🔬 <b>Daily Research Limit Reached</b>\n\n"
+            f"You've used all <b>{FREE_RESEARCH_LIMIT}</b> free researches today.\n\n"
+            "🚀 <b>Upgrade to Degen Mode</b> for unlimited research + auto copy trading!\n\n"
+            "💰 <b>$79.99/month</b> — cancel anytime.",
+            [[{"text": "🚀 Upgrade to Degen Mode — $79.99/mo", "callback_data": "degen_subscribe"}],
+             [{"text": "← Main Menu", "callback_data": "main_menu"}]])
+        return
+
     _waiting_for_research_link[str(chat_id)] = True
+    limit_line = f"♾ <b>Unlimited</b> researches (Degen Mode)" if is_degen else f"📋 <b>{remaining}/{FREE_RESEARCH_LIMIT}</b> researches remaining today"
     onboarding.send_inline(chat_id,
         "🔬 <b>Polytragent — Event Research</b>\n\n"
         "Paste a Polymarket event link and get:\n\n"
@@ -128,6 +197,7 @@ def show_quick_research_prompt(chat_id):
         "🐋 <b>Whale Activity</b> — smart money flow\n"
         "📰 <b>News Context</b> — recent developments\n"
         "🎯 <b>Entry/Exit Strategy</b> — sizing & timing\n\n"
+        f"{limit_line}\n\n"
         "👇 <b>Send a Polymarket link now:</b>\n"
         "<i>Example: https://polymarket.com/event/...</i>",
         [[{"text": "← Main Menu", "callback_data": "main_menu"}]])
@@ -136,7 +206,23 @@ def handle_research_link(chat_id, link):
     """Run full research on a Polymarket link"""
     _waiting_for_research_link.pop(str(chat_id), None)
 
-    tg.send("🔬 <b>Researching event...</b>\n\n⏳ Running AI analysis, market data, whale scan, news check...\nThis takes ~30-60 seconds.", chat_id)
+    # Rate limit check
+    if not _check_research_limit(str(chat_id)):
+        onboarding.send_inline(chat_id,
+            f"🔬 <b>Daily Limit Reached</b>\n\n"
+            f"You've used all <b>{FREE_RESEARCH_LIMIT}</b> free researches today.\n"
+            f"Resets at midnight UTC.\n\n"
+            f"🚀 Upgrade to <b>Degen Mode ($79.99/mo)</b> for unlimited research!",
+            [[{"text": "🚀 Upgrade — $79.99/mo", "callback_data": "degen_subscribe"}],
+             [{"text": "← Main Menu", "callback_data": "main_menu"}]])
+        return
+
+    _increment_research_usage(str(chat_id))
+    remaining = _get_research_remaining(str(chat_id))
+    is_degen = user_store.is_degen(str(chat_id)) if hasattr(user_store, 'is_degen') else False
+    limit_note = "" if is_degen else f"\n📋 {remaining}/{FREE_RESEARCH_LIMIT} researches remaining today"
+
+    tg.send(f"🔬 <b>Researching event...</b>\n\n⏳ Running AI analysis, market data, whale scan, news check...\nThis takes ~30-60 seconds.{limit_note}", chat_id)
 
     try:
         # 1. Core AI research
@@ -249,21 +335,24 @@ def send_main_menu(chat_id):
     is_degen = user_store.is_degen(chat_id) if hasattr(user_store, 'is_degen') else False
     degen_badge = "🚀 Degen Active" if is_degen else ""
 
+    buttons = [
+        [{"text": "🔬 Event Research", "callback_data": "quick_research"}],
+        [{"text": "💰 Trade", "callback_data": "menu_trading"},
+         {"text": "👛 Wallet", "callback_data": "menu_wallet"}],
+        [{"text": "🐋 Whales", "callback_data": "menu_whales"},
+         {"text": "📊 Portfolio", "callback_data": "menu_portfolio"}],
+        [{"text": "📈 Strategies", "callback_data": "menu_trade"},
+         {"text": "🔬 Research", "callback_data": "menu_research"}],
+        [{"text": "⚙️ Settings", "callback_data": "menu_settings"},
+         {"text": "🚀 Degen Mode", "callback_data": "degen_subscribe"} if not is_degen else {"text": "🚀 Degen ✓", "callback_data": "degen_manage"}],
+    ]
+
     onboarding.send_inline(chat_id,
         f"🤖 <b>Polytragent</b>{greeting}\n\n"
         "Your AI-Powered Polymarket Trading Agent.\n"
         f"Trading: {trade_status} {degen_badge}\n\n"
         "Select a section below to get started.",
-        [[{"text": "🔬 Event Research", "callback_data": "quick_research"}],
-         [{"text": "💰 Trade", "callback_data": "menu_trading"},
-          {"text": "👛 Wallet", "callback_data": "menu_wallet"}],
-         [{"text": "🐋 Whales", "callback_data": "menu_whales"},
-          {"text": "🔄 Copy Trade", "callback_data": "menu_auto_copy"}],
-         [{"text": "📊 Portfolio", "callback_data": "menu_portfolio"},
-          {"text": "📈 Strategies", "callback_data": "menu_trade"}],
-         [{"text": "🔬 Research", "callback_data": "menu_research"},
-          {"text": "⚙️ Settings", "callback_data": "menu_settings"}],
-         [{"text": "🚀 Degen Mode", "callback_data": "degen_subscribe"}] if not is_degen else []])
+        buttons)
 
 # ═══════════════════════════════════════════════
 # SECTION 1: PORTFOLIO
@@ -293,6 +382,7 @@ def show_portfolio_menu(chat_id):
 def show_portfolio_dashboard(chat_id):
     """Spec Section 5.1 — Portfolio Dashboard with live wallet data"""
     try:
+        _ensure_wallet_tracker_synced(chat_id)
         # Check for connected wallet first
         wallet_data = wt.get_portfolio_data(str(chat_id))
 
@@ -371,6 +461,7 @@ def show_portfolio_dashboard(chat_id):
 
 def show_portfolio_positions(chat_id):
     """Spec Section 5.2 — Open Positions Detail (live from wallet)"""
+    _ensure_wallet_tracker_synced(chat_id)
     wallet = wt.get_wallet(str(chat_id))
     if wallet:
         # ── LIVE WALLET POSITIONS ──
@@ -1491,63 +1582,44 @@ def _cache_rbuy_slug(slug: str) -> int:
 _trending_cache = {"markets": [], "ts": 0}
 
 def _fetch_trending_markets(limit=20):
-    """Fetch top trending markets from Polymarket events API.
-    Gets top events by volume, picks the main market from each event,
-    filters out expired/resolved ones, returns top 20.
+    """Fetch top trending markets from Polymarket using /markets endpoint.
+    Uses volume24hr for truly trending markets (not just all-time volume).
+    The /markets endpoint returns ~150KB vs /events which returns 1.5MB+ per 5 events.
     Cached for 2 minutes.
     """
     import time as _time
-    import json as _json
+    import traceback as _tb
+    import polymarket_api as papi
     now = _time.time()
     if _trending_cache["markets"] and now - _trending_cache["ts"] < 120:
+        print(f"[TRADE] Returning {len(_trending_cache['markets'])} cached trending markets")
         return _trending_cache["markets"]
     try:
         markets = []
-        seen_slugs = set()
 
-        # Fetch top 50 events by volume from Gamma API
-        # Use gamma_get (curl-based) because Railway blocks Python requests to polymarket.com
+        # Fetch top markets by 24h volume — lightweight endpoint (~150KB for 30 markets)
+        print("[TRADE] Fetching trending markets from /markets endpoint...")
         try:
-            events = polymarket_api.gamma_get("/events", params={
-                "limit": 50, "active": "true", "closed": "false",
-                "order": "volume", "ascending": "false"
-            }) or []
+            raw_markets = papi.gamma_get("/markets", params={
+                "limit": "30", "active": "true", "closed": "false",
+                "order": "volume24hr", "ascending": "false"
+            }, timeout=20) or []
+            print(f"[TRADE] gamma_get /markets returned {len(raw_markets) if isinstance(raw_markets, list) else type(raw_markets).__name__}")
         except Exception as e:
-            print(f"[TRADE] Events API error: {e}")
-            events = []
+            print(f"[TRADE] Markets API error: {e}")
+            _tb.print_exc()
+            raw_markets = []
 
-        if isinstance(events, list):
-            for ev in events:
-                ev_markets = ev.get("markets", [])
-                if not ev_markets:
-                    continue
-
-                # Pick the highest-volume market from each event
-                best = None
-                best_vol = 0
-                for m in ev_markets:
-                    vol = float(m.get("volume", 0) or 0)
-                    op = m.get("outcomePrices", "[]")
-                    if isinstance(op, str):
-                        try: prices = _json.loads(op)
-                        except: prices = []
-                    else:
-                        prices = op or []
-
-                    # Must have valid prices and some volume
-                    if len(prices) >= 2 and vol > 0:
-                        slug = m.get("slug", "")
-                        if slug and slug not in seen_slugs and vol > best_vol:
-                            best = m
-                            best_vol = vol
-
-                if best:
-                    parsed = polymarket_api.parse_market(best)
-                    if parsed:
-                        seen_slugs.add(parsed["slug"])
+        if isinstance(raw_markets, list):
+            for m in raw_markets:
+                try:
+                    parsed = papi.parse_market(m)
+                    if parsed and parsed["volume"] > 0:
                         markets.append(parsed)
+                except Exception as e:
+                    print(f"[TRADE] parse_market error: {e}")
 
-        # Sort by volume descending and take top N
+        # Sort by 24h volume (already sorted by API, but ensure consistency)
         markets.sort(key=lambda x: x["volume"], reverse=True)
         _trending_cache["markets"] = markets[:limit]
         _trending_cache["ts"] = now
@@ -1556,10 +1628,11 @@ def _fetch_trending_markets(limit=20):
             print(f"[TRADE] Fetched {len(markets)} trending markets, showing top {limit}. "
                   f"Top: ${markets[0]['volume']:,.0f} — {markets[0]['question'][:50]}")
         else:
-            print("[TRADE] No trending markets found")
+            print("[TRADE] No trending markets found from /markets endpoint")
 
     except Exception as e:
         print(f"[TRADE] Trending fetch error: {e}")
+        _tb.print_exc()
     return _trending_cache["markets"]
 
 
@@ -1741,13 +1814,20 @@ def _execute_quick_trade(chat_id, amount):
             chat_id=str(chat_id)
         )
         if result and result.get("success"):
-            shares = amount / (state["price"] / 100) if state["price"] > 0 else 0
+            price_cents = state.get("price", 0)
+            if price_cents > 0:
+                shares = amount / (price_cents / 100)
+                price_line = f"🎯 {outcome} @ {price_cents}¢\n"
+                shares_line = f"📊 ~{shares:.0f} shares\n\n"
+            else:
+                price_line = f"🎯 {outcome}\n"
+                shares_line = "\n"
             msg = (
                 f"✅ <b>Trade Executed!</b>\n\n"
                 f"📌 {question}\n"
-                f"🎯 {outcome} @ {state['price']}¢\n"
+                f"{price_line}"
                 f"💰 Amount: ${amount:.2f}\n"
-                f"📊 ~{shares:.0f} shares\n\n"
+                f"{shares_line}"
                 f"🧾 Order ID: <code>{result.get('order_id', 'N/A')[:12]}...</code>"
             )
         else:
@@ -1756,10 +1836,14 @@ def _execute_quick_trade(chat_id, amount):
     except Exception as e:
         msg = f"❌ <b>Trade Error</b>\n\n{e}"
 
+    # Cache slug for "Buy More" button
+    _rbuy_slug_cache[hash(slug) % 100000] = slug
+    buy_more_cb = f"rbuy_{hash(slug) % 100000}_{outcome}"
+
     onboarding.send_inline(chat_id, msg,
-        [[{"text": "🔥 More Events", "callback_data": "trending_0"},
+        [[{"text": f"🔄 Buy More {outcome}", "callback_data": buy_more_cb},
           {"text": "📊 Positions", "callback_data": "trading_positions"}],
-         [{"text": "💰 Trade Again", "callback_data": "menu_trading"},
+         [{"text": "🔥 More Events", "callback_data": "trending_0"},
           {"text": "← Main Menu", "callback_data": "main_menu"}]])
 
 
@@ -1778,16 +1862,80 @@ def show_buy_prompt(chat_id):
 
 def show_sell_prompt(chat_id):
     """Show positions to sell from"""
-    positions = trading.get_positions()
+    positions = trading.get_positions(chat_id=str(chat_id))
     if not positions:
         tg.send("📭 No open positions to sell.", chat_id)
         show_trading_menu(chat_id)
         return
 
-    _waiting_for_trade[str(chat_id)] = {"action": "sell", "step": "market"}
-    msg = "🟥 <b>Sell Position</b>\n\nSend a Polymarket event link for the position you want to close.\n\n"
-    msg += trading.format_positions(positions)
-    tg.send(msg, chat_id)
+    _waiting_for_trade[str(chat_id)] = {"action": "sell", "step": "market", "positions": positions}
+
+    # Build sellable position list with buttons
+    msg = "🟥 <b>Sell Position</b>\n\nSelect a position to sell:\n\n"
+    buttons = []
+    for i, pos in enumerate(positions[:10]):
+        title = pos.get("title", pos.get("question", pos.get("market", "Unknown")))[:50]
+        outcome = pos.get("outcome", pos.get("side", ""))
+        size = float(pos.get("size", pos.get("amount", 0)) or 0)
+        slug = pos.get("slug", pos.get("market_slug", ""))
+        msg += f"{i+1}. <b>{title}</b> ({outcome})\n   📊 {size:.1f} shares\n\n"
+        if slug:
+            buttons.append([{"text": f"🟥 Sell #{i+1}: {outcome} ({size:.1f})", "callback_data": f"sell_pos_{i}"}])
+
+    if buttons:
+        buttons.append([{"text": "← Trading", "callback_data": "menu_trading"}])
+        onboarding.send_inline(chat_id, msg, buttons)
+    else:
+        msg += "\nSend a Polymarket event link for the position you want to close."
+        msg += "\n\n" + trading.format_positions(positions)
+        tg.send(msg, chat_id)
+
+
+def _execute_sell(chat_id, shares):
+    """Execute sell from the direct position sell flow"""
+    chat_str = str(chat_id)
+    state = _waiting_for_trade.get(chat_str)
+    if not state:
+        tg.send("❌ Sell session expired. Start again.", chat_id)
+        return
+
+    slug = state.get("slug", "")
+    outcome = state.get("outcome", "")
+    question = state.get("question", "Unknown")
+    token_id = state.get("token_id", "")
+    neg_risk = state.get("neg_risk", False)
+    _waiting_for_trade.pop(chat_str, None)
+
+    tg.send(f"⏳ Selling {shares:.1f} shares of <b>{outcome}</b>...\n📌 {question}", chat_id)
+
+    try:
+        if token_id:
+            result = trading.market_sell(
+                token_id=token_id, amount=shares,
+                neg_risk=neg_risk, chat_id=chat_str,
+                market_question=question,
+            )
+        else:
+            result = trading.quick_sell(
+                market_slug_or_url=slug, outcome=outcome,
+                shares=shares, chat_id=chat_str,
+            )
+
+        if result and result.get("success"):
+            msg = (f"✅ <b>Sold!</b>\n\n"
+                   f"📌 {question}\n"
+                   f"🎯 {outcome} — {shares:.1f} shares\n"
+                   f"🧾 Order ID: <code>{result.get('order_id', 'N/A')[:12]}...</code>")
+        else:
+            error = result.get("error", "Unknown error") if result else "No response"
+            msg = f"❌ <b>Sell Failed</b>\n\n📌 {question}\n\nError: {error}"
+    except Exception as e:
+        msg = f"❌ <b>Sell Error</b>\n\n{e}"
+
+    onboarding.send_inline(chat_id, msg,
+        [[{"text": "📊 Positions", "callback_data": "trading_positions"},
+          {"text": "💰 Trade Again", "callback_data": "menu_trading"}],
+         [{"text": "← Main Menu", "callback_data": "main_menu"}]])
 
 
 def handle_trade_input(chat_id, text):
@@ -1824,6 +1972,26 @@ def handle_trade_input(chat_id, text):
             f"📊 <b>{market['question']}</b>\n\n"
             "Select outcome:",
             buttons)
+        return True
+
+    elif step == "amount" and action == "sell" and state.get("max_shares"):
+        # Direct position sell — user typed share count
+        text_clean = text.strip().lower()
+        if text_clean == "all":
+            _execute_sell(chat_id, state["max_shares"])
+            return True
+        try:
+            shares = float(text_clean.replace(",", ""))
+            if shares <= 0:
+                tg.send("❌ Enter a positive number of shares.", chat_id)
+                return True
+            if shares > state["max_shares"]:
+                tg.send(f"❌ You only have {state['max_shares']:.1f} shares.", chat_id)
+                return True
+        except ValueError:
+            tg.send("❌ Enter a number of shares (e.g., 5 or 'all')", chat_id)
+            return True
+        _execute_sell(chat_id, shares)
         return True
 
     elif step == "amount_quick":
@@ -1899,7 +2067,7 @@ def handle_trade_input(chat_id, text):
 def show_trading_positions(chat_id):
     """Show live positions from the trading wallet"""
     tg.send("📊 Loading positions...", chat_id)
-    positions = trading.get_positions()
+    positions = trading.get_positions(chat_id=str(chat_id))
     msg = trading.format_positions(positions)
     onboarding.send_inline(chat_id, msg,
         [[{"text": "🔄 Refresh", "callback_data": "trading_positions"},
@@ -2171,6 +2339,13 @@ def handle_wallet_input(chat_id, text):
         result = wm.import_wallet(chat_str, text.strip())
         _waiting_for_wallet.pop(chat_str, None)
         if result["success"]:
+            # Auto-connect to wallet_tracker for portfolio/positions
+            try:
+                import wallet_tracker
+                wallet_tracker.connect_wallet(chat_str, result['address'])
+                log.info(f"Auto-connected wallet_tracker for {chat_str}: {result['address']}")
+            except Exception as e:
+                log.warning(f"Failed to auto-connect wallet_tracker: {e}")
             tg.send(
                 f"✅ <b>Wallet Imported!</b>\n\n"
                 f"Address: <code>{result['address']}</code>\n"
@@ -2251,49 +2426,76 @@ def show_auto_copy_settings_menu(chat_id):
          [{"text": "← Auto-Copy", "callback_data": "menu_auto_copy"}]])
 
 def show_whales_menu(chat_id):
-    """Show the whale directory — curated list with follow buttons."""
+    """Show the whale directory with copy trade settings."""
     import whale_discovery as wd_mod
     text, buttons = wd_mod.format_directory_page(page=0, per_page=5)
 
-    # Add following count header
     following = ct.get_following_count(str(chat_id))
+    is_pro = user_store.is_degen(str(chat_id))
     limit = user_store.get_wallet_tracking_limit(str(chat_id))
-    is_degen = user_store.is_degen(str(chat_id))
+
+    # Get copy trade settings
+    import copy_executor as _ce
+    ct_settings = _ce.get_auto_copy_settings(str(chat_id))
+    if is_pro and ct_settings and ct_settings.get("enabled"):
+        ct_status = (f"✅ Auto-Copy: <b>ON</b> "
+                     f"(${ct_settings.get('max_per_trade', 25)}/trade, "
+                     f"${ct_settings.get('daily_limit', 200)}/day)")
+    elif is_pro:
+        ct_status = "⏸ Auto-Copy: <b>OFF</b> (available — tap Rules to configure)"
+    else:
+        ct_status = "🔒 Auto-Copy: <b>Degen Mode only</b> — notifications are free!"
+
+    tier_label = "🟢 Degen" if is_pro else "⚪ Free"
 
     header = (
-        f"📊 Following: <b>{following} / {limit}</b> wallets"
-        f"{' 🚀 Degen Mode' if is_degen else ''}\n"
-        f"🔔 You'll get <b>real-time alerts</b> when followed whales trade.\n\n"
+        f"🐋 <b>Whales & Copy Trade</b>\n\n"
+        f"📊 Following: <b>{following}/{limit}</b> wallets  •  {tier_label}\n"
+        f"🔔 Real-time alerts when followed whales trade\n"
+        f"{ct_status}\n\n"
     )
-    onboarding.send_inline(chat_id, header + text, buttons)
+
+    # Add top buttons
+    extra_buttons = [
+        [{"text": "🏆 Top Picks", "callback_data": "tp_page_0"},
+         {"text": "➕ Add Wallet", "callback_data": "whale_add_custom"}],
+        [{"text": "⚙️ Copy Trade Rules", "callback_data": "ct_rules"}],
+    ]
+    if not is_pro:
+        extra_buttons.append([{"text": "🚀 Upgrade to Degen Mode — $79.99/mo", "callback_data": "degen_subscribe"}])
+    onboarding.send_inline(chat_id, header + text, extra_buttons + buttons)
 
 def show_degen_mode_info(chat_id):
     """Degen Mode subscription info"""
-    is_degen = user_store.is_degen(chat_id) if hasattr(user_store, 'is_degen') else False
+    is_degen = user_store.is_degen(str(chat_id)) if hasattr(user_store, 'is_degen') else False
 
     if is_degen:
         onboarding.send_inline(chat_id,
             "🚀 <b>Degen Mode — ACTIVE</b>\n\n"
-            "You have unlimited access to:\n"
-            "• Unlimited whale tracking (3+ wallets)\n"
-            "• Advanced portfolio analytics\n"
+            "You have full access to:\n"
+            "• Unlimited event research\n"
+            "• Unlimited whale wallet tracking\n"
+            "• Auto-execute copy trades\n"
             "• Priority alerts & notifications\n\n"
-            "💰 $79/month billed to your Stripe account.\n"
+            "💰 $79.99/month billed to your Stripe account.\n"
             "🔄 Cancel anytime in settings.",
             [[{"text": "⚙️ Manage Subscription", "callback_data": "degen_manage"}],
              [{"text": "← Main Menu", "callback_data": "main_menu"}]])
     else:
         onboarding.send_inline(chat_id,
-            "🚀 <b>Degen Mode — Unlimited Whale Tracking</b>\n\n"
-            "Get the most from Polytragent:\n"
-            "• Unlimited whale wallet tracking (vs. 3 free)\n"
-            "• Advanced portfolio analytics\n"
-            "• Priority alerts & notifications\n"
-            "• Full whale discovery suite\n\n"
-            "💰 <b>$79/month</b>\n"
-            "✅ Cancel anytime. No lock-in.\n\n"
-            "🔗 Set up via Stripe checkout below.",
-            [[{"text": "💳 Upgrade to Degen Mode", "callback_data": "degen_subscribe"}],
+            "🚀 <b>Upgrade to Degen Mode</b>\n\n"
+            "<b>Free plan (current):</b>\n"
+            "• 5 event researches per day\n"
+            "• Track up to 20 whale wallets\n"
+            "• Real-time trade notifications\n"
+            "• Manual copy trading\n\n"
+            "<b>Degen Mode ($79.99/mo):</b>\n"
+            "• Unlimited event research\n"
+            "• Unlimited whale wallets\n"
+            "• Auto-execute copy trades\n"
+            "• Priority alerts & analytics\n\n"
+            "✅ Cancel anytime. No lock-in.",
+            [[{"text": "🚀 Upgrade to Degen Mode — $79.99/mo", "callback_data": "degen_subscribe"}],
              [{"text": "← Main Menu", "callback_data": "main_menu"}]])
 
 def _handle(cmd, chat_id):
@@ -2500,6 +2702,12 @@ def _handle(cmd, chat_id):
     elif cmd == "/create_wallet":
         result = wm.create_wallet(str(chat_id))
         if result["success"]:
+            # Auto-connect to wallet_tracker for portfolio/positions
+            try:
+                import wallet_tracker
+                wallet_tracker.connect_wallet(str(chat_id), result['address'])
+            except Exception as e:
+                log.warning(f"Failed to auto-connect wallet_tracker: {e}")
             tg.send(
                 f"✅ <b>Wallet Created!</b>\n\n"
                 f"Address: <code>{result['address']}</code>\n\n"
@@ -3114,10 +3322,23 @@ def _extended_handle_callback(callback_query):
                     "Admin needs to set POLY_API_KEY, POLY_API_SECRET, POLY_API_PASSPHRASE, POLY_PRIVATE_KEY.",
                     [[{"text": "← Main Menu", "callback_data": "main_menu"}]])
             else:
+                # Fetch market data for price display
+                _rbuy_price = 0
+                _rbuy_question = slug.replace("-", " ")[:60]
+                try:
+                    _rbuy_market = trading.resolve_market_tokens(slug)
+                    if _rbuy_market:
+                        _rbuy_question = _rbuy_market.get("question", _rbuy_question)
+                        for t in _rbuy_market.get("tokens", []):
+                            if t["outcome"].lower() == outcome.lower():
+                                _rbuy_price = int(float(t.get("price", 0)) * 100)
+                                break
+                except Exception:
+                    pass
                 _waiting_for_trade[str(chat_id)] = {
                     "action": "buy", "step": "amount_quick",
-                    "slug": slug, "question": slug.replace("-", " ")[:60],
-                    "outcome": outcome, "price": 0,
+                    "slug": slug, "question": _rbuy_question,
+                    "outcome": outcome, "price": _rbuy_price,
                 }
                 onboarding.send_inline(chat_id,
                     f"🟩 <b>Buy {outcome}</b> on this event\n\n"
@@ -3137,6 +3358,49 @@ def _extended_handle_callback(callback_query):
         show_buy_prompt(chat_id)
     elif data == "trading_sell_prompt":
         show_sell_prompt(chat_id)
+    elif data.startswith("sell_pos_"):
+        # Direct sell from position list
+        try:
+            idx = int(data.replace("sell_pos_", ""))
+            state = _waiting_for_trade.get(str(chat_id), {})
+            positions = state.get("positions", [])
+            if idx < len(positions):
+                pos = positions[idx]
+                slug = pos.get("slug", pos.get("market_slug", ""))
+                outcome = pos.get("outcome", pos.get("side", ""))
+                size = float(pos.get("size", pos.get("amount", 0)) or 0)
+                title = pos.get("title", pos.get("question", "Unknown"))[:60]
+                token_id = pos.get("tokenId", pos.get("token_id", ""))
+
+                _waiting_for_trade[str(chat_id)] = {
+                    "action": "sell", "step": "amount",
+                    "slug": slug, "outcome": outcome,
+                    "question": title, "token_id": token_id,
+                    "max_shares": size,
+                    "neg_risk": pos.get("neg_risk", pos.get("negRisk", False)),
+                }
+                onboarding.send_inline(chat_id,
+                    f"🟥 <b>Sell {outcome}</b>\n\n"
+                    f"📌 {title}\n"
+                    f"📊 You have: <b>{size:.1f} shares</b>\n\n"
+                    f"Enter number of shares to sell (or 'all'):",
+                    [[{"text": f"Sell All ({size:.1f})", "callback_data": f"sell_all_{idx}"},
+                      {"text": "← Cancel", "callback_data": "menu_trading"}]])
+            else:
+                tg.send("❌ Position expired. Tap Sell again.", chat_id)
+        except Exception as e:
+            tg.send(f"❌ Error: {e}", chat_id)
+    elif data.startswith("sell_all_"):
+        # Sell all shares of a position
+        try:
+            idx = int(data.replace("sell_all_", ""))
+            state = _waiting_for_trade.get(str(chat_id), {})
+            if state.get("max_shares"):
+                _execute_sell(chat_id, state["max_shares"])
+            else:
+                tg.send("❌ Sell session expired. Start again.", chat_id)
+        except Exception as e:
+            tg.send(f"❌ Error: {e}", chat_id)
     elif data == "trading_positions":
         show_trading_positions(chat_id)
     elif data == "trading_orders":
@@ -3292,6 +3556,40 @@ def _extended_handle_callback(callback_query):
         else:
             tg.send("❌ Invalid copy trade action.", chat_id)
 
+    # ── TOP PICKS CALLBACKS ──
+    elif data.startswith("tp_page_"):
+        import top_picks as _tp
+        page = int(data.replace("tp_page_", ""))
+        text, buttons = _tp.format_top_picks_page(page=page, per_page=5)
+        onboarding.send_inline(chat_id, text, buttons)
+
+    elif data.startswith("tp_detail_"):
+        import top_picks as _tp
+        rank = int(data.replace("tp_detail_", ""))
+        text, buttons = _tp.format_pick_detail(rank)
+        onboarding.send_inline(chat_id, text, buttons)
+
+    elif data.startswith("tp_follow_"):
+        import top_picks as _tp
+        rank = int(data.replace("tp_follow_", ""))
+        pick = _tp.get_pick_by_rank(rank)
+        if pick:
+            ct.add_wallet(pick["address"], alias=pick["name"])
+            result = ct.follow_wallet(str(chat_id), pick["address"])
+            if result["status"] == "followed":
+                tg.send(f"✅ <b>Now following #{pick['rank']} {pick['name']}</b>\n\n🔔 You'll get notified when they trade.", chat_id)
+            elif result["status"] == "exists":
+                tg.send(f"ℹ️ Already following <b>{pick['name']}</b>.", chat_id)
+            else:
+                tg.send(f"⚠️ {result.get('message', 'Error')}", chat_id)
+        else:
+            tg.send("❌ Pick not found.", chat_id)
+
+    elif data == "tp_refresh":
+        import top_picks as _tp
+        tg.send("🔄 Refreshing top picks... This takes ~1-2 minutes.", chat_id)
+        _tp.refresh_in_background()
+
     # ── WHALE DIRECTORY CALLBACKS (Phase 2) ──
     elif data == "menu_whales":
         show_whales_menu(chat_id)
@@ -3339,20 +3637,39 @@ def _extended_handle_callback(callback_query):
 
     # ── DEGEN MODE CALLBACKS (Phase 2) ──
     elif data == "degen_subscribe":
-        onboarding.send_inline(chat_id,
-            "🚀 <b>Degen Mode Checkout</b>\n\n"
-            "Unlimited whale tracking + premium features.\n\n"
-            "$79/month, cancel anytime.\n\n"
-            "🔗 Opening Stripe checkout...",
-            [[{"text": "← Main Menu", "callback_data": "main_menu"}]])
-        # TODO: Integrate with Stripe checkout
-        tg.send("🔗 Stripe checkout: [Integration pending - contact support]", chat_id)
+        import stripe_handler
+        user = user_store.get_user(str(chat_id))
+        username = user.get("username", "") if user else ""
+        checkout_url = stripe_handler.create_checkout_session(str(chat_id), username)
+        if checkout_url:
+            onboarding.send_inline(chat_id,
+                "🚀 <b>Degen Mode Checkout</b>\n\n"
+                "• Unlimited event research\n"
+                "• Unlimited whale wallets\n"
+                "• Auto-execute copy trades\n"
+                "• Priority alerts\n\n"
+                "💰 <b>$79.99/month</b>, cancel anytime.\n\n"
+                "👇 Tap below to complete payment:",
+                [[{"text": "💳 Pay $79.99/mo — Open Stripe", "url": checkout_url}],
+                 [{"text": "← Main Menu", "callback_data": "main_menu"}]])
+        else:
+            tg.send("❌ Stripe checkout unavailable. Contact @polytragent for support.", chat_id)
     elif data == "degen_manage":
-        onboarding.send_inline(chat_id,
-            "⚙️ <b>Manage Degen Mode</b>\n\n"
-            "Current subscription active.\n"
-            "Renews: Next billing date\n\n"
-            "💳 Update payment method or cancel at stripe.com",
+        import stripe_handler
+        portal_url = stripe_handler.create_portal_session(str(chat_id))
+        if portal_url:
+            onboarding.send_inline(chat_id,
+                "⚙️ <b>Manage Degen Mode</b>\n\n"
+                "Current subscription active.\n\n"
+                "👇 Manage billing, update card, or cancel:",
+                [[{"text": "⚙️ Manage Subscription", "url": portal_url}],
+                 [{"text": "← Main Menu", "callback_data": "main_menu"}]])
+        else:
+            onboarding.send_inline(chat_id,
+                "⚙️ <b>Manage Degen Mode</b>\n\n"
+                "Current subscription active.\n"
+                "Renews: Next billing date\n\n"
+                "💳 Contact @polytragent to manage your subscription.",
             [[{"text": "← Main Menu", "callback_data": "main_menu"}]])
 
     # ── COPY TRADING CALLBACKS ──
@@ -3378,6 +3695,170 @@ def _extended_handle_callback(callback_query):
                 tg.send(ct.format_wallet_detail(w["address"]), chat_id)
                 return
         tg.send("❌ Wallet not found.", chat_id)
+
+    # ── COPY TRADE RULES UI ──
+    elif data == "ct_rules":
+        is_pro = user_store.is_degen(str(chat_id))
+        import copy_executor as _ce
+        settings = _ce.get_auto_copy_settings(str(chat_id))
+
+        # Copy amount per trade
+        amt = settings.get("max_per_trade", 25) if settings else 25
+        daily = settings.get("daily_limit", 200) if settings else 200
+        min_whale = settings.get("min_trade_usd", 500) if settings else 500
+        auto_sell = settings.get("auto_sell_mirror", True) if settings else True
+        auto_exec = _ce.is_auto_copy_enabled(str(chat_id))
+
+        text = (
+            "⚙️ <b>Copy Trade Rules</b>\n\n"
+            f"💰 Copy Amount: <b>${amt}</b> per trade\n"
+            f"📊 Daily Limit: <b>${daily}</b>\n"
+            f"🐋 Min Whale Trade: <b>${min_whale}</b>\n"
+            f"📉 Auto-Sell (mirror): <b>{'ON' if auto_sell else 'OFF'}</b>\n"
+            f"🤖 Auto-Execute: <b>{'ON ✅' if auto_exec else 'OFF'}</b>"
+        )
+        if not is_pro:
+            text += "\n\n🔒 <i>Auto-execute requires Degen Mode ($79.99/mo). Free users get notifications to trade manually.</i>"
+
+        btns = [
+            [{"text": f"💰 Amount: ${amt}", "callback_data": "ct_set_amount"},
+             {"text": f"📊 Daily: ${daily}", "callback_data": "ct_set_daily"}],
+            [{"text": f"🐋 Min Trade: ${min_whale}", "callback_data": "ct_set_min_whale"},
+             {"text": f"📉 Auto-Sell: {'ON' if auto_sell else 'OFF'}", "callback_data": "ct_toggle_autosell"}],
+        ]
+        if is_pro:
+            btns.append([{"text": f"🤖 Auto-Execute: {'ON ✅' if auto_exec else 'OFF'}", "callback_data": "ct_toggle_autoexec"}])
+        else:
+            btns.append([{"text": "🚀 Upgrade to Degen Mode — $79.99/mo", "callback_data": "degen_subscribe"}])
+        btns.append([{"text": "← Back to Whales", "callback_data": "menu_whales"}])
+        onboarding.send_inline(chat_id, text, btns)
+
+    elif data == "ct_set_amount":
+        onboarding.send_inline(chat_id,
+            "💰 <b>Set Copy Amount Per Trade</b>\n\nHow much to copy each whale trade with:",
+            [[{"text": "$5", "callback_data": "ct_amt_5"}, {"text": "$10", "callback_data": "ct_amt_10"},
+              {"text": "$25", "callback_data": "ct_amt_25"}, {"text": "$50", "callback_data": "ct_amt_50"}],
+             [{"text": "$100", "callback_data": "ct_amt_100"}, {"text": "$250", "callback_data": "ct_amt_250"}],
+             [{"text": "← Back", "callback_data": "ct_rules"}]])
+
+    elif data.startswith("ct_amt_"):
+        amt = float(data.replace("ct_amt_", ""))
+        import copy_executor as _ce
+        settings = _ce.get_auto_copy_settings(str(chat_id))
+        if settings:
+            _ce.update_auto_copy_settings(str(chat_id), max_per_trade=amt, fixed_amount=amt)
+        else:
+            # Store in user preferences even if auto-copy not enabled
+            user_store.update_user(str(chat_id), ct_copy_amount=amt)
+        tg.send(f"✅ Copy amount set to <b>${amt:.0f}</b> per trade", chat_id)
+        # Show rules menu again
+        _extended_handle_callback(type('obj', (object,), {"data": "ct_rules", "message": type('m', (object,), {"chat": type('c', (object,), {"id": chat_id})()})()})())
+
+    elif data == "ct_set_daily":
+        onboarding.send_inline(chat_id,
+            "📊 <b>Set Daily Spending Limit</b>\n\nMax total across all copy trades per day:",
+            [[{"text": "$50", "callback_data": "ct_daily_50"}, {"text": "$100", "callback_data": "ct_daily_100"},
+              {"text": "$200", "callback_data": "ct_daily_200"}, {"text": "$500", "callback_data": "ct_daily_500"}],
+             [{"text": "$1000", "callback_data": "ct_daily_1000"}, {"text": "No Limit", "callback_data": "ct_daily_99999"}],
+             [{"text": "← Back", "callback_data": "ct_rules"}]])
+
+    elif data.startswith("ct_daily_"):
+        val = float(data.replace("ct_daily_", ""))
+        import copy_executor as _ce
+        settings = _ce.get_auto_copy_settings(str(chat_id))
+        if settings:
+            _ce.update_auto_copy_settings(str(chat_id), daily_limit=val)
+        else:
+            user_store.update_user(str(chat_id), ct_daily_limit=val)
+        label = "No Limit" if val >= 99999 else f"${val:.0f}"
+        tg.send(f"✅ Daily limit set to <b>{label}</b>", chat_id)
+        _extended_handle_callback(type('obj', (object,), {"data": "ct_rules", "message": type('m', (object,), {"chat": type('c', (object,), {"id": chat_id})()})()})())
+
+    elif data == "ct_set_min_whale":
+        onboarding.send_inline(chat_id,
+            "🐋 <b>Min Whale Trade Size</b>\n\nOnly copy trades larger than:",
+            [[{"text": "$500", "callback_data": "ct_minw_500"}, {"text": "$1,000", "callback_data": "ct_minw_1000"},
+              {"text": "$5,000", "callback_data": "ct_minw_5000"}, {"text": "$10,000", "callback_data": "ct_minw_10000"}],
+             [{"text": "← Back", "callback_data": "ct_rules"}]])
+
+    elif data.startswith("ct_minw_"):
+        val = float(data.replace("ct_minw_", ""))
+        import copy_executor as _ce
+        settings = _ce.get_auto_copy_settings(str(chat_id))
+        if settings:
+            _ce.update_auto_copy_settings(str(chat_id), min_trade_usd=val)
+        else:
+            user_store.update_user(str(chat_id), ct_min_whale=val)
+        tg.send(f"✅ Min whale trade size set to <b>${val:,.0f}</b>", chat_id)
+        _extended_handle_callback(type('obj', (object,), {"data": "ct_rules", "message": type('m', (object,), {"chat": type('c', (object,), {"id": chat_id})()})()})())
+
+    elif data == "ct_toggle_autosell":
+        import copy_executor as _ce
+        settings = _ce.get_auto_copy_settings(str(chat_id))
+        current = settings.get("auto_sell_mirror", True) if settings else True
+        new_val = not current
+        if settings:
+            # Update in copy_executor storage
+            data_store = _ce._load()
+            if str(chat_id) in data_store["auto_traders"]:
+                data_store["auto_traders"][str(chat_id)]["auto_sell_mirror"] = new_val
+                _ce._save(data_store)
+        else:
+            user_store.update_user(str(chat_id), ct_auto_sell=new_val)
+        tg.send(f"✅ Auto-sell mirror: <b>{'ON' if new_val else 'OFF'}</b>", chat_id)
+        _extended_handle_callback(type('obj', (object,), {"data": "ct_rules", "message": type('m', (object,), {"chat": type('c', (object,), {"id": chat_id})()})()})())
+
+    elif data == "ct_toggle_autoexec":
+        is_pro = user_store.is_degen(str(chat_id))
+        if not is_pro:
+            onboarding.send_inline(chat_id,
+                "🔒 <b>Auto-Execute requires Degen Mode</b>\n\n"
+                "Upgrade to Degen Mode ($79.99/mo) to unlock:\n"
+                "• Auto-execute copy trades\n"
+                "• Unlimited whale wallets\n"
+                "• Priority notifications",
+                [[{"text": "🚀 Upgrade to Degen Mode — $79.99/mo", "callback_data": "degen_subscribe"}],
+                 [{"text": "← Back", "callback_data": "ct_rules"}]])
+        else:
+            import copy_executor as _ce
+            if _ce.is_auto_copy_enabled(str(chat_id)):
+                _ce.disable_auto_copy(str(chat_id))
+                tg.send("⏸ Auto-execute <b>disabled</b>. You'll get notifications only.", chat_id)
+            else:
+                settings = _ce.get_auto_copy_settings(str(chat_id))
+                amt = 25.0
+                daily = 200.0
+                if settings:
+                    amt = settings.get("max_per_trade", 25.0)
+                    daily = settings.get("daily_limit", 200.0)
+                _ce.enable_auto_copy(str(chat_id), max_per_trade=amt, daily_limit=daily)
+                tg.send(f"✅ Auto-execute <b>enabled</b>! Copying trades at ${amt:.0f}/trade, ${daily:.0f}/day max.", chat_id)
+            _extended_handle_callback(type('obj', (object,), {"data": "ct_rules", "message": type('m', (object,), {"chat": type('c', (object,), {"id": chat_id})()})()})())
+
+    # ── ADD CUSTOM WHALE WALLET ──
+    elif data == "whale_add_custom":
+        following = ct.get_following_count(str(chat_id))
+        limit = user_store.get_wallet_tracking_limit(str(chat_id))
+        if following >= limit:
+            is_pro = user_store.is_degen(str(chat_id))
+            if is_pro:
+                tg.send("⚠️ You've reached the maximum tracked wallets.", chat_id)
+            else:
+                onboarding.send_inline(chat_id,
+                    f"⚠️ <b>Wallet Limit Reached</b>\n\n"
+                    f"You're tracking <b>{following}/{limit}</b> wallets on the Free plan.\n\n"
+                    f"Upgrade to Pro for unlimited wallets + auto-trade!",
+                    [[{"text": "🚀 Upgrade to Degen Mode — $79.99/mo", "callback_data": "degen_subscribe"}],
+                     [{"text": "← Back", "callback_data": "menu_whales"}]])
+        else:
+            tg.send(
+                "➕ <b>Add Custom Whale Wallet</b>\n\n"
+                "Send the Polygon wallet address you want to track:\n\n"
+                "<code>0x1234...abcd</code>\n\n"
+                f"📊 Using {following}/{limit} slots",
+                chat_id)
+            # Set state to expect wallet address
+            user_store.update_user(str(chat_id), pending_action="whale_add_wallet")
 
     # ── SIZING CALLBACKS ──
     elif data == "sizing_fixed":
@@ -3465,16 +3946,22 @@ def _polling_loop():
                     if not text or not cid:
                         continue
 
-                    # Update user info from message
+                    # Ensure user is registered & update info from message
                     from_user = msg.get("from", {})
-                    if from_user:
-                        updates = {}
-                        if from_user.get("username"):
-                            updates["username"] = from_user["username"]
-                        if from_user.get("first_name"):
-                            updates["first_name"] = from_user["first_name"]
-                        if updates:
-                            user_store.update_user(cid, updates)
+                    if from_user and cid:
+                        username = from_user.get("username", "")
+                        first_name = from_user.get("first_name", "")
+                        existing = user_store.get_user(cid)
+                        if not existing:
+                            user_store.create_user(cid, username, first_name)
+                        else:
+                            updates = {}
+                            if username:
+                                updates["username"] = username
+                            if first_name:
+                                updates["first_name"] = first_name
+                            if updates:
+                                user_store.update_user(cid, updates)
 
                     # Trade settings custom input
                     if not text.startswith("/") and str(cid) in _waiting_for_setting:
@@ -3505,6 +3992,29 @@ def _polling_loop():
                             tg.send(f"❌ Wallet error: {e}", cid)
                             _waiting_for_wallet.pop(str(cid), None)
                         continue
+
+                    # Whale wallet add input
+                    if not text.startswith("/") and text.strip().startswith("0x") and len(text.strip()) == 42:
+                        user = user_store.get_user(cid)
+                        if user and user.get("pending_action") == "whale_add_wallet":
+                            user_store.update_user(cid, pending_action="")
+                            addr = text.strip()
+                            try:
+                                ct.add_wallet(addr, alias=f"Custom_{addr[:8]}")
+                                result = ct.follow_wallet(cid, addr)
+                                if result["status"] == "followed":
+                                    tg.send(
+                                        f"✅ <b>Now tracking wallet</b>\n\n"
+                                        f"<code>{addr}</code>\n\n"
+                                        f"🔔 You'll get real-time notifications when this wallet trades.",
+                                        cid)
+                                elif result["status"] == "exists":
+                                    tg.send(f"ℹ️ Already tracking this wallet.", cid)
+                                else:
+                                    tg.send(f"⚠️ {result.get('message', 'Error')}", cid)
+                            except Exception as e:
+                                tg.send(f"❌ Failed to add wallet: {e}", cid)
+                            continue
 
                     # Research link input — auto-trigger Event Research when user sends Polymarket link ANYTIME
                     if not text.startswith("/") and "polymarket.com" in text.lower():
@@ -3560,6 +4070,76 @@ def _polling_loop():
             print(f"[BOT] poll error: {e}"); time.sleep(5)
 
 # ═══════════════════════════════════════════════
+# EU PROXY NGINX FIX
+# ═══════════════════════════════════════════════
+
+def _fix_eu_proxy_nginx():
+    """
+    Auto-fix the EU proxy nginx config to allow POLY_* headers (underscores).
+    Requires EC2_SSH_KEY env var with the base64-encoded SSH private key.
+    Only runs once per deployment — checks if fix is already applied.
+    """
+    import subprocess, base64, tempfile
+    ssh_key_b64 = os.environ.get("EC2_SSH_KEY", "")
+    proxy_host = "13.49.25.66"
+    if not ssh_key_b64:
+        print("[PROXY-FIX] EC2_SSH_KEY not set — skipping nginx fix")
+        print("[PROXY-FIX] To enable: add EC2_SSH_KEY env var in Railway (base64 of .pem key)")
+        return
+
+    # Write the SSH key to a temp file
+    try:
+        key_data = base64.b64decode(ssh_key_b64)
+    except Exception:
+        key_data = ssh_key_b64.encode()  # Maybe it's not base64
+
+    with tempfile.NamedTemporaryFile(mode='wb', suffix='.pem', delete=False) as f:
+        f.write(key_data)
+        key_file = f.name
+    os.chmod(key_file, 0o600)
+
+    # Check if fix is already applied
+    check_cmd = [
+        "ssh", "-i", key_file, "-o", "StrictHostKeyChecking=no",
+        "-o", "ConnectTimeout=10", "-o", "BatchMode=yes",
+        f"ubuntu@{proxy_host}",
+        "grep -c 'underscores_in_headers' /etc/nginx/sites-available/clob-proxy"
+    ]
+    try:
+        result = subprocess.run(check_cmd, capture_output=True, text=True, timeout=15)
+        count = int(result.stdout.strip()) if result.stdout.strip().isdigit() else 0
+        if count > 0:
+            print("[PROXY-FIX] nginx already has underscores_in_headers — no fix needed")
+            os.unlink(key_file)
+            return
+    except Exception as e:
+        print(f"[PROXY-FIX] SSH check failed: {e}")
+        os.unlink(key_file)
+        return
+
+    # Apply the fix
+    fix_cmd = [
+        "ssh", "-i", key_file, "-o", "StrictHostKeyChecking=no",
+        "-o", "ConnectTimeout=10", "-o", "BatchMode=yes",
+        f"ubuntu@{proxy_host}",
+        "sudo sed -i 's/server {/server {\\n    underscores_in_headers on;/' "
+        "/etc/nginx/sites-available/clob-proxy && "
+        "sudo nginx -t && "
+        "sudo systemctl reload nginx"
+    ]
+    try:
+        result = subprocess.run(fix_cmd, capture_output=True, text=True, timeout=20)
+        if result.returncode == 0:
+            print("[PROXY-FIX] ✅ nginx fixed — underscores_in_headers on")
+        else:
+            print(f"[PROXY-FIX] ❌ Fix failed: {result.stderr[:200]}")
+    except Exception as e:
+        print(f"[PROXY-FIX] ❌ SSH fix failed: {e}")
+    finally:
+        os.unlink(key_file)
+
+
+# ═══════════════════════════════════════════════
 # MAIN
 # ═══════════════════════════════════════════════
 
@@ -3592,6 +4172,12 @@ def main():
     except Exception as e:
         print(f"[BOOT] Web server error: {e}")
 
+    # Auto-fix EU proxy nginx config (add underscores_in_headers on)
+    try:
+        _fix_eu_proxy_nginx()
+    except Exception as e:
+        print(f"[BOOT] EU proxy fix skipped: {e}")
+
     # Try to start admin dashboard on 8081
     try:
         # TODO: import admin_dashboard and start on port 8081
@@ -3604,6 +4190,23 @@ def main():
         print(f"[BOOT] Copy trading leaderboard: {len(leaders)} traders")
     except Exception as e:
         print(f"[BOOT] Leaderboard init error: {e}")
+
+    # Start real-time whale trade listener (WebSocket → Polygon OrderFilled events)
+    try:
+        import whale_realtime as wrt
+        wrt.start_listener(use_http_fallback=True)  # HTTP fallback more reliable on Railway
+        print(f"[BOOT] 🐋 Whale realtime listener: STARTED")
+    except Exception as e:
+        print(f"[BOOT] Whale realtime listener failed: {e}")
+
+    # Start Top Picks auto-refresh (24h cycle)
+    try:
+        import top_picks as _tp
+        _tp.refresh_in_background()
+        _tp.start_auto_refresh()
+        print(f"[BOOT] 🏆 Top Picks: initial refresh + 24h scheduler started")
+    except Exception as e:
+        print(f"[BOOT] Top Picks init error: {e}")
 
     # Initialize trading engine
     trade_status = "🟢 LIVE" if trading.is_trading_enabled() else "⚪ Disabled (set POLY_* env vars)"

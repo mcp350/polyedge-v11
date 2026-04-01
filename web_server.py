@@ -1040,7 +1040,7 @@ def home():
 
 @app.route("/health")
 def health():
-    return jsonify({"status": "ok", "service": "polytragent", "version": "v12.2", "build": "2026-03-30-fix4"})
+    return jsonify({"status": "ok", "service": "polytragent", "version": "v14.1", "build": "2026-04-01-top-picks"})
 
 @app.route("/diag")
 def diag():
@@ -1100,6 +1100,29 @@ def diag():
         results["gamma_via_clob_proxy"] = {"status": r.status_code, "body_start": r.text[:100]}
     except Exception as e:
         results["gamma_via_clob_proxy"] = {"error": str(e)[:200]}
+    # Test CLOB API DIRECTLY (no proxy) — check if Railway is geoblocked
+    try:
+        r = _req.get("https://clob.polymarket.com/time", timeout=10)
+        results["clob_direct"] = {"status": r.status_code, "body": r.text[:200]}
+    except Exception as e:
+        results["clob_direct"] = {"error": str(e)[:200]}
+    # Test CLOB API with real L1 auth headers DIRECTLY (geoblock check for trading)
+    try:
+        from py_clob_client.signer import Signer
+        from py_clob_client.headers.headers import create_level_1_headers
+        from eth_account import Account
+        # Use a throwaway wallet to test auth flow
+        test_acct = Account.create()
+        test_signer = Signer(test_acct.key.hex(), 137)
+        test_headers = create_level_1_headers(test_signer)
+        # Try derive-api-key directly (should get 400 "no key" if auth works, 403 if geoblocked)
+        r = _req.get("https://clob.polymarket.com/auth/derive-api-key", headers=test_headers, timeout=10)
+        results["clob_direct_auth"] = {"status": r.status_code, "body": r.text[:200]}
+        # Same test through proxy
+        r2 = _req.get("http://13.49.25.66/auth/derive-api-key", headers=test_headers, timeout=10)
+        results["clob_proxy_auth"] = {"status": r2.status_code, "body": r2.text[:200]}
+    except Exception as e:
+        results["clob_auth_test"] = {"error": str(e)[:200]}
     return jsonify(results)
 
 # ═══════════════════════════════════════════════

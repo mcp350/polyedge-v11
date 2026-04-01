@@ -17,8 +17,8 @@ log = logging.getLogger("polytragent.wallet")
 # CONSTANTS
 # ═══════════════════════════════════════════════
 
-POLYGON_RPC = os.environ.get("POLYGON_RPC_URL", "https://polygon-rpc.com")
-POLYGON_RPC_FALLBACK = "https://rpc-mainnet.matic.quiknode.pro"
+POLYGON_RPC = os.environ.get("POLYGON_RPC_URL", "https://polygon-bor-rpc.publicnode.com")
+POLYGON_RPC_FALLBACK = "https://polygon.drpc.org"
 
 # USDC on Polygon — there are TWO versions:
 USDC_NATIVE_CONTRACT = "0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359"  # Native USDC (Circle, post-2023)
@@ -354,13 +354,33 @@ def delete_wallet(chat_id: str, wallet_index: int) -> dict:
 # ═══════════════════════════════════════════════
 
 def _get_web3() -> "Web3":
-    """Get a Web3 instance, falling back to secondary RPC if primary fails."""
+    """Get a Web3 instance, cycling through reliable RPCs until one connects."""
     from web3 import Web3
-    w3 = Web3(Web3.HTTPProvider(POLYGON_RPC))
-    if not w3.is_connected():
-        log.warning(f"Primary RPC {POLYGON_RPC} not connected, trying fallback")
-        w3 = Web3(Web3.HTTPProvider(POLYGON_RPC_FALLBACK))
-    return w3
+
+    rpcs = [POLYGON_RPC, POLYGON_RPC_FALLBACK,
+            "https://1rpc.io/matic",
+            "https://polygon-bor-rpc.publicnode.com",
+            "https://polygon.drpc.org"]
+    # Deduplicate while preserving order
+    seen = set()
+    unique_rpcs = []
+    for r in rpcs:
+        if r and r not in seen:
+            seen.add(r)
+            unique_rpcs.append(r)
+
+    for rpc in unique_rpcs:
+        try:
+            w3 = Web3(Web3.HTTPProvider(rpc, request_kwargs={"timeout": 10}))
+            if w3.is_connected():
+                return w3
+        except Exception:
+            log.warning(f"RPC {rpc} failed, trying next...")
+            continue
+
+    # Last resort
+    log.error("All Polygon RPCs failed, using first as fallback")
+    return Web3(Web3.HTTPProvider(unique_rpcs[0]))
 
 
 def _query_erc20_balance(w3, contract_address: str, wallet_address: str) -> float:
@@ -496,7 +516,7 @@ def send_usdc(from_chat_id: str, to_address: str, amount: float,
         if not pk.startswith("0x"):
             pk = "0x" + pk
 
-        w3 = Web3(Web3.HTTPProvider(POLYGON_RPC))
+        w3 = _get_web3()
         acct = Account.from_key(pk)
         sender = acct.address
 

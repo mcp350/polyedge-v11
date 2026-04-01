@@ -8,11 +8,13 @@ TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "")
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
 
 # ── Polymarket CLOB API ──
-# CLOB_AUTH_HOST: used for ECDSA signature generation (must match what Polymarket expects)
-# CLOB_BASE: actual HTTP destination for trade requests (EU proxy to bypass US geoblock)
+# Railway is geoblocked by Polymarket for trading (403).
+# We use the EU proxy (nginx at 13.49.25.66) to bypass the geoblock.
+# IMPORTANT: nginx must have 'underscores_in_headers on;' in server{} block
+# to pass POLY_* auth headers through (they contain underscores).
 CLOB_PROXY_URL = os.environ.get("CLOB_PROXY_URL", "http://13.49.25.66")
-CLOB_AUTH_HOST = os.environ.get("CLOB_PROXY_URL", "http://13.49.25.66")  # Everything through proxy
-CLOB_BASE = os.environ.get("CLOB_PROXY_URL", "http://13.49.25.66")  # EU proxy
+CLOB_BASE = CLOB_PROXY_URL.rstrip("/") if CLOB_PROXY_URL else "https://clob.polymarket.com"
+CLOB_AUTH_HOST = "https://clob.polymarket.com"  # Used for ECDSA signing (must be real host)
 
 # ── Polymarket Trading API (builders.polymarket.com) ──
 POLY_API_KEY = os.environ.get("POLY_API_KEY", "")
@@ -21,14 +23,14 @@ POLY_API_PASSPHRASE = os.environ.get("POLY_API_PASSPHRASE", "")
 POLY_PRIVATE_KEY = os.environ.get("POLY_PRIVATE_KEY", "")
 
 # ── Polygon Network ──
-POLYGON_RPC_URL = os.environ.get("POLYGON_RPC_URL", "https://polygon-rpc.com")
+POLYGON_RPC_URL = os.environ.get("POLYGON_RPC_URL", "https://polygon-bor-rpc.publicnode.com")
 POLYGON_WSS_URL = os.environ.get("POLYGON_WSS_URL", "")  # wss:// for real-time whale tracking
 
 # ── Stripe (Degen Mode) ──
 STRIPE_SECRET_KEY = os.environ.get("STRIPE_SECRET_KEY", "")
 STRIPE_WEBHOOK_SECRET = os.environ.get("STRIPE_WEBHOOK_SECRET", "")
-STRIPE_DEGEN_PRICE_ID = os.environ.get("STRIPE_DEGEN_PRICE_ID", "prod_UCXYwONuXcypKS")
-DEGEN_MODE_PRICE = 79  # $79/month for degen mode
+STRIPE_DEGEN_PRICE_ID = os.environ.get("STRIPE_DEGEN_PRICE_ID", "price_1TE8TFKw9xinQ3R3rhgqV1X3")
+DEGEN_MODE_PRICE = 79.99  # $79.99/month for Degen Mode
 BOT_DOMAIN = os.environ.get("BOT_DOMAIN", "https://polytragent.com")
 
 # ── Trading Fees ──

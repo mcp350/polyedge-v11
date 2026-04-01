@@ -63,11 +63,8 @@ def dispatch_signals(signals: list):
 
         buttons.append([{"text": "📋 My Copy Portfolio", "callback_data": "ct_following"}])
 
-        # Send to each follower
+        # Send to each follower (free for all users)
         for chat_id in followers:
-            # Check if subscriber (copy trading is paid)
-            if not user_store.is_subscribed(chat_id) and not user_store.is_admin(chat_id):
-                continue
 
             try:
                 onboarding.send_inline(chat_id, msg, buttons)
