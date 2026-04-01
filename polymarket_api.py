@@ -24,7 +24,7 @@ HEADERS = {"User-Agent": "PolymarketBot/1.0"}
 
 
 def gamma_get(path: str, params: dict = None, timeout: int = 15) -> Optional[list | dict]:
-    """
+    ""
     Fetch from Gamma API using curl subprocess.
     Railway blocks *.polymarket.com at DNS/network level.
     We resolve the domain to Cloudflare IPs directly to bypass.
@@ -90,7 +90,7 @@ def gamma_get(path: str, params: dict = None, timeout: int = 15) -> Optional[lis
         print(f"[GAMMA_GET] EU proxy fallback error: {e}")
 
     print(f"[GAMMA_GET] All methods failed for {path}")
-    return None
+
         return None
 
 
