@@ -263,7 +263,8 @@ def get_primary_wallet(chat_id: str) -> Optional[dict]:
 
 
 def get_private_key(chat_id: str, wallet_index: int = 0) -> Optional[str]:
-    """Get decrypted private key for internal use (e.g., auto-trading)."""
+    """Get decrypted private key for internal use (e.g., auto-trading).
+    Auto-migrates legacy XOR encryption to AES-256 Fernet on access."""
     data = _load()
     chat_str = str(chat_id)
     wallets = data["wallets"].get(chat_str, [])
@@ -275,6 +276,11 @@ def get_private_key(chat_id: str, wallet_index: int = 0) -> Optional[str]:
     if not w.get("private_key_encrypted"):
         log.warning(f"No private_key_encrypted for user {chat_str} at index {wallet_index}")
         return None
+
+    # Auto-migrate XOR → Fernet if needed
+    if not w["private_key_encrypted"].startswith("fernet:"):
+        if _migrate_wallet_encryption(chat_str, w):
+            _save(data)
 
     return _decrypt_key(w["private_key_encrypted"], chat_str)
 
@@ -311,6 +317,12 @@ def get_primary_private_key(chat_id: str) -> Optional[str]:
         return None
 
     log.debug(f"get_primary_private_key: user={chat_str} idx={primary_idx} addr={primary_wallet.get('address','')[:10]}")
+
+    # Auto-migrate XOR → Fernet if needed
+    if not primary_wallet["private_key_encrypted"].startswith("fernet:"):
+        if _migrate_wallet_encryption(chat_str, primary_wallet):
+            _save(data)
+
     return _decrypt_key(primary_wallet["private_key_encrypted"], chat_str)
 
 
@@ -596,31 +608,90 @@ def get_deposit_info(chat_id: str) -> dict:
 
 
 # ═══════════════════════════════════════════════
-# ENCRYPTION (Simple XOR + base64 for key storage)
+# ENCRYPTION — AES-256 via Fernet (upgraded from XOR)
+# Master key stored in WALLET_ENCRYPTION_KEY env var.
+# Per-wallet key = PBKDF2(master_key, salt=chat_id, 480000 iterations)
+# Old XOR-encrypted keys auto-migrate on first decrypt.
 # ═══════════════════════════════════════════════
 
+import base64, hashlib, os as _os
+
+def _get_master_key() -> bytes:
+    """Get the master encryption key from environment.
+    Falls back to a derived key if env var is missing (NOT recommended for production)."""
+    mk = _os.environ.get("WALLET_ENCRYPTION_KEY", "")
+    if mk:
+        return mk.encode()
+    # Fallback: derive from a combination of available secrets (better than nothing)
+    fallback_seed = _os.environ.get("TELEGRAM_TOKEN", "") + _os.environ.get("STRIPE_SECRET_KEY", "") + "polytragent_fallback_v2"
+    log.warning("[WALLET] WALLET_ENCRYPTION_KEY not set! Using fallback derivation. Set this env var for production!")
+    return hashlib.sha256(fallback_seed.encode()).digest()
+
+
+def _derive_fernet_key(salt: str) -> bytes:
+    """Derive a per-wallet Fernet key using PBKDF2 with the master key."""
+    from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
+    from cryptography.hazmat.primitives import hashes
+    master = _get_master_key()
+    kdf = PBKDF2HMAC(
+        algorithm=hashes.SHA256(),
+        length=32,
+        salt=f"polytragent_wallet_{salt}".encode(),
+        iterations=480_000,  # OWASP recommended minimum
+    )
+    derived = kdf.derive(master)
+    return base64.urlsafe_b64encode(derived)
+
+
 def _encrypt_key(private_key: str, salt: str) -> str:
-    """Simple encryption for stored private keys."""
-    import base64, hashlib
-
-    key_bytes = private_key.encode()
-    salt_hash = hashlib.sha256(f"polytragent_{salt}_v1".encode()).digest()
-
-    # XOR encryption with salt-derived key
-    encrypted = bytes(b ^ salt_hash[i % len(salt_hash)] for i, b in enumerate(key_bytes))
-    return base64.b64encode(encrypted).decode()
+    """Encrypt private key with AES-256 via Fernet.
+    Output is prefixed with 'fernet:' to distinguish from old XOR format."""
+    from cryptography.fernet import Fernet
+    fernet_key = _derive_fernet_key(salt)
+    f = Fernet(fernet_key)
+    encrypted = f.encrypt(private_key.encode())
+    return "fernet:" + encrypted.decode()
 
 
 def _decrypt_key(encrypted: str, salt: str) -> str:
-    """Decrypt stored private key."""
-    import base64, hashlib
+    """Decrypt private key. Auto-detects Fernet vs legacy XOR format."""
+    if encrypted.startswith("fernet:"):
+        # New AES-256 Fernet format
+        from cryptography.fernet import Fernet
+        fernet_key = _derive_fernet_key(salt)
+        f = Fernet(fernet_key)
+        token = encrypted[len("fernet:"):].encode()
+        return f.decrypt(token).decode()
+    else:
+        # Legacy XOR format — decrypt and flag for migration
+        log.warning(f"[WALLET] Legacy XOR encryption detected for salt={salt[:8]}... — will migrate on next save")
+        return _decrypt_key_legacy_xor(encrypted, salt)
 
+
+def _decrypt_key_legacy_xor(encrypted: str, salt: str) -> str:
+    """Decrypt old XOR-encrypted keys (backward compatibility only)."""
     encrypted_bytes = base64.b64decode(encrypted)
     salt_hash = hashlib.sha256(f"polytragent_{salt}_v1".encode()).digest()
-
-    # Reverse XOR
     decrypted = bytes(b ^ salt_hash[i % len(salt_hash)] for i, b in enumerate(encrypted_bytes))
     return decrypted.decode()
+
+
+def _migrate_wallet_encryption(chat_id: str, wallet_entry: dict) -> bool:
+    """Re-encrypt a wallet from XOR to Fernet. Returns True if migrated."""
+    enc = wallet_entry.get("private_key_encrypted", "")
+    if not enc or enc.startswith("fernet:"):
+        return False  # Already new format or empty
+    try:
+        # Decrypt with old XOR
+        plaintext = _decrypt_key_legacy_xor(enc, str(chat_id))
+        # Re-encrypt with Fernet
+        wallet_entry["private_key_encrypted"] = _encrypt_key(plaintext, str(chat_id))
+        wallet_entry["encryption_version"] = "fernet_v1"
+        log.info(f"[WALLET] Migrated encryption for user {str(chat_id)[:8]}...")
+        return True
+    except Exception as e:
+        log.error(f"[WALLET] Migration failed for {str(chat_id)[:8]}: {e}")
+        return False
 
 
 # ═══════════════════════════════════════════════

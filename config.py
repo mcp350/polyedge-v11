@@ -26,6 +26,11 @@ POLY_PRIVATE_KEY = os.environ.get("POLY_PRIVATE_KEY", "")
 POLYGON_RPC_URL = os.environ.get("POLYGON_RPC_URL", "https://polygon-bor-rpc.publicnode.com")
 POLYGON_WSS_URL = os.environ.get("POLYGON_WSS_URL", "")  # wss:// for real-time whale tracking
 
+# ── Wallet Encryption (AES-256) ──
+# CRITICAL: Set a strong random key in Railway env vars. If not set, falls back to derived key.
+# Generate with: python -c "import secrets; print(secrets.token_hex(32))"
+WALLET_ENCRYPTION_KEY = os.environ.get("WALLET_ENCRYPTION_KEY", "")
+
 # ── Stripe (Degen Mode) ──
 STRIPE_SECRET_KEY = os.environ.get("STRIPE_SECRET_KEY", "")
 STRIPE_WEBHOOK_SECRET = os.environ.get("STRIPE_WEBHOOK_SECRET", "")

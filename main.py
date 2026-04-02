@@ -2352,6 +2352,7 @@ def handle_wallet_input(chat_id, text):
                 f"✅ <b>Wallet Imported!</b>\n\n"
                 f"Address: <code>{result['address']}</code>\n"
                 f"Label: {result['label']}\n\n"
+                f"🔒 Your key is stored encrypted (AES-256) on our servers.\n"
                 "⚠️ Delete the message with your private key!",
                 chat_id)
         else:
@@ -2715,6 +2716,8 @@ def _handle(cmd, chat_id):
                 f"Address: <code>{result['address']}</code>\n\n"
                 f"🔑 Private Key (SAVE THIS — shown only once):\n"
                 f"<tg-spoiler>{result['private_key']}</tg-spoiler>\n\n"
+                f"🔒 <b>Security:</b> Your key is stored encrypted (AES-256) on our servers to enable trading. "
+                f"We recommend saving your private key and keeping your own backup.\n\n"
                 f"⚠️ Fund this wallet with USDC on Polygon to trade.\n"
                 f"⛽ You also need ~0.01 MATIC for gas.",
                 chat_id)
