@@ -1268,11 +1268,17 @@ def resolve_market_tokens(market_slug_or_id: str) -> Optional[dict]:
         if data:
             markets = data if isinstance(data, list) else []
 
-        # If no results, try as condition_id
+        # If no results, try as condition_id path param
         if not markets:
             m = gamma_get(f"/markets/{slug}")
-            if m:
+            if m and isinstance(m, dict):
                 markets = [m]
+
+        # Try as conditionId query param (data-api market field is a condition_id)
+        if not markets:
+            data = gamma_get("/markets", params={"conditionId": slug})
+            if data:
+                markets = data if isinstance(data, list) else []
 
         # Try as event slug (returns multiple markets)
         if not markets:

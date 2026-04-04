@@ -315,6 +315,24 @@ def scan_followed_wallets() -> list:
     return all_signals
 
 
+# ── Market slug lookup ────────────────────────────────────────────────────────
+
+def _lookup_event_slug(condition_id: str) -> str:
+    """Try to resolve a condition_id to a Polymarket event slug via Gamma API."""
+    if not condition_id:
+        return ""
+    try:
+        url = f"https://gamma-api.polymarket.com/markets?conditionId={condition_id}&limit=1"
+        result = _curl_get(url)
+        markets = result if isinstance(result, list) else []
+        if markets:
+            m = markets[0]
+            return m.get("eventSlug") or m.get("slug") or ""
+    except Exception:
+        pass
+    return ""
+
+
 # ── Notification formatting ───────────────────────────────────────────────────
 
 def _fmt_usd(amount: float) -> str:
@@ -390,6 +408,9 @@ def dispatch_whale_alerts(signals: list) -> int:
         price     = signal.get("avg_price", 0)
         value_usd = signal.get("value_usd", 0)
 
+        # Try to resolve a human-readable event slug for the URL button
+        event_slug = _lookup_event_slug(market_id) if market_id else ""
+
         # Cache trade details for the Copy Trade flow
         cache_idx = _store_copy_trade(
             slug=market_id,
@@ -420,6 +441,14 @@ def dispatch_whale_alerts(signals: list) -> int:
             {"text": "👁 View Trader",   "callback_data": f"ct_detail_{wallet_addr[:20]}"},
             {"text": "📋 My Portfolio",  "callback_data": "ct_following"},
         ])
+
+        # Row 3 — direct event link (URL button)
+        link_slug = event_slug or market_id
+        if link_slug:
+            buttons.append([{
+                "text": "🔗 View on Polymarket",
+                "url": f"https://polymarket.com/event/{link_slug}",
+            }])
 
         for chat_id in followers:
             try:

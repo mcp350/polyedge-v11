@@ -3024,8 +3024,7 @@ def _handle_copy_trading(cmd, parts, chat_id):
         tg.send("📋 <b>Leaderboard</b>\n\nLoading top traders...", chat_id)
         ct.show_leaderboard(chat_id)
     elif cmd == "/ct_following":
-        tg.send("👤 <b>My Follows</b>\n\nLoading...", chat_id)
-        ct.show_following(chat_id)
+        tg.send(ct.format_following(str(chat_id)), chat_id)
     elif cmd == "/ct_signals":
         tg.send("🔔 <b>Recent Signals</b>\n\nLoading...", chat_id)
         ct.show_signals(chat_id)
@@ -3737,7 +3736,24 @@ def _extended_handle_callback(callback_query):
         wallets = ct.get_tracked_wallets()
         for w in wallets:
             if w["address"].lower().startswith(addr.lower()):
-                tg.send(ct.format_wallet_detail(w["address"]), chat_id)
+                full_addr = w["address"]
+                onboarding.send_inline(
+                    chat_id,
+                    ct.format_wallet_detail(full_addr),
+                    [[{"text": "🚫 Unfollow", "callback_data": f"ct_unfollow_addr_{full_addr[:20]}"}]],
+                )
+                return
+        tg.send("❌ Wallet not found.", chat_id)
+    elif data.startswith("ct_unfollow_addr_"):
+        addr = data.replace("ct_unfollow_addr_", "")
+        wallets = ct.get_tracked_wallets()
+        for w in wallets:
+            if w["address"].lower().startswith(addr.lower()):
+                result = ct.unfollow_wallet(str(chat_id), w["address"])
+                if result.get("status") == "unfollowed":
+                    tg.send(f"✅ Unfollowed {w.get('alias', w['address'][:10])}.", chat_id)
+                else:
+                    tg.send(f"ℹ️ {result.get('message', 'Not following this wallet.')}", chat_id)
                 return
         tg.send("❌ Wallet not found.", chat_id)
 
