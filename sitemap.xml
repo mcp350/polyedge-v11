@@ -100,6 +100,16 @@
     <lastmod>2026-03-16</lastmod>
   </url>
 
+  <!-- Legal -->
+  <url>
+    <loc>https://polytragent.com/privacy</loc>
+    <lastmod>2026-04-04</lastmod>
+  </url>
+  <url>
+    <loc>https://polytragent.com/terms</loc>
+    <lastmod>2026-04-04</lastmod>
+  </url>
+
   <!-- Blog -->
   <url>
     <loc>https://polytragent.com/blog</loc>
