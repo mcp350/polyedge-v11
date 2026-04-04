@@ -20,6 +20,24 @@ import copy_trading as ct
 import onboarding
 import copy_executor as ce
 
+# ── Copy Trade Cache ──────────────────────────────────────────────────────────
+# Maps short index → trade details so callback_data stays short
+_copy_trade_cache: dict = {}  # idx -> {slug, outcome, question, price, whale_amount}
+_copy_trade_counter = 0
+
+def _store_copy_trade(slug: str, outcome: str, question: str, price: float, whale_amount: float) -> int:
+    """Store trade details in cache and return a short integer key."""
+    global _copy_trade_counter
+    _copy_trade_counter = (_copy_trade_counter + 1) % 10000
+    _copy_trade_cache[_copy_trade_counter] = {
+        "slug": slug,
+        "outcome": outcome,
+        "question": question,
+        "price": price,
+        "whale_amount": whale_amount,
+    }
+    return _copy_trade_counter
+
 # ── Constants ────────────────────────────────────────────────────────────────
 
 DATA_API_BASE  = "https://data-api.polymarket.com"
@@ -367,8 +385,19 @@ def dispatch_whale_alerts(signals: list) -> int:
 
         msg       = format_whale_alert(signal)
         market_id = signal.get("market_id", "")
-        w_short   = wallet_addr[:10]
-        outcome   = signal.get("side", "yes").capitalize()
+        outcome   = signal.get("side", "yes").title()  # normalize to Title case (Yes/No)
+        question  = signal.get("title", "Unknown market")
+        price     = signal.get("avg_price", 0)
+        value_usd = signal.get("value_usd", 0)
+
+        # Cache trade details for the Copy Trade flow
+        cache_idx = _store_copy_trade(
+            slug=market_id,
+            outcome=outcome,
+            question=question,
+            price=price,
+            whale_amount=value_usd,
+        )
 
         # ── Inline buttons ──────────────────────────────────────────────────
         buttons = []
@@ -382,7 +411,7 @@ def dispatch_whale_alerts(signals: list) -> int:
             })
         row1.append({
             "text": "💰 Copy Trade",
-            "callback_data": f"copy_buy_{w_short}_{market_id[:25]}_{outcome}",
+            "callback_data": f"copytrade_{cache_idx}",
         })
         buttons.append(row1)
 

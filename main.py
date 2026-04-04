@@ -1987,6 +1987,39 @@ def handle_trade_input(chat_id, text):
         _execute_quick_trade(chat_id, amount)
         return True
 
+    elif step == "amount_copy":
+        # User typed amount for copy trade from whale alert
+        try:
+            amount = float(text.strip().replace("$", "").replace(",", ""))
+            if amount < 1:
+                tg.send("❌ Minimum trade is $1.00", chat_id)
+                return True
+            if amount > 10000:
+                tg.send("❌ Maximum trade is $10,000", chat_id)
+                return True
+        except ValueError:
+            tg.send("❌ Enter a valid number (e.g., 25 or 100.50)", chat_id)
+            return True
+
+        slug = state["slug"]
+        outcome = state["outcome"].title()  # normalize case
+        question = state.get("question", "Unknown market")
+        _waiting_for_trade.pop(chat_str, None)
+
+        tg.send(f"⏳ Copying trade: BUY ${amount:.2f} on <b>{outcome}</b>...\n📌 {question[:60]}", chat_id)
+        try:
+            result = trading.quick_buy(slug, outcome, amount, str(chat_id))
+            if result and result.get("success"):
+                tg.send(f"✅ <b>Copy Trade Executed!</b>\n\n"
+                        f"💰 ${amount:.2f} → {outcome}\n"
+                        f"🧾 Order: <code>{result.get('order_id', 'N/A')[:12]}</code>", chat_id)
+            else:
+                err = result.get("error", "Unknown") if result else "No response"
+                tg.send(f"❌ Copy trade failed: {err}", chat_id)
+        except Exception as e:
+            tg.send(f"❌ Copy trade error: {e}", chat_id)
+        return True
+
     elif step == "amount":
         # User sent dollar amount
         try:
@@ -3511,17 +3544,29 @@ def _extended_handle_callback(callback_query):
         stats = ce.get_auto_copy_stats(str(chat_id))
         tg.send(ce.format_auto_copy_stats(stats), chat_id)
 
-    # ── ONE-TAP COPY TRADE ──
-    elif data.startswith("copy_buy_"):
-        # copy_buy_{wallet10}_{slug30}_{outcome}
-        parts = data.replace("copy_buy_", "").rsplit("_", 1)
-        if len(parts) == 2:
-            slug_part, outcome = parts[0], parts[1]
-            # Strip the wallet prefix (first 10 chars + underscore)
-            slug = slug_part[11:] if len(slug_part) > 11 else slug_part
+    # ── COPY TRADE (from whale alert) ──
+    elif data.startswith("copytrade_"):
+        import whale_monitor as wm_mod
+        try:
+            idx = int(data.replace("copytrade_", ""))
+        except ValueError:
+            tg.send("❌ Invalid copy trade action.", chat_id)
+            return
+        cached = wm_mod._copy_trade_cache.get(idx)
+        if not cached:
+            tg.send("❌ Trade details expired. Please wait for the next whale alert.", chat_id)
+            return
+
+        slug = cached["slug"]
+        outcome = cached["outcome"].title()  # ensure Title case
+        question = cached["question"]
+        whale_amount = cached.get("whale_amount", 0)
+
+        # Degen + auto-trade ON → execute immediately
+        if user_store.is_degen(str(chat_id)) and ce.is_auto_copy_enabled(str(chat_id)):
             ts = user_store.get_trade_settings(str(chat_id))
             amount = ts["buy"]["default_amount"]
-            tg.send(f"⏳ Copying trade: BUY ${amount} on <b>{outcome}</b>...", chat_id)
+            tg.send(f"⏳ Auto-copying trade: BUY ${amount} on <b>{outcome}</b>...", chat_id)
             try:
                 result = trading.quick_buy(slug, outcome, amount, str(chat_id))
                 if result and result.get("success"):
@@ -3534,7 +3579,27 @@ def _extended_handle_callback(callback_query):
             except Exception as e:
                 tg.send(f"❌ Copy trade error: {e}", chat_id)
         else:
-            tg.send("❌ Invalid copy trade action.", chat_id)
+            # Free / Degen without auto-trade → prompt for amount
+            ts = user_store.get_trade_settings(str(chat_id))
+            default_amount = ts["buy"]["default_amount"]
+            _waiting_for_trade[str(chat_id)] = {
+                "action": "buy",
+                "step": "amount_copy",
+                "slug": slug,
+                "outcome": outcome,
+                "question": question,
+                "whale_amount": whale_amount,
+                "default_amount": default_amount,
+            }
+            q_short = question[:60] + ("..." if len(question) > 60 else "")
+            onboarding.send_inline(chat_id,
+                f"📋 <b>Copy Trade</b>\n\n"
+                f"Market: <i>\"{q_short}\"</i>\n"
+                f"Action: <b>BUY {outcome.upper()}</b> (copying whale)\n"
+                f"Whale traded: <b>${whale_amount:,.0f}</b>\n\n"
+                f"💵 <b>Enter amount (in $):</b>\n"
+                f"Your default: ${default_amount}",
+                [[{"text": "← Cancel", "callback_data": "trading_cancel_flow"}]])
 
     # ── TOP PICKS CALLBACKS ──
     elif data.startswith("tp_page_"):
