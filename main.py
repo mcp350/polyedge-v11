@@ -4213,6 +4213,16 @@ def main():
     )
 
     threading.Thread(target=_scheduler_loop, daemon=True).start()
+
+    # Real-time whale monitor — polls data-api.polymarket.com every 45 s
+    # and sends 🐋 Whale Alert! notifications when followed wallets trade.
+    try:
+        import whale_monitor
+        threading.Thread(target=whale_monitor.monitor_loop, daemon=True).start()
+        print("[BOOT] 🐋 Whale monitor started (45s interval)")
+    except Exception as e:
+        print(f"[BOOT] Whale monitor start error: {e}")
+
     _polling_loop()
 
 if __name__ == "__main__":
