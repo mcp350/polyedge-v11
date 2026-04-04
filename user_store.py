@@ -13,8 +13,9 @@ from datetime import datetime, timezone, timedelta
 
 FILE = os.path.join(os.path.dirname(__file__), "users.json")
 DEGEN_PRICE = 79  # $79/mo for Degen Mode
-FREE_WHALE_LIMIT = 20
+FREE_WHALE_LIMIT = 5
 DEGEN_WHALE_LIMIT = 9999
+FREE_RESEARCH_LIMIT = 1  # free users: 1 event research total
 
 # ═══════════════════════════════════════════════
 # STORAGE
@@ -116,6 +117,7 @@ def create_user(chat_id: str, username: str = "", first_name: str = "") -> dict:
             "total_pnl": 0,
         },
         "total_signals_received": 0,
+        "research_count": 0,  # total event researches used (free limit: 1)
         "last_active": datetime.now(timezone.utc).isoformat(),
     }
     data["users"][cid] = user
@@ -176,6 +178,28 @@ def get_wallet_tracking_limit(chat_id: str) -> int:
     if is_degen(chat_id):
         return DEGEN_WHALE_LIMIT
     return FREE_WHALE_LIMIT
+
+def get_research_count(chat_id: str) -> int:
+    """Get total event researches used by this user."""
+    user = get_user(str(chat_id))
+    if not user:
+        return 0
+    return user.get("research_count", 0)
+
+def increment_research_count(chat_id: str):
+    """Increment the persistent research count for this user."""
+    data = _load()
+    cid = str(chat_id)
+    if cid not in data["users"]:
+        return
+    data["users"][cid]["research_count"] = data["users"][cid].get("research_count", 0) + 1
+    _save(data)
+
+def check_research_limit(chat_id: str) -> bool:
+    """Return True if user is allowed to do another research."""
+    if is_degen(str(chat_id)):
+        return True  # unlimited
+    return get_research_count(str(chat_id)) < FREE_RESEARCH_LIMIT
 
 def activate_subscription(chat_id: str, plan: str = "degen", stripe_customer_id: str = "",
                           stripe_subscription_id: str = "", expires_at: str = "",

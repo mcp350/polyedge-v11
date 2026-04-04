@@ -129,47 +129,24 @@ def _run_locked(name, chat_id, fn):
 
 _waiting_for_research_link = {}  # chat_id -> True when waiting for link
 
-# ── Research Rate Limiting ──
-FREE_RESEARCH_LIMIT = 5  # free users: 5 per day
-_research_usage = {}  # chat_id -> {"date": "2026-03-31", "count": 3}
+# ── Research Usage Limits ──
+FREE_RESEARCH_LIMIT = 1  # free users: 1 event research total (lifetime)
 
 def _check_research_limit(chat_id) -> bool:
     """Check if user can do another research. Returns True if allowed."""
-    cid = str(chat_id)
-    is_degen = user_store.is_degen(cid) if hasattr(user_store, 'is_degen') else False
-    if is_degen:
-        return True  # unlimited
-
-    from datetime import date
-    today = date.today().isoformat()
-    usage = _research_usage.get(cid, {"date": "", "count": 0})
-    if usage["date"] != today:
-        usage = {"date": today, "count": 0}
-    return usage["count"] < FREE_RESEARCH_LIMIT
+    return user_store.check_research_limit(str(chat_id))
 
 def _increment_research_usage(chat_id):
-    """Track research usage for rate limiting."""
-    cid = str(chat_id)
-    from datetime import date
-    today = date.today().isoformat()
-    usage = _research_usage.get(cid, {"date": "", "count": 0})
-    if usage["date"] != today:
-        usage = {"date": today, "count": 0}
-    usage["count"] += 1
-    _research_usage[cid] = usage
+    """Persist research usage count."""
+    user_store.increment_research_count(str(chat_id))
 
 def _get_research_remaining(chat_id) -> int:
-    """Get remaining research queries for today."""
+    """Get remaining research queries for this user."""
     cid = str(chat_id)
-    is_degen = user_store.is_degen(cid) if hasattr(user_store, 'is_degen') else False
-    if is_degen:
+    if user_store.is_degen(cid):
         return 999
-    from datetime import date
-    today = date.today().isoformat()
-    usage = _research_usage.get(cid, {"date": "", "count": 0})
-    if usage["date"] != today:
-        return FREE_RESEARCH_LIMIT
-    return max(0, FREE_RESEARCH_LIMIT - usage["count"])
+    used = user_store.get_research_count(cid)
+    return max(0, FREE_RESEARCH_LIMIT - used)
 
 def show_quick_research_prompt(chat_id):
     """Prompt user to send a Polymarket event link for full AI analysis"""
@@ -178,16 +155,15 @@ def show_quick_research_prompt(chat_id):
 
     if remaining <= 0 and not is_degen:
         onboarding.send_inline(chat_id,
-            "🔬 <b>Daily Research Limit Reached</b>\n\n"
-            f"You've used all <b>{FREE_RESEARCH_LIMIT}</b> free researches today.\n\n"
-            "🚀 <b>Upgrade to Degen Mode</b> for unlimited research + auto copy trading!\n\n"
-            "💰 <b>$79.99/month</b> — cancel anytime.",
-            [[{"text": "🚀 Upgrade to Degen Mode — $79.99/mo", "callback_data": "degen_subscribe"}],
+            "🔬 <b>Research Limit Reached</b>\n\n"
+            "You've used your free research.\n\n"
+            "🚀 <b>Upgrade to Degen Mode</b> for unlimited research — $79/mo",
+            [[{"text": "🚀 Upgrade to Degen Mode — $79/mo", "callback_data": "degen_subscribe"}],
              [{"text": "← Main Menu", "callback_data": "main_menu"}]])
         return
 
     _waiting_for_research_link[str(chat_id)] = True
-    limit_line = f"♾ <b>Unlimited</b> researches (Degen Mode)" if is_degen else f"📋 <b>{remaining}/{FREE_RESEARCH_LIMIT}</b> researches remaining today"
+    limit_line = f"♾ <b>Unlimited</b> researches (Degen Mode)" if is_degen else f"📋 <b>{remaining}/{FREE_RESEARCH_LIMIT}</b> free research remaining"
     onboarding.send_inline(chat_id,
         "🔬 <b>Polytragent — Event Research</b>\n\n"
         "Paste a Polymarket event link and get:\n\n"
@@ -206,21 +182,19 @@ def handle_research_link(chat_id, link):
     """Run full research on a Polymarket link"""
     _waiting_for_research_link.pop(str(chat_id), None)
 
-    # Rate limit check
+    # Usage limit check
     if not _check_research_limit(str(chat_id)):
         onboarding.send_inline(chat_id,
-            f"🔬 <b>Daily Limit Reached</b>\n\n"
-            f"You've used all <b>{FREE_RESEARCH_LIMIT}</b> free researches today.\n"
-            f"Resets at midnight UTC.\n\n"
-            f"🚀 Upgrade to <b>Degen Mode ($79.99/mo)</b> for unlimited research!",
-            [[{"text": "🚀 Upgrade — $79.99/mo", "callback_data": "degen_subscribe"}],
+            "🔬 <b>Research Limit Reached</b>\n\n"
+            "You've used your free research. Upgrade to Degen Mode for unlimited research — $79/mo",
+            [[{"text": "🚀 Upgrade to Degen Mode — $79/mo", "callback_data": "degen_subscribe"}],
              [{"text": "← Main Menu", "callback_data": "main_menu"}]])
         return
 
     _increment_research_usage(str(chat_id))
     remaining = _get_research_remaining(str(chat_id))
     is_degen = user_store.is_degen(str(chat_id)) if hasattr(user_store, 'is_degen') else False
-    limit_note = "" if is_degen else f"\n📋 {remaining}/{FREE_RESEARCH_LIMIT} researches remaining today"
+    limit_note = "" if is_degen else (f"\n📋 Free research used — upgrade for unlimited" if remaining == 0 else "")
 
     tg.send(f"🔬 <b>Researching event...</b>\n\n⏳ Running AI analysis, market data, whale scan, news check...\nThis takes ~30-60 seconds.{limit_note}", chat_id)
 
@@ -2466,7 +2440,7 @@ def show_whales_menu(chat_id):
         [{"text": "⚙️ Copy Trade Rules", "callback_data": "ct_rules"}],
     ]
     if not is_pro:
-        extra_buttons.append([{"text": "🚀 Upgrade to Degen Mode — $79.99/mo", "callback_data": "degen_subscribe"}])
+        extra_buttons.append([{"text": "🚀 Upgrade to Degen Mode — $79/mo", "callback_data": "degen_subscribe"}])
     onboarding.send_inline(chat_id, header + text, extra_buttons + buttons)
 
 def show_degen_mode_info(chat_id):
@@ -2481,7 +2455,7 @@ def show_degen_mode_info(chat_id):
             "• Unlimited whale wallet tracking\n"
             "• Auto-execute copy trades\n"
             "• Priority alerts & notifications\n\n"
-            "💰 $79.99/month billed to your Stripe account.\n"
+            "💰 $79/month billed to your Stripe account.\n"
             "🔄 Cancel anytime in settings.",
             [[{"text": "⚙️ Manage Subscription", "callback_data": "degen_manage"}],
              [{"text": "← Main Menu", "callback_data": "main_menu"}]])
@@ -2493,13 +2467,13 @@ def show_degen_mode_info(chat_id):
             "• Track up to 20 whale wallets\n"
             "• Real-time trade notifications\n"
             "• Manual copy trading\n\n"
-            "<b>Degen Mode ($79.99/mo):</b>\n"
+            "<b>Degen Mode ($79/mo):</b>\n"
             "• Unlimited event research\n"
             "• Unlimited whale wallets\n"
             "• Auto-execute copy trades\n"
             "• Priority alerts & analytics\n\n"
             "✅ Cancel anytime. No lock-in.",
-            [[{"text": "🚀 Upgrade to Degen Mode — $79.99/mo", "callback_data": "degen_subscribe"}],
+            [[{"text": "🚀 Upgrade to Degen Mode — $79/mo", "callback_data": "degen_subscribe"}],
              [{"text": "← Main Menu", "callback_data": "main_menu"}]])
 
 def _handle(cmd, chat_id):
@@ -3654,9 +3628,9 @@ def _extended_handle_callback(callback_query):
                 "• Unlimited whale wallets\n"
                 "• Auto-execute copy trades\n"
                 "• Priority alerts\n\n"
-                "💰 <b>$79.99/month</b>, cancel anytime.\n\n"
+                "💰 <b>$79/month</b>, cancel anytime.\n\n"
                 "👇 Tap below to complete payment:",
-                [[{"text": "💳 Pay $79.99/mo — Open Stripe", "url": checkout_url}],
+                [[{"text": "💳 Pay $79/mo — Open Stripe", "url": checkout_url}],
                  [{"text": "← Main Menu", "callback_data": "main_menu"}]])
         else:
             tg.send("❌ Stripe checkout unavailable. Contact @polytragent for support.", chat_id)
@@ -3724,7 +3698,7 @@ def _extended_handle_callback(callback_query):
             f"🤖 Auto-Execute: <b>{'ON ✅' if auto_exec else 'OFF'}</b>"
         )
         if not is_pro:
-            text += "\n\n🔒 <i>Auto-execute requires Degen Mode ($79.99/mo). Free users get notifications to trade manually.</i>"
+            text += "\n\n🔒 <i>Auto-execute requires Degen Mode ($79/mo). Free users get notifications to trade manually.</i>"
 
         btns = [
             [{"text": f"💰 Amount: ${amt}", "callback_data": "ct_set_amount"},
@@ -3735,7 +3709,7 @@ def _extended_handle_callback(callback_query):
         if is_pro:
             btns.append([{"text": f"🤖 Auto-Execute: {'ON ✅' if auto_exec else 'OFF'}", "callback_data": "ct_toggle_autoexec"}])
         else:
-            btns.append([{"text": "🚀 Upgrade to Degen Mode — $79.99/mo", "callback_data": "degen_subscribe"}])
+            btns.append([{"text": "🚀 Upgrade to Degen Mode — $79/mo", "callback_data": "degen_subscribe"}])
         btns.append([{"text": "← Back to Whales", "callback_data": "menu_whales"}])
         onboarding.send_inline(chat_id, text, btns)
 
@@ -3819,11 +3793,11 @@ def _extended_handle_callback(callback_query):
         if not is_pro:
             onboarding.send_inline(chat_id,
                 "🔒 <b>Auto-Execute requires Degen Mode</b>\n\n"
-                "Upgrade to Degen Mode ($79.99/mo) to unlock:\n"
+                "Upgrade to Degen Mode ($79/mo) to unlock:\n"
                 "• Auto-execute copy trades\n"
                 "• Unlimited whale wallets\n"
                 "• Priority notifications",
-                [[{"text": "🚀 Upgrade to Degen Mode — $79.99/mo", "callback_data": "degen_subscribe"}],
+                [[{"text": "🚀 Upgrade to Degen Mode — $79/mo", "callback_data": "degen_subscribe"}],
                  [{"text": "← Back", "callback_data": "ct_rules"}]])
         else:
             import copy_executor as _ce
@@ -3852,9 +3826,8 @@ def _extended_handle_callback(callback_query):
             else:
                 onboarding.send_inline(chat_id,
                     f"⚠️ <b>Wallet Limit Reached</b>\n\n"
-                    f"You're tracking <b>{following}/{limit}</b> wallets on the Free plan.\n\n"
-                    f"Upgrade to Pro for unlimited wallets + auto-trade!",
-                    [[{"text": "🚀 Upgrade to Degen Mode — $79.99/mo", "callback_data": "degen_subscribe"}],
+                    f"Free tier allows 5 copy trading wallets. Upgrade to Degen Mode for unlimited wallets — $79/mo",
+                    [[{"text": "🚀 Upgrade to Degen Mode — $79/mo", "callback_data": "degen_subscribe"}],
                      [{"text": "← Back", "callback_data": "menu_whales"}]])
         else:
             tg.send(
