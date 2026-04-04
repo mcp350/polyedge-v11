@@ -346,7 +346,8 @@ def send_main_menu(chat_id):
          {"text": "📈 Strategies", "callback_data": "menu_trade"}],
         [{"text": "🔬 Research", "callback_data": "menu_research"},
          {"text": "⚙️ Settings", "callback_data": "menu_settings"}],
-        [{"text": "🚀 Degen Mode", "callback_data": "degen_subscribe"} if not is_degen else {"text": "🚀 Degen ✓", "callback_data": "degen_manage"}],
+        [{"text": "🚀 Degen Mode", "callback_data": "degen_subscribe"} if not is_degen else {"text": "🚀 Degen ✓", "callback_data": "degen_manage"},
+         {"text": "💬 Support", "url": "https://t.me/polytragent"}],
     ]
 
     onboarding.send_inline(chat_id,
