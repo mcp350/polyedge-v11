@@ -76,7 +76,7 @@ def enable_auto_copy(chat_id: str, max_per_trade: float = 25.0,
         "mode": "proportional",  # proportional | fixed | percentage
         "fixed_amount": max_per_trade,
         "percentage": 5.0,  # % of whale's trade size
-        "min_trade_usd": 10.0,
+        "min_trade_usd": 1.0,
         "max_slippage": 0.05,  # 5% max slippage
         "followed_wallets": [],  # specific wallets to auto-copy (empty = all followed)
         "enabled_at": datetime.now(timezone.utc).isoformat(),
@@ -165,7 +165,7 @@ def calculate_trade_amount(settings: dict, whale_trade_usd: float) -> float:
 
     # Apply limits
     amount = min(amount, settings.get("max_per_trade", 25.0))
-    amount = max(amount, settings.get("min_trade_usd", 10.0))
+    amount = max(amount, settings.get("min_trade_usd", 1.0))
 
     # Check daily limit
     settings = _reset_daily_if_needed(settings)
