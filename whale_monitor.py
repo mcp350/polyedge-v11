@@ -528,18 +528,24 @@ def dispatch_whale_alerts(signals: list) -> int:
         slug_for_buy = market_slug or event_slug or ""
         if slug_for_buy:
             if all_outcomes and len(all_outcomes) >= 2:
-                # Multi-outcome or named outcomes — show actual names
+                # Multi-outcome — cache each outcome separately
                 o1, o2 = all_outcomes[0], all_outcomes[1]
+                idx1 = _store_copy_trade(slug=slug_for_buy, outcome=o1, question=question,
+                    price=price, whale_amount=value_usd, token_id=token_id, neg_risk=neg_risk, event_slug=event_slug or market_slug)
+                idx2 = _store_copy_trade(slug=slug_for_buy, outcome=o2, question=question,
+                    price=price, whale_amount=value_usd, token_id="", neg_risk=neg_risk, event_slug=event_slug or market_slug)
                 buttons.append([
-                    {"text": f"🟩 Buy {o1[:12]}", "callback_data": f"whale_buy_{slug_for_buy[:42]}_{o1}"},
-                    {"text": f"🟥 Buy {o2[:12]}", "callback_data": f"whale_buy_{slug_for_buy[:42]}_{o2}"},
+                    {"text": f"🟩 Buy {o1[:15]}", "callback_data": f"copytrade_{idx1}"},
+                    {"text": f"🟥 Buy {o2[:15]}", "callback_data": f"copytrade_{idx2}"},
                 ])
             else:
-                # Binary market — show Yes/No
+                # Binary market — Yes/No
                 opp = "No" if outcome in ("Yes", "YES") else "Yes"
+                idx_opp = _store_copy_trade(slug=slug_for_buy, outcome=opp, question=question,
+                    price=price, whale_amount=value_usd, token_id="", neg_risk=neg_risk, event_slug=event_slug or market_slug)
                 buttons.append([
-                    {"text": f"🟩 Buy {outcome[:12]}", "callback_data": f"whale_buy_{slug_for_buy[:42]}_{outcome}"},
-                    {"text": f"🟥 Buy {opp[:12]}", "callback_data": f"whale_buy_{slug_for_buy[:42]}_{opp}"},
+                    {"text": f"🟩 Buy {outcome[:15]}", "callback_data": f"copytrade_{cache_idx}"},
+                    {"text": f"🟥 Buy {opp[:15]}", "callback_data": f"copytrade_{idx_opp}"},
                 ])
 
         # Row 4 — View Trader + My Portfolio
