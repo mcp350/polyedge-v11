@@ -11,6 +11,7 @@ import telegram_client as tg
 import onboarding
 import user_store
 import copy_executor as ce
+import whale_monitor as wm_mod
 
 # ═══════════════════════════════════════════════
 # SIGNAL DISPATCHER
@@ -61,23 +62,32 @@ def dispatch_signals(signals: list):
                         {"text": "🔬 Research Event", "callback_data": f"whale_research_{research_slug[:50]}"},
                     ])
 
-            # Row 3: Buy buttons — use actual outcome names (handles multi-outcome markets)
+            # Row 3: Buy buttons — use copytrade cache to avoid truncation issues
             if slug:
-                # Get all available outcomes from the market
+                slug_for_buy = event_slug or slug
+                question_str = signal.get("market_title", signal.get("title", ""))
+                price_val = float(signal.get("avg_price", 0) or 0)
+                whale_amt = float(signal.get("value_usd", signal.get("size", 0)) or 0)
                 all_outcomes = signal.get("all_outcomes", [])
                 if all_outcomes and len(all_outcomes) >= 2:
-                    # Multi-outcome or binary — show actual names
                     o1, o2 = all_outcomes[0], all_outcomes[1]
+                    idx1 = wm_mod._store_copy_trade(slug=slug_for_buy, outcome=o1, question=question_str,
+                        price=price_val, whale_amount=whale_amt, event_slug=slug_for_buy)
+                    idx2 = wm_mod._store_copy_trade(slug=slug_for_buy, outcome=o2, question=question_str,
+                        price=price_val, whale_amount=whale_amt, event_slug=slug_for_buy)
                     buttons.append([
-                        {"text": f"🟩 Buy {o1[:12]}", "callback_data": f"whale_buy_{slug[:42]}_{o1}"},
-                        {"text": f"🟥 Buy {o2[:12]}", "callback_data": f"whale_buy_{slug[:42]}_{o2}"},
+                        {"text": f"🟩 Buy {o1[:15]}", "callback_data": f"copytrade_{idx1}"},
+                        {"text": f"🟥 Buy {o2[:15]}", "callback_data": f"copytrade_{idx2}"},
                     ])
                 else:
-                    # Fallback — show the whale's outcome + opposite
                     opp = "No" if outcome in ("Yes", "yes") else "Yes"
+                    idx1 = wm_mod._store_copy_trade(slug=slug_for_buy, outcome=outcome, question=question_str,
+                        price=price_val, whale_amount=whale_amt, event_slug=slug_for_buy)
+                    idx2 = wm_mod._store_copy_trade(slug=slug_for_buy, outcome=opp, question=question_str,
+                        price=price_val, whale_amount=whale_amt, event_slug=slug_for_buy)
                     buttons.append([
-                        {"text": f"🟩 Buy {outcome[:12]}", "callback_data": f"whale_buy_{slug[:42]}_{outcome}"},
-                        {"text": f"🟥 Buy {opp[:12]}", "callback_data": f"whale_buy_{slug[:42]}_{opp}"},
+                        {"text": f"🟩 Buy {outcome[:15]}", "callback_data": f"copytrade_{idx1}"},
+                        {"text": f"🟥 Buy {opp[:15]}", "callback_data": f"copytrade_{idx2}"},
                     ])
 
         # Row 4: View Trader

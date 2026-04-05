@@ -1008,6 +1008,13 @@ def market_buy(token_id: str, amount: float, neg_risk: bool = False,
 
         resp = client.post_order(signed_order, OrderType.FOK)
 
+        # If FOK rejected due to insufficient liquidity, retry as GTC
+        if isinstance(resp, dict) and not resp.get("success", False):
+            err_msg = resp.get("errorMsg", "")
+            if "fully filled" in err_msg.lower() or "fok" in err_msg.lower():
+                log.warning(f"FOK rejected ({err_msg!r}), retrying as GTC")
+                resp = client.post_order(signed_order, OrderType.GTC)
+
         success = resp.get("success", False) if isinstance(resp, dict) else False
 
         # Record fee if trade was successful
