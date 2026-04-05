@@ -25,7 +25,8 @@ import copy_executor as ce
 _copy_trade_cache: dict = {}  # idx -> {slug, outcome, question, price, whale_amount}
 _copy_trade_counter = 0
 
-def _store_copy_trade(slug: str, outcome: str, question: str, price: float, whale_amount: float) -> int:
+def _store_copy_trade(slug: str, outcome: str, question: str, price: float, whale_amount: float,
+                      token_id: str = "", neg_risk: bool = False, event_slug: str = "") -> int:
     """Store trade details in cache and return a short integer key."""
     global _copy_trade_counter
     _copy_trade_counter = (_copy_trade_counter + 1) % 10000
@@ -35,6 +36,9 @@ def _store_copy_trade(slug: str, outcome: str, question: str, price: float, whal
         "question": question,
         "price": price,
         "whale_amount": whale_amount,
+        "token_id": token_id,
+        "neg_risk": neg_risk,
+        "event_slug": event_slug,
     }
     return _copy_trade_counter
 
@@ -218,6 +222,7 @@ def _parse_trade(trade: dict, wallet: dict) -> dict | None:
         "token_id":  str(trade.get("asset") or trade.get("asset_id") or ""),
         "event_slug": str(trade.get("eventSlug") or ""),
         "market_slug": str(trade.get("slug") or ""),
+        "neg_risk":  outcome not in ("YES", "NO"),
     }
 
 
@@ -413,14 +418,20 @@ def dispatch_whale_alerts(signals: list) -> int:
 
         # Try to resolve a human-readable event slug for the URL button
         event_slug = signal.get("event_slug", "")
+        market_slug = signal.get("market_slug", "")
+        token_id = signal.get("token_id", "")
+        neg_risk = signal.get("neg_risk", False)
 
         # Cache trade details for the Copy Trade flow
         cache_idx = _store_copy_trade(
-            slug=market_id,
+            slug=market_slug or event_slug or market_id,
             outcome=outcome,
             question=question,
             price=price,
             whale_amount=value_usd,
+            token_id=token_id,
+            neg_risk=neg_risk,
+            event_slug=event_slug or market_slug,
         )
 
         # ── Inline buttons ──────────────────────────────────────────────────
