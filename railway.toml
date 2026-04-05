@@ -2,6 +2,7 @@
 builder = "nixpacks"
 
 [deploy]
+region = "europe-west4"
 startCommand = "python main.py"
 healthcheckPath = "/health"
 healthcheckTimeout = 300

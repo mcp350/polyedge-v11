@@ -8,13 +8,9 @@ TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "")
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
 
 # ── Polymarket CLOB API ──
-# Railway is geoblocked by Polymarket for trading (403).
-# We use the EU proxy (nginx at 13.49.25.66) to bypass the geoblock.
-# IMPORTANT: nginx must have 'underscores_in_headers on;' in server{} block
-# to pass POLY_* auth headers through (they contain underscores).
-CLOB_PROXY_URL = os.environ.get("CLOB_PROXY_URL", "http://13.49.25.66")
-CLOB_BASE = CLOB_PROXY_URL.rstrip("/") if CLOB_PROXY_URL else "https://clob.polymarket.com"
-CLOB_AUTH_HOST = "https://clob.polymarket.com"  # Used for ECDSA signing (must be real host)
+# Running in EU region (Railway eu-west) — direct access to clob.polymarket.com.
+CLOB_BASE = "https://clob.polymarket.com"
+CLOB_AUTH_HOST = "https://clob.polymarket.com"
 
 # ── Polymarket Trading API (builders.polymarket.com) ──
 POLY_API_KEY = os.environ.get("POLY_API_KEY", "")
