@@ -142,10 +142,15 @@ def _get_admin_client():
             private_key = "0x" + private_key
 
         client = ClobClient(
-            "https://clob.polymarket.com", key=private_key, chain_id=CHAIN_ID, signature_type=0,
+            CLOB_AUTH_HOST, key=private_key, chain_id=CHAIN_ID, signature_type=0,
         )
         creds = ApiCreds(api_key=api_key, api_secret=api_secret, api_passphrase=api_passphrase)
         client.set_api_creds(creds)
+
+        # Switch to EU proxy for actual HTTP requests (bypass geoblock)
+        if CLOB_HOST and CLOB_HOST != CLOB_AUTH_HOST:
+            client.host = CLOB_HOST
+            log.info(f"Admin client: auth via {CLOB_AUTH_HOST}, requests via {CLOB_HOST}")
 
         _admin_client = client
         _admin_initialized = True
@@ -200,10 +205,15 @@ def _get_client_for_user(chat_id: str):
         from py_clob_client.client import ClobClient
 
         client = ClobClient(
-            "https://clob.polymarket.com", key=pk, chain_id=CHAIN_ID, signature_type=0,
+            CLOB_AUTH_HOST, key=pk, chain_id=CHAIN_ID, signature_type=0,
         )
         creds = client.create_or_derive_api_creds()
         client.set_api_creds(creds)
+
+        # Switch to EU proxy for actual HTTP requests (bypass geoblock)
+        if CLOB_HOST and CLOB_HOST != CLOB_AUTH_HOST:
+            client.host = CLOB_HOST
+            log.info(f"User client: auth via {CLOB_AUTH_HOST}, requests via {CLOB_HOST}")
 
         # Get wallet address for logging
         from eth_account import Account
