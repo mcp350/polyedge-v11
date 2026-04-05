@@ -2004,11 +2004,18 @@ def handle_trade_input(chat_id, text):
         slug = state["slug"]
         outcome = state["outcome"].title()  # normalize case
         question = state.get("question", "Unknown market")
+        token_id = state.get("token_id", "")
+        neg_risk = state.get("neg_risk", False)
         _waiting_for_trade.pop(chat_str, None)
 
         tg.send(f"⏳ Copying trade: BUY ${amount:.2f} on <b>{outcome}</b>...\n📌 {question[:60]}", chat_id)
         try:
-            result = trading.quick_buy(slug, outcome, amount, str(chat_id))
+            if token_id:
+                print(f"[COPYTRADE] Using market_buy with token_id={token_id[:20]}... neg_risk={neg_risk}")
+                result = trading.market_buy(token_id=token_id, amount=amount, neg_risk=neg_risk, chat_id=str(chat_id), market_question=question)
+            else:
+                print(f"[COPYTRADE] Fallback to quick_buy: slug={slug!r} outcome={outcome!r}")
+                result = trading.quick_buy(slug, outcome, amount, str(chat_id))
             if result and result.get("success"):
                 tg.send(f"✅ <b>Copy Trade Executed!</b>\n\n"
                         f"💰 ${amount:.2f} → {outcome}\n"
@@ -3560,6 +3567,9 @@ def _extended_handle_callback(callback_query):
         outcome = cached["outcome"].title()  # ensure Title case
         question = cached["question"]
         whale_amount = cached.get("whale_amount", 0)
+        token_id = cached.get("token_id", "")
+        neg_risk = cached.get("neg_risk", False)
+        print(f"[COPYTRADE] cache hit: token_id={token_id!r} neg_risk={neg_risk} slug={slug!r} outcome={outcome!r}")
 
         # Degen + auto-trade ON → execute immediately
         if user_store.is_degen(str(chat_id)) and ce.is_auto_copy_enabled(str(chat_id)):
@@ -3567,7 +3577,10 @@ def _extended_handle_callback(callback_query):
             amount = ts["buy"]["default_amount"]
             tg.send(f"⏳ Auto-copying trade: BUY ${amount} on <b>{outcome}</b>...", chat_id)
             try:
-                result = trading.quick_buy(slug, outcome, amount, str(chat_id))
+                if token_id:
+                    result = trading.market_buy(token_id=token_id, amount=amount, neg_risk=neg_risk, chat_id=str(chat_id), market_question=question)
+                else:
+                    result = trading.quick_buy(slug, outcome, amount, str(chat_id))
                 if result and result.get("success"):
                     tg.send(f"✅ <b>Copy Trade Executed!</b>\n\n"
                             f"💰 ${amount} → {outcome}\n"
@@ -3589,6 +3602,8 @@ def _extended_handle_callback(callback_query):
                 "question": question,
                 "whale_amount": whale_amount,
                 "default_amount": default_amount,
+                "token_id": token_id,
+                "neg_risk": neg_risk,
             }
             q_short = question[:60] + ("..." if len(question) > 60 else "")
             onboarding.send_inline(chat_id,
