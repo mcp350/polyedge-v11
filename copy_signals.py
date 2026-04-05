@@ -34,33 +34,56 @@ def dispatch_signals(signals: list):
 
         # Format the signal message
         msg = ct.format_signal(signal)
-        market_id = signal.get("market_id", "")
+
+        # Resolve event URL and slug for buttons
+        event_url = signal.get("event_url", "")
+        event_slug = signal.get("event_slug", "") or signal.get("slug", "")
+        slug = signal.get("slug", "")
+        sig_type = signal.get("type", "")
+        outcome = signal.get("outcome", "Yes")
 
         # Build action buttons
         buttons = []
-        if market_id:
-            polymarket_url = f"https://polymarket.com/event/{market_id}"
-            buttons.append([{"text": "🔗 Open on Polymarket", "url": polymarket_url}])
 
-        side = signal.get("side", "yes").upper()
-        sig_type = signal.get("type", "")
+        # Row 1: Polymarket event link (clickable URL)
+        if event_url:
+            buttons.append([{"text": "🔗 Open on Polymarket", "url": event_url}])
 
         if sig_type in ("NEW_POSITION", "INCREASED"):
-            # Add one-tap copy trade button with market slug
-            slug = signal.get("market", signal.get("slug", ""))
-            outcome = signal.get("outcome", signal.get("side", "yes")).capitalize()
-            if slug:
-                buttons.append([
-                    {"text": f"🟩 Copy Buy {outcome}", "callback_data": f"copy_buy_{wallet_addr[:10]}_{slug[:30]}_{outcome}"},
-                ])
-            buttons.append([
-                {"text": f"📊 View Trader", "callback_data": f"ct_detail_{wallet_addr[:20]}"},
-            ])
-        elif sig_type == "CLOSED":
-            buttons.append([
-                {"text": "📊 View Trader", "callback_data": f"ct_detail_{wallet_addr[:20]}"},
-            ])
+            # Row 2: Research button — triggers full AI research on this event
+            if event_url or event_slug:
+                research_url = event_url or f"https://polymarket.com/event/{event_slug}"
+                # Use whale_research_ callback to trigger research flow in main.py
+                # Truncate URL to fit in callback_data (max 64 bytes)
+                research_slug = event_slug or slug
+                if research_slug:
+                    buttons.append([
+                        {"text": "🔬 Research Event", "callback_data": f"whale_research_{research_slug[:50]}"},
+                    ])
 
+            # Row 3: Buy buttons — use actual outcome names (handles multi-outcome markets)
+            if slug:
+                # Get all available outcomes from the market
+                all_outcomes = signal.get("all_outcomes", [])
+                if all_outcomes and len(all_outcomes) >= 2:
+                    # Multi-outcome or binary — show actual names
+                    o1, o2 = all_outcomes[0], all_outcomes[1]
+                    buttons.append([
+                        {"text": f"🟩 Buy {o1[:12]}", "callback_data": f"whale_buy_{slug[:42]}_{o1}"},
+                        {"text": f"🟥 Buy {o2[:12]}", "callback_data": f"whale_buy_{slug[:42]}_{o2}"},
+                    ])
+                else:
+                    # Fallback — show the whale's outcome + opposite
+                    opp = "No" if outcome in ("Yes", "yes") else "Yes"
+                    buttons.append([
+                        {"text": f"🟩 Buy {outcome[:12]}", "callback_data": f"whale_buy_{slug[:42]}_{outcome}"},
+                        {"text": f"🟥 Buy {opp[:12]}", "callback_data": f"whale_buy_{slug[:42]}_{opp}"},
+                    ])
+
+        # Row 4: View Trader
+        buttons.append([
+            {"text": f"📊 View Trader", "callback_data": f"ct_detail_{wallet_addr[:20]}"},
+        ])
         buttons.append([{"text": "📋 My Copy Portfolio", "callback_data": "ct_following"}])
 
         # Send to each follower (free for all users)

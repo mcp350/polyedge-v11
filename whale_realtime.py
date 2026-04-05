@@ -150,32 +150,69 @@ def get_whale_alias(address: str) -> str:
 # EVENT PROCESSING — decode OrderFilled and create signals
 # ═══════════════════════════════════════════════
 
-def _resolve_market_title(asset_id: int) -> str:
-    """Try to resolve a conditional token asset ID to a market title."""
+def _resolve_market_data(asset_id: int) -> dict:
+    """Resolve a conditional token asset ID to market title, slug, outcome, and event URL."""
     try:
         import polymarket_api as api
-        # asset_id is the condition token ID — try gamma API
         r = api._get(f"{api.GAMMA_BASE}/markets", params={"clob_token_ids": str(asset_id)})
         if r and isinstance(r, list) and len(r) > 0:
-            return r[0].get("question", f"Token #{asset_id}")[:60]
-    except Exception:
-        pass
-    return f"Token #{asset_id}"
+            m = r[0]
+            title = m.get("question", f"Token #{asset_id}")[:60]
+            slug = m.get("slug", "") or m.get("market_slug", "")
+            condition_id = m.get("condition_id", "")
+            event_slug = m.get("event_slug", "") or m.get("eventSlug", "")
+            # Determine actual outcome name from token position
+            import json as _json
+            outcome = "Yes"
+            all_outcomes = []
+            raw_tokens = m.get("clobTokenIds", "") or m.get("clob_token_ids", "")
+            raw_outcomes = m.get("outcomes", "")
+            try:
+                token_list = _json.loads(raw_tokens) if isinstance(raw_tokens, str) else (raw_tokens or [])
+                all_outcomes = _json.loads(raw_outcomes) if isinstance(raw_outcomes, str) else (raw_outcomes or [])
+                for i, tid in enumerate(token_list):
+                    if str(tid) == str(asset_id) and i < len(all_outcomes):
+                        outcome = all_outcomes[i]
+                        break
+            except Exception:
+                pass
+            # Build event URL
+            event_url = ""
+            if event_slug:
+                event_url = f"https://polymarket.com/event/{event_slug}"
+            elif slug:
+                event_url = f"https://polymarket.com/event/{slug}"
+            return {
+                "title": title,
+                "slug": slug,
+                "event_slug": event_slug,
+                "event_url": event_url,
+                "condition_id": condition_id,
+                "outcome": outcome,
+                "all_outcomes": all_outcomes,
+            }
+    except Exception as e:
+        print(f"[WHALE-RT] Market data resolve error for asset {asset_id}: {e}")
+    return {"title": f"Token #{asset_id}", "slug": "", "event_slug": "", "event_url": "", "condition_id": "", "outcome": "Yes", "all_outcomes": []}
 
-_market_title_cache = {}
+_market_data_cache = {}
+
+def _get_market_data(asset_id: int) -> dict:
+    """Cached market data lookup."""
+    if asset_id in _market_data_cache:
+        return _market_data_cache[asset_id]
+    data = _resolve_market_data(asset_id)
+    _market_data_cache[asset_id] = data
+    # Cap cache at 500 entries
+    if len(_market_data_cache) > 500:
+        oldest = list(_market_data_cache.keys())[:100]
+        for k in oldest:
+            _market_data_cache.pop(k, None)
+    return data
 
 def _get_market_title(asset_id: int) -> str:
-    """Cached market title lookup."""
-    if asset_id in _market_title_cache:
-        return _market_title_cache[asset_id]
-    title = _resolve_market_title(asset_id)
-    _market_title_cache[asset_id] = title
-    # Cap cache at 500 entries
-    if len(_market_title_cache) > 500:
-        oldest = list(_market_title_cache.keys())[:100]
-        for k in oldest:
-            _market_title_cache.pop(k, None)
-    return title
+    """Backward-compat wrapper."""
+    return _get_market_data(asset_id).get("title", f"Token #{asset_id}")
 
 
 def process_order_filled(event, contract_address: str):
@@ -230,7 +267,12 @@ def process_order_filled(event, contract_address: str):
             return
 
         alias = get_whale_alias(whale_addr)
-        market_title = _get_market_title(asset_id)
+        market_data = _get_market_data(asset_id)
+        market_title = market_data["title"]
+        market_slug = market_data.get("slug", "")
+        event_slug = market_data.get("event_slug", "")
+        event_url = market_data.get("event_url", "")
+        resolved_outcome = market_data.get("outcome", "Yes")
         timestamp = datetime.now(timezone.utc).isoformat()
 
         # Log the transaction
@@ -252,6 +294,11 @@ def process_order_filled(event, contract_address: str):
         log_whale_tx(tx_entry)
         print(f"[WHALE-RT] 🐋 {alias} {side} ${value_usd:.0f} on {market_title[:40]} (tx: {tx_hash[:16]}...)")
 
+        # Determine correct outcome: use resolved token for BUY, keep same for SELL
+        # (whale sold this outcome = they're exiting, outcome name stays the same)
+        outcome = resolved_outcome
+        all_outcomes = market_data.get("all_outcomes", [])
+
         # Build signal compatible with copy_signals.dispatch_signals()
         signal = {
             "type": "NEW_POSITION" if side == "BUY" else "CLOSED",
@@ -260,14 +307,18 @@ def process_order_filled(event, contract_address: str):
             "market_id": str(asset_id),
             "market_title": market_title,
             "title": market_title,
+            "slug": market_slug,
+            "event_slug": event_slug,
+            "event_url": event_url,
             "side": "yes" if side == "BUY" else "no",
-            "outcome": "Yes" if side == "BUY" else "No",
+            "outcome": outcome,
             "size": value_usd,
             "avg_price": 0.50,  # Approximate — real price requires order book context
             "value_usd": value_usd,
             "timestamp": timestamp,
-            "source": "realtime",  # Flag to distinguish from polling signals
+            "source": "realtime",
             "tx_hash": tx_hash,
+            "all_outcomes": all_outcomes,
         }
 
         # Dispatch to followers immediately

@@ -528,16 +528,18 @@ def format_signal(signal: dict) -> str:
     alias = signal.get("alias", "Unknown")
     title = signal.get("title", "Unknown market")[:60]
     side = signal.get("side", "").upper()
+    outcome = signal.get("outcome", side or "YES")
+    event_url = signal.get("event_url", "")
 
     if sig_type == "NEW_POSITION":
         size = signal.get("size", 0)
         price = signal.get("avg_price", 0)
         value = signal.get("value_usd", 0)
         return (
-            f"🔔 <b>COPY SIGNAL — NEW POSITION</b>\n\n"
+            f"🐋 <b>WHALE ALERT — NEW POSITION</b>\n\n"
             f"👤 Trader: <b>{alias}</b>\n"
-            f"📌 {title}\n"
-            f"📊 Side: <b>{side or 'YES'}</b>\n"
+            f"📌 <b>{title}</b>\n"
+            f"📊 Side: <b>{outcome}</b>\n"
             f"💰 Size: <b>{_fmt_usd(size)}</b> @ {price:.2f}\n"
             f"💵 Value: {_fmt_usd(value)}\n\n"
             f"🕐 {signal.get('timestamp', '')[:19].replace('T', ' ')} UTC"
@@ -548,10 +550,10 @@ def format_signal(signal: dict) -> str:
         new = signal.get("new_size", 0)
         increase = signal.get("increase", 0)
         return (
-            f"📈 <b>COPY SIGNAL — POSITION INCREASED</b>\n\n"
+            f"🐋 <b>WHALE ALERT — POSITION INCREASED</b>\n\n"
             f"👤 Trader: <b>{alias}</b>\n"
-            f"📌 {title}\n"
-            f"📊 Side: <b>{side or 'YES'}</b>\n"
+            f"📌 <b>{title}</b>\n"
+            f"📊 Side: <b>{outcome}</b>\n"
             f"💰 Added: <b>+{_fmt_usd(increase)}</b>\n"
             f"📊 {_fmt_usd(old)} → {_fmt_usd(new)}\n\n"
             f"🕐 {signal.get('timestamp', '')[:19].replace('T', ' ')} UTC"
@@ -560,15 +562,15 @@ def format_signal(signal: dict) -> str:
     elif sig_type == "CLOSED":
         size = signal.get("size", 0)
         return (
-            f"🔻 <b>COPY SIGNAL — POSITION CLOSED</b>\n\n"
+            f"🐋 <b>WHALE ALERT — POSITION CLOSED</b>\n\n"
             f"👤 Trader: <b>{alias}</b>\n"
-            f"📌 {title}\n"
-            f"📊 Was: <b>{side or 'YES'}</b> ({_fmt_usd(size)})\n"
+            f"📌 <b>{title}</b>\n"
+            f"📊 Was: <b>{outcome}</b> ({_fmt_usd(size)})\n"
             f"⚡ Trader exited this position.\n\n"
             f"🕐 {signal.get('timestamp', '')[:19].replace('T', ' ')} UTC"
         )
 
-    return f"🔔 Copy signal from {alias}: {title}"
+    return f"🐋 Whale alert from {alias}: {title}"
 
 def format_leaderboard(leaderboard: list = None) -> str:
     """Format the leaderboard for Telegram."""

@@ -260,10 +260,38 @@ def handle_research_link(chat_id, link):
             no_pct = int(parsed.get("no_price", 0) * 100)
             if slug:
                 ridx = _cache_rbuy_slug(slug)
-                action_buttons.append([
-                    {"text": f"🟩 Buy YES ({yes_pct}¢)", "callback_data": f"rbuy_{ridx}_Yes"},
-                    {"text": f"🟥 Buy NO ({no_pct}¢)", "callback_data": f"rbuy_{ridx}_No"},
-                ])
+                # Detect multi-outcome markets (outcomes != Yes/No)
+                _raw_outcomes = m.get("outcomes", "")
+                _raw_prices = m.get("outcomePrices", "")
+                try:
+                    import json as _json_temp
+                    _outcome_names = _json_temp.loads(_raw_outcomes) if isinstance(_raw_outcomes, str) else (_raw_outcomes or [])
+                    _outcome_prices = _json_temp.loads(_raw_prices) if isinstance(_raw_prices, str) else (_raw_prices or [])
+                except Exception:
+                    _outcome_names = ["Yes", "No"]
+                    _outcome_prices = []
+
+                if len(_outcome_names) == 2 and _outcome_names[0].lower() == "yes" and _outcome_names[1].lower() == "no":
+                    # Standard Yes/No binary market
+                    action_buttons.append([
+                        {"text": f"🟩 Buy YES ({yes_pct}¢)", "callback_data": f"rbuy_{ridx}_Yes"},
+                        {"text": f"🟥 Buy NO ({no_pct}¢)", "callback_data": f"rbuy_{ridx}_No"},
+                    ])
+                else:
+                    # Multi-outcome market (esports, elections, etc.)
+                    buy_row = []
+                    for oi, oname in enumerate(_outcome_names[:2]):
+                        price_str = ""
+                        if oi < len(_outcome_prices):
+                            try:
+                                price_str = f" ({int(float(_outcome_prices[oi]) * 100)}¢)"
+                            except: pass
+                        emoji = "🟩" if oi == 0 else "🟥"
+                        # Truncate outcome name to fit callback_data limit
+                        buy_row.append({"text": f"{emoji} Buy {oname[:12]}{price_str}", "callback_data": f"rbuy_{ridx}_{oname}"})
+                    if buy_row:
+                        action_buttons.append(buy_row)
+
                 action_buttons.append([{"text": "🔗 View on Polymarket", "url": parsed.get("url", "https://polymarket.com")}])
         action_buttons.append([{"text": "🔬 Research Event", "callback_data": "quick_research"}])
         action_buttons.append([{"text": "📊 Portfolio", "callback_data": "menu_portfolio"},
@@ -3625,6 +3653,58 @@ def _extended_handle_callback(callback_query):
                 f"💵 <b>Enter amount (in $):</b>\n"
                 f"Your default: ${default_amount}",
                 [[{"text": "← Cancel", "callback_data": "trading_cancel_flow"}]])
+
+    # ── WHALE ALERT → RESEARCH ──
+    elif data.startswith("whale_research_"):
+        # whale_research_{event_slug} — triggers full AI research on whale's event
+        event_slug = data.replace("whale_research_", "")
+        if event_slug:
+            polymarket_url = f"https://polymarket.com/event/{event_slug}"
+            handle_research_link(chat_id, polymarket_url)
+        else:
+            tg.send("❌ Could not resolve event. Try researching manually.", chat_id)
+
+    # ── WHALE ALERT → BUY (same flow as research buy) ──
+    elif data.startswith("whale_buy_"):
+        # whale_buy_{slug}_{Yes|No} — prompts for amount like research buy
+        parts = data.replace("whale_buy_", "").rsplit("_", 1)
+        if len(parts) == 2:
+            slug, outcome = parts[0], parts[1]
+            ts = user_store.get_trade_settings(str(chat_id))
+            default_amt = ts["buy"]["default_amount"]
+            if not trading.is_trading_enabled():
+                onboarding.send_inline(chat_id,
+                    f"⚠️ <b>Trading not configured.</b>\n\n"
+                    "Admin needs to set POLY_API_KEY, POLY_API_SECRET, POLY_API_PASSPHRASE, POLY_PRIVATE_KEY.",
+                    [[{"text": "← Main Menu", "callback_data": "main_menu"}]])
+            else:
+                # Fetch market data for price display
+                _whale_price = 0
+                _whale_question = slug.replace("-", " ")[:60]
+                try:
+                    _whale_market = trading.resolve_market_tokens(slug)
+                    if _whale_market:
+                        _whale_question = _whale_market.get("question", _whale_question)
+                        for t in _whale_market.get("tokens", []):
+                            if t["outcome"].lower() == outcome.lower():
+                                _whale_price = int(float(t.get("price", 0)) * 100)
+                                break
+                except Exception:
+                    pass
+                _waiting_for_trade[str(chat_id)] = {
+                    "action": "buy", "step": "amount_quick",
+                    "slug": slug, "question": _whale_question,
+                    "outcome": outcome, "price": _whale_price,
+                }
+                price_line = f" @ <b>{_whale_price}¢</b>" if _whale_price else ""
+                onboarding.send_inline(chat_id,
+                    f"🐋 <b>Buy {outcome}</b>{price_line}\n"
+                    f"📌 {_whale_question}\n\n"
+                    f"💵 Enter the amount you want to bet (in $):\n"
+                    f"<i>Your default: ${default_amt}</i>",
+                    [[{"text": "← Cancel", "callback_data": "menu_trading"}]])
+        else:
+            tg.send("❌ Invalid whale buy action.", chat_id)
 
     # ── TOP PICKS CALLBACKS ──
     elif data.startswith("tp_page_"):
