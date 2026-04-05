@@ -135,12 +135,21 @@ def create_wallet(chat_id: str) -> dict:
         data["wallets"][chat_str].append(wallet_entry)
         _save(data)
 
-        return {
+        result = {
             "success": True,
             "address": address,
             "private_key": private_key,  # Show ONCE
             "label": wallet_entry["label"],
         }
+
+        # Auto-approve USDC for Polymarket trading (requires MATIC for gas)
+        try:
+            import polymarket_trading as pt
+            pt.auto_approve_wallet(chat_id)
+        except Exception as _ae:
+            log.info(f"Auto-approve skipped for new wallet (no gas yet): {_ae}")
+
+        return result
     except ImportError:
         return {"success": False, "error": "eth-account not installed"}
     except Exception as e:
@@ -208,7 +217,16 @@ def import_wallet(chat_id: str, private_key: str, label: str = None) -> dict:
         data["wallets"][chat_str].append(wallet_entry)
         _save(data)
 
-        return {"success": True, "address": address, "label": wallet_entry["label"]}
+        result = {"success": True, "address": address, "label": wallet_entry["label"]}
+
+        # Auto-approve USDC for Polymarket trading (requires MATIC for gas)
+        try:
+            import polymarket_trading as pt
+            pt.auto_approve_wallet(chat_id)
+        except Exception as _ae:
+            log.info(f"Auto-approve skipped for imported wallet (no gas yet): {_ae}")
+
+        return result
     except Exception as e:
         return {"success": False, "error": str(e)}
 

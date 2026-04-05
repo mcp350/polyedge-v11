@@ -2822,6 +2822,31 @@ def _handle(cmd, chat_id):
                 "⚠️ Message will be processed and you should delete it after.",
                 chat_id)
 
+    elif cmd == "/approve":
+        primary = wm.get_primary_wallet(str(chat_id))
+        if not primary:
+            tg.send("❌ No wallet found. Use /create_wallet first.", chat_id)
+            return
+        tg.send("⏳ Setting USDC approvals for Polymarket trading...", chat_id)
+        result = trading.auto_approve_wallet(str(chat_id))
+        if result.get("skipped"):
+            tg.send(
+                "⛽ <b>No MATIC for gas</b>\n\n"
+                "Your wallet needs a small amount of MATIC (~0.01) to pay for approval transactions.\n\n"
+                "Send MATIC to your wallet and run /approve again, or approvals will be set automatically on your first trade.",
+                chat_id)
+        elif result.get("success"):
+            tg.send(
+                "✅ <b>USDC Approvals Set!</b>\n\n"
+                "Your wallet is approved for Polymarket trading.\n"
+                f"<pre>{result.get('message', '')}</pre>",
+                chat_id)
+        else:
+            tg.send(
+                f"❌ <b>Approval failed</b>\n\n{result.get('message', 'Unknown error')}\n\n"
+                "Approvals will be retried automatically on your first trade.",
+                chat_id)
+
     # ── AUTO COPY TRADING ──
     elif cmd == "/auto_copy_on":
         result = ce.enable_auto_copy(str(chat_id))

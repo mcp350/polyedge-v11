@@ -716,6 +716,88 @@ def _ensure_usdc_allowance(chat_id: str, neg_risk: bool = False):
     _approved_users.setdefault(chat_str, {})[exchange_key] = True
 
 
+_USDC_NATIVE = "0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359"  # Native USDC on Polygon
+
+
+def auto_approve_wallet(chat_id: str) -> dict:
+    """Approve both USDC.e and native USDC for all Polymarket exchange contracts.
+
+    Called after wallet creation/import so the first trade never fails with
+    "allowance: 0". Silently skips if the wallet has no MATIC for gas.
+
+    Returns: {"success": True/False, "skipped": bool, "message": str}
+    """
+    import wallet_manager as wm
+    from web3 import Web3
+
+    chat_str = str(chat_id)
+
+    pk = wm.get_primary_private_key(chat_str)
+    if not pk:
+        return {"success": False, "skipped": True, "message": "No wallet found"}
+    if not pk.startswith("0x"):
+        pk = "0x" + pk
+
+    try:
+        w3 = _get_w3()
+        address = w3.eth.account.from_key(pk).address
+
+        # Skip if no MATIC for gas (saves a failed tx attempt)
+        matic_balance = w3.eth.get_balance(address)
+        if matic_balance < 10**15:  # < 0.001 MATIC
+            log.info(f"[AUTO-APPROVE] Skipping for {address[:10]} — no MATIC for gas")
+            return {"success": False, "skipped": True,
+                    "message": "No MATIC for gas — approval will happen on first trade"}
+
+        spenders = [
+            (_CTF_EXCHANGE, "ctf_exchange"),
+            (_NEG_RISK_ADAPTER, "neg_risk_adapter"),
+        ]
+        _APPROVAL_THRESHOLD = _MAX_APPROVAL // 2
+
+        results = []
+        for token_addr, token_label in [(_USDC_E, "USDC.e"), (_USDC_NATIVE, "USDC")]:
+            contract = w3.eth.contract(
+                address=Web3.to_checksum_address(token_addr), abi=_ERC20_ABI)
+            for spender_addr, spender_label in spenders:
+                try:
+                    current = contract.functions.allowance(
+                        address, Web3.to_checksum_address(spender_addr)).call()
+                    if current >= _APPROVAL_THRESHOLD:
+                        log.info(f"[AUTO-APPROVE] {token_label}/{spender_label} already approved")
+                        results.append(f"{token_label}/{spender_label}: already approved")
+                        continue
+                    nonce = w3.eth.get_transaction_count(address)
+                    tx = contract.functions.approve(
+                        Web3.to_checksum_address(spender_addr), _MAX_APPROVAL
+                    ).build_transaction({
+                        "from": address, "nonce": nonce, "gas": 100_000,
+                        "gasPrice": w3.eth.gas_price, "chainId": CHAIN_ID,
+                    })
+                    signed = w3.eth.account.sign_transaction(tx, private_key=pk)
+                    tx_hash = w3.eth.send_raw_transaction(signed.raw_transaction)
+                    receipt = w3.eth.wait_for_transaction_receipt(tx_hash, timeout=60)
+                    if receipt.status == 1:
+                        log.info(f"[AUTO-APPROVE] {token_label}/{spender_label} approved, tx={tx_hash.hex()}")
+                        results.append(f"{token_label}/{spender_label}: approved ✓")
+                    else:
+                        log.warning(f"[AUTO-APPROVE] {token_label}/{spender_label} tx failed")
+                        results.append(f"{token_label}/{spender_label}: tx failed")
+                except Exception as e:
+                    log.warning(f"[AUTO-APPROVE] {token_label}/{spender_label} error: {e}")
+                    results.append(f"{token_label}/{spender_label}: error — {e}")
+
+        # Mark both ctf and neg_risk as approved in cache
+        _approved_users.setdefault(chat_str, {})["ctf"] = True
+        _approved_users.setdefault(chat_str, {})["neg_risk"] = True
+
+        return {"success": True, "skipped": False, "message": "\n".join(results)}
+
+    except Exception as e:
+        log.warning(f"[AUTO-APPROVE] Failed for chat_id={chat_id}: {e}")
+        return {"success": False, "skipped": False, "message": str(e)}
+
+
 # ERC-1155 ABI for Conditional Tokens (setApprovalForAll + isApprovedForAll)
 _ERC1155_ABI = json.loads('[{"inputs":[{"name":"operator","type":"address"},{"name":"approved","type":"bool"}],"name":"setApprovalForAll","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"name":"account","type":"address"},{"name":"operator","type":"address"}],"name":"isApprovedForAll","outputs":[{"name":"","type":"bool"}],"stateMutability":"view","type":"function"}]')
 
