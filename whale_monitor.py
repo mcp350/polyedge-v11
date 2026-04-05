@@ -1,11 +1,11 @@
 """
-WHALE MONITOR — Real-time trade detection via data-api.polymarket.com
+WHALE MONITOR â Real-time trade detection via data-api.polymarket.com
 Runs every 45 seconds to catch whale trades as they happen.
 
 Unlike copy_trading.py (position snapshot diffing), this module:
   - Polls the trades endpoint directly for actual trade records
   - Tracks last-seen trade ID per wallet to avoid duplicate alerts
-  - Sends 🐋 Whale Alert! notifications in the canonical format
+  - Sends ð Whale Alert! notifications in the canonical format
   - Only scans wallets that currently have at least one follower (efficient)
 
 Storage: data/whale_monitor.json
@@ -20,8 +20,8 @@ import copy_trading as ct
 import onboarding
 import copy_executor as ce
 
-# ── Copy Trade Cache ──────────────────────────────────────────────────────────
-# Maps short index → trade details so callback_data stays short
+# ââ Copy Trade Cache ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+# Maps short index â trade details so callback_data stays short
 _copy_trade_cache: dict = {}  # idx -> {slug, outcome, question, price, whale_amount}
 _copy_trade_counter = 0
 
@@ -38,14 +38,14 @@ def _store_copy_trade(slug: str, outcome: str, question: str, price: float, whal
     }
     return _copy_trade_counter
 
-# ── Constants ────────────────────────────────────────────────────────────────
+# ââ Constants ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 
 DATA_API_BASE  = "https://data-api.polymarket.com"
 SCAN_INTERVAL  = 45   # seconds between full sweeps
 MIN_VALUE_USD  = 50   # ignore trades below $50
 MONITOR_FILE   = os.path.join(os.path.dirname(__file__), "data", "whale_monitor.json")
 
-# ── Storage ──────────────────────────────────────────────────────────────────
+# ââ Storage ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 
 def _load() -> dict:
     os.makedirs(os.path.dirname(MONITOR_FILE), exist_ok=True)
@@ -64,7 +64,7 @@ def _save(data: dict):
         json.dump(data, f, indent=2, default=str)
 
 
-# ── HTTP via curl (bypasses Railway's polymarket.com block) ──────────────────
+# ââ HTTP via curl (bypasses Railway's polymarket.com block) ââââââââââââââââââ
 
 def _curl_get(url: str, timeout: int = 15):
     """Fetch a URL via curl subprocess. Returns parsed JSON or None."""
@@ -90,7 +90,7 @@ def _curl_get(url: str, timeout: int = 15):
         return None
 
 
-# ── Trade fetching ────────────────────────────────────────────────────────────
+# ââ Trade fetching ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 
 def fetch_recent_trades(address: str, limit: int = 10) -> list:
     """
@@ -98,14 +98,14 @@ def fetch_recent_trades(address: str, limit: int = 10) -> list:
     Primary: data-api.polymarket.com  (curl)
     Fallback: CLOB proxy endpoint     (requests)
     """
-    # Primary — data-api
+    # Primary â data-api
     url = f"{DATA_API_BASE}/trades?maker={address}&limit={limit}"
     result = _curl_get(url)
     trades = _extract_list(result)
     if trades:
         return trades
 
-    # Fallback — CLOB proxy (already configured to bypass Railway)
+    # Fallback â CLOB proxy (already configured to bypass Railway)
     try:
         import requests as _req
         import config as _cfg
@@ -137,7 +137,7 @@ def _extract_list(result) -> list:
     return []
 
 
-# ── Trade parsing ─────────────────────────────────────────────────────────────
+# ââ Trade parsing âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 
 def _trade_id(trade: dict) -> str:
     """Return a stable unique identifier for a trade."""
@@ -165,7 +165,7 @@ def _parse_trade(trade: dict, wallet: dict) -> dict | None:
     Convert a raw trade dict into our internal signal format.
     Returns None if the trade is too small to notify about.
     """
-    # ── Outcome (YES / NO) ──
+    # ââ Outcome (YES / NO) ââ
     outcome_raw = trade.get("outcome") or trade.get("side") or "YES"
     if isinstance(outcome_raw, str):
         ol = outcome_raw.strip().lower()
@@ -178,26 +178,26 @@ def _parse_trade(trade: dict, wallet: dict) -> dict | None:
     else:
         outcome = "YES"
 
-    # ── Side (BUY / SELL) ──
+    # ââ Side (BUY / SELL) ââ
     side_raw = trade.get("side") or trade.get("trader_side") or "BUY"
     side = "BUY" if side_raw.upper() in ("BUY", "MAKER", "LONG") else "SELL"
 
-    # ── Size & price ──
+    # ââ Size & price ââ
     try:
         size  = float(trade.get("size")  or trade.get("amount") or 0)
         price = float(trade.get("price") or trade.get("avg_price") or 0)
     except (TypeError, ValueError):
         size, price = 0.0, 0.0
 
-    # size can be shares; value ≈ shares × price
+    # size can be shares; value â shares Ã price
     value_usd = size * price if 0 < price <= 1 else size
 
     if value_usd < MIN_VALUE_USD and size < MIN_VALUE_USD:
         return None  # skip micro trades
 
-    # ── Market ID & title ──
+    # ââ Market ID & title ââ
     market_id = str(
-        trade.get("market") or trade.get("condition_id") or trade.get("asset_id") or ""
+        trade.get("conditionId") or trade.get("market") or trade.get("condition_id") or ""
     )
     # Try to pull title from the stored last_positions snapshot
     title = _lookup_title(market_id) or trade.get("title") or trade.get("question") or ""
@@ -236,7 +236,7 @@ def _lookup_title(market_id: str) -> str:
     return ""
 
 
-# ── Per-wallet scan ───────────────────────────────────────────────────────────
+# ââ Per-wallet scan âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 
 def _check_wallet(address: str, wallet: dict, last_ids: dict) -> list:
     """
@@ -271,7 +271,7 @@ def _check_wallet(address: str, wallet: dict, last_ids: dict) -> list:
     return signals
 
 
-# ── Full sweep ────────────────────────────────────────────────────────────────
+# ââ Full sweep ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 
 def scan_followed_wallets() -> list:
     """
@@ -295,7 +295,7 @@ def scan_followed_wallets() -> list:
         if wid in followed_ids and w.get("active", True)
     ]
 
-    print(f"[WHALE_MON] Scanning {len(wallets_to_scan)} followed wallets …")
+    print(f"[WHALE_MON] Scanning {len(wallets_to_scan)} followed wallets â¦")
 
     all_signals = []
     for wid, wallet in wallets_to_scan:
@@ -315,7 +315,7 @@ def scan_followed_wallets() -> list:
     return all_signals
 
 
-# ── Market slug lookup ────────────────────────────────────────────────────────
+# ââ Market slug lookup ââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 
 def _lookup_event_slug(condition_id: str) -> str:
     """Try to resolve a condition_id to a Polymarket event slug via Gamma API."""
@@ -333,7 +333,7 @@ def _lookup_event_slug(condition_id: str) -> str:
     return ""
 
 
-# ── Notification formatting ───────────────────────────────────────────────────
+# ââ Notification formatting âââââââââââââââââââââââââââââââââââââââââââââââââââ
 
 def _fmt_usd(amount: float) -> str:
     try:
@@ -355,11 +355,11 @@ def _fmt_price(price: float) -> str:
     if price <= 0:
         return "N/A"
     # Polymarket prices are 0-1; display as cents
-    return f"{price * 100:.0f}¢"
+    return f"{price * 100:.0f}Â¢"
 
 
 def format_whale_alert(signal: dict) -> str:
-    """Format a trade signal as the canonical 🐋 Whale Alert message."""
+    """Format a trade signal as the canonical ð Whale Alert message."""
     alias   = signal.get("alias") or "Unknown Whale"
     address = signal.get("wallet", "")
     short   = f"{address[:6]}...{address[-4:]}" if len(address) > 12 else address
@@ -371,7 +371,7 @@ def format_whale_alert(signal: dict) -> str:
     ts        = signal.get("timestamp", "")
 
     msg = (
-        f"🐋 <b>Whale Alert!</b>\n\n"
+        f"ð <b>Whale Alert!</b>\n\n"
         f"<b>{alias}</b>\n"
         f"Wallet: <code>{short}</code>\n"
         f"Action: <b>{action}</b>\n"
@@ -380,11 +380,11 @@ def format_whale_alert(signal: dict) -> str:
         f"Price: <b>{_fmt_price(price)}</b>"
     )
     if ts:
-        msg += f"\n\n<i>🕐 {str(ts)[:19].replace('T', ' ')} UTC</i>"
+        msg += f"\n\n<i>ð {str(ts)[:19].replace('T', ' ')} UTC</i>"
     return msg
 
 
-# ── Dispatch ──────────────────────────────────────────────────────────────────
+# ââ Dispatch ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 
 def dispatch_whale_alerts(signals: list) -> int:
     """Send whale alert notifications to all followers of each traded wallet."""
@@ -420,33 +420,33 @@ def dispatch_whale_alerts(signals: list) -> int:
             whale_amount=value_usd,
         )
 
-        # ── Inline buttons ──────────────────────────────────────────────────
+        # ââ Inline buttons ââââââââââââââââââââââââââââââââââââââââââââââââââ
         buttons = []
 
-        # Row 1 — research + copy trade
+        # Row 1 â research + copy trade
         row1 = []
         if market_id:
             row1.append({
-                "text": "📊 Research Event",
+                "text": "ð Research Event",
                 "callback_data": f"research_market_{market_id[:30]}",
             })
         row1.append({
-            "text": "💰 Copy Trade",
+            "text": "ð° Copy Trade",
             "callback_data": f"copytrade_{cache_idx}",
         })
         buttons.append(row1)
 
-        # Row 2 — view trader / portfolio
+        # Row 2 â view trader / portfolio
         buttons.append([
-            {"text": "👁 View Trader",   "callback_data": f"ct_detail_{wallet_addr[:20]}"},
-            {"text": "📋 My Portfolio",  "callback_data": "ct_following"},
+            {"text": "ð View Trader",   "callback_data": f"ct_detail_{wallet_addr[:20]}"},
+            {"text": "ð My Portfolio",  "callback_data": "ct_following"},
         ])
 
-        # Row 3 — direct event link (URL button)
-        link_slug = event_slug or market_id
+        # Row 3 â direct event link (URL button)
+        link_slug = event_slug or market_slug
         if link_slug:
             buttons.append([{
-                "text": "🔗 View on Polymarket",
+                "text": "ð View on Polymarket",
                 "url": f"https://polymarket.com/event/{link_slug}",
             }])
 
@@ -456,7 +456,7 @@ def dispatch_whale_alerts(signals: list) -> int:
                 sent += 1
                 time.sleep(0.05)  # Telegram rate-limit
             except Exception as e:
-                print(f"[WHALE_MON] Send error → {chat_id}: {e}")
+                print(f"[WHALE_MON] Send error â {chat_id}: {e}")
 
             # Auto-copy execution for Degen subscribers
             try:
@@ -466,13 +466,13 @@ def dispatch_whale_alerts(signals: list) -> int:
                         amt = result.get("trade_amount", 0)
                         onboarding.send_inline(
                             chat_id,
-                            f"🤖 <b>Auto-Copy Executed!</b>\n\n"
-                            f"💰 ${amt:.2f} → {outcome} on "
+                            f"ð¤ <b>Auto-Copy Executed!</b>\n\n"
+                            f"ð° ${amt:.2f} â {outcome} on "
                             f"{signal.get('title', 'Unknown')[:50]}\n"
-                            f"📋 Copying: {wallet_addr[:10]}...",
+                            f"ð Copying: {wallet_addr[:10]}...",
                             [[
-                                {"text": "📊 My Positions", "callback_data": "trading_positions"},
-                                {"text": "⚙️ Auto-Copy",    "callback_data": "menu_auto_copy"},
+                                {"text": "ð My Positions", "callback_data": "trading_positions"},
+                                {"text": "âï¸ Auto-Copy",    "callback_data": "menu_auto_copy"},
                             ]],
                         )
             except Exception as e:
@@ -482,11 +482,11 @@ def dispatch_whale_alerts(signals: list) -> int:
     return sent
 
 
-# ── Public scan entry-point ───────────────────────────────────────────────────
+# ââ Public scan entry-point âââââââââââââââââââââââââââââââââââââââââââââââââââ
 
 def run_monitor_scan() -> list:
     """
-    One full sweep: detect new trades → dispatch alerts.
+    One full sweep: detect new trades â dispatch alerts.
     Called by the background loop or manually for testing.
     """
     try:
@@ -499,11 +499,11 @@ def run_monitor_scan() -> list:
         return []
 
 
-# ── Background loop ───────────────────────────────────────────────────────────
+# ââ Background loop âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 
 def monitor_loop():
     """
-    Infinite loop — polls followed wallets every SCAN_INTERVAL seconds.
+    Infinite loop â polls followed wallets every SCAN_INTERVAL seconds.
     Start as a daemon thread from main.py:
         threading.Thread(target=whale_monitor.monitor_loop, daemon=True).start()
     """
