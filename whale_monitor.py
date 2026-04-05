@@ -40,6 +40,7 @@ def _store_copy_trade(slug: str, outcome: str, question: str, price: float, whal
         "neg_risk": neg_risk,
         "event_slug": event_slug,
     }
+    print(f"[WHALE_MON] Cached trade #{_copy_trade_counter}: token_id={token_id!r} neg_risk={neg_risk} event_slug={event_slug!r}")
     return _copy_trade_counter
 
 # ── Constants ────────────────────────────────────────────────────────────────
@@ -206,23 +207,31 @@ def _parse_trade(trade: dict, wallet: dict) -> dict | None:
     # Try to pull title from the stored last_positions snapshot
     title = _lookup_title(market_id) or trade.get("title") or trade.get("question") or ""
 
+    token_id    = str(trade.get("asset") or trade.get("asset_id") or "")
+    event_slug  = str(trade.get("eventSlug") or "")
+    market_slug = str(trade.get("slug") or "")
+    neg_risk    = outcome not in ("YES", "NO")  # multi-outcome markets need neg_risk=True
+
+    print(f"[WHALE_MON] Parsed trade: asset={trade.get('asset')!r} token_id={token_id!r} "
+          f"outcome={outcome!r} neg_risk={neg_risk} event_slug={event_slug!r}")
+
     return {
-        "type":      "TRADE",
-        "wallet":    wallet["address"],
-        "alias":     wallet.get("alias", ""),
-        "market_id": market_id,
-        "title":     str(title)[:80],
-        "side":      outcome.lower(),          # "yes" / "no"
-        "action":    f"{side} {outcome}",      # e.g. "BUY YES"
-        "size":      size,
-        "avg_price": price,
-        "value_usd": value_usd,
-        "trade_id":  _trade_id(trade),
-        "timestamp": _trade_timestamp(trade),
-        "token_id":  str(trade.get("asset") or trade.get("asset_id") or ""),
-        "event_slug": str(trade.get("eventSlug") or ""),
-        "market_slug": str(trade.get("slug") or ""),
-        "neg_risk":  outcome not in ("YES", "NO"),
+        "type":       "TRADE",
+        "wallet":     wallet["address"],
+        "alias":      wallet.get("alias", ""),
+        "market_id":  market_id,
+        "title":      str(title)[:80],
+        "side":       outcome.lower(),          # "yes" / "no"
+        "action":     f"{side} {outcome}",      # e.g. "BUY YES"
+        "size":       size,
+        "avg_price":  price,
+        "value_usd":  value_usd,
+        "trade_id":   _trade_id(trade),
+        "timestamp":  _trade_timestamp(trade),
+        "token_id":   token_id,
+        "neg_risk":   neg_risk,
+        "event_slug": event_slug,
+        "market_slug": market_slug,
     }
 
 
@@ -416,11 +425,15 @@ def dispatch_whale_alerts(signals: list) -> int:
         price     = signal.get("avg_price", 0)
         value_usd = signal.get("value_usd", 0)
 
-        # Try to resolve a human-readable event slug for the URL button
-        event_slug = signal.get("event_slug", "")
+        # Pull token_id, neg_risk and slugs from trade signal
+        token_id    = signal.get("token_id", "")
+        neg_risk    = signal.get("neg_risk", False)
+        event_slug  = signal.get("event_slug", "")
         market_slug = signal.get("market_slug", "")
-        token_id = signal.get("token_id", "")
-        neg_risk = signal.get("neg_risk", False)
+        link_slug   = event_slug or market_slug
+
+        print(f"[WHALE_MON] Dispatching signal: wallet={wallet_addr[:10]} token_id={token_id!r} "
+              f"neg_risk={neg_risk} event_slug={event_slug!r} market_slug={market_slug!r}")
 
         # Cache trade details for the Copy Trade flow
         cache_idx = _store_copy_trade(
@@ -431,18 +444,18 @@ def dispatch_whale_alerts(signals: list) -> int:
             whale_amount=value_usd,
             token_id=token_id,
             neg_risk=neg_risk,
-            event_slug=event_slug or market_slug,
+            event_slug=link_slug,
         )
 
         # ── Inline buttons ──────────────────────────────────────────────────
         buttons = []
 
-        # Row 1 — research + copy trade
+        # Row 1 — Research Event (URL button → Polymarket page) + Copy Trade
         row1 = []
-        if market_id:
+        if link_slug:
             row1.append({
                 "text": "📊 Research Event",
-                "callback_data": f"research_market_{market_id[:30]}",
+                "url": f"https://polymarket.com/event/{link_slug}",
             })
         row1.append({
             "text": "💰 Copy Trade",
@@ -455,14 +468,6 @@ def dispatch_whale_alerts(signals: list) -> int:
             {"text": "👁 View Trader",   "callback_data": f"ct_detail_{wallet_addr[:20]}"},
             {"text": "📋 My Portfolio",  "callback_data": "ct_following"},
         ])
-
-        # Row 3 — direct event link (URL button)
-        link_slug = event_slug or market_slug
-        if link_slug:
-            buttons.append([{
-                "text": "🔗 View on Polymarket",
-                "url": f"https://polymarket.com/event/{link_slug}",
-            }])
 
         for chat_id in followers:
             try:

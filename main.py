@@ -2001,20 +2001,24 @@ def handle_trade_input(chat_id, text):
             tg.send("❌ Enter a valid number (e.g., 25 or 100.50)", chat_id)
             return True
 
-        slug = state["slug"]
-        outcome = state["outcome"].title()  # normalize case
+        slug     = state["slug"]
+        outcome  = state["outcome"].title()  # normalize case
         question = state.get("question", "Unknown market")
         token_id = state.get("token_id", "")
         neg_risk = state.get("neg_risk", False)
         _waiting_for_trade.pop(chat_str, None)
 
+        print(f"[COPY_TRADE] amount_copy: token_id={token_id!r} neg_risk={neg_risk} "
+              f"outcome={outcome!r} slug={slug!r} amount={amount}")
+
         tg.send(f"⏳ Copying trade: BUY ${amount:.2f} on <b>{outcome}</b>...\n📌 {question[:60]}", chat_id)
         try:
             if token_id:
-                print(f"[COPYTRADE] Using market_buy with token_id={token_id[:20]}... neg_risk={neg_risk}")
-                result = trading.market_buy(token_id=token_id, amount=amount, neg_risk=neg_risk, chat_id=str(chat_id), market_question=question)
+                print(f"[COPY_TRADE] market_buy: token_id={token_id!r} amount={amount} neg_risk={neg_risk}")
+                result = trading.market_buy(token_id=token_id, amount=amount, neg_risk=neg_risk,
+                                            chat_id=str(chat_id), market_question=question)
             else:
-                print(f"[COPYTRADE] Fallback to quick_buy: slug={slug!r} outcome={outcome!r}")
+                print(f"[COPY_TRADE] fallback quick_buy: slug={slug!r} outcome={outcome!r}")
                 result = trading.quick_buy(slug, outcome, amount, str(chat_id))
             if result and result.get("success"):
                 tg.send(f"✅ <b>Copy Trade Executed!</b>\n\n"
@@ -3563,13 +3567,16 @@ def _extended_handle_callback(callback_query):
             tg.send("❌ Trade details expired. Please wait for the next whale alert.", chat_id)
             return
 
-        slug = cached["slug"]
-        outcome = cached["outcome"].title()  # ensure Title case
-        question = cached["question"]
+        slug         = cached["slug"]
+        outcome      = cached["outcome"].title()  # ensure Title case
+        question     = cached["question"]
         whale_amount = cached.get("whale_amount", 0)
-        token_id = cached.get("token_id", "")
-        neg_risk = cached.get("neg_risk", False)
-        print(f"[COPYTRADE] cache hit: token_id={token_id!r} neg_risk={neg_risk} slug={slug!r} outcome={outcome!r}")
+        token_id     = cached.get("token_id", "")
+        neg_risk     = cached.get("neg_risk", False)
+        event_slug   = cached.get("event_slug", "")
+
+        print(f"[COPY_TRADE] copytrade_ idx={idx}: token_id={token_id!r} neg_risk={neg_risk} "
+              f"outcome={outcome!r} slug={slug!r} event_slug={event_slug!r}")
 
         # Degen + auto-trade ON → execute immediately
         if user_store.is_degen(str(chat_id)) and ce.is_auto_copy_enabled(str(chat_id)):
@@ -3578,8 +3585,11 @@ def _extended_handle_callback(callback_query):
             tg.send(f"⏳ Auto-copying trade: BUY ${amount} on <b>{outcome}</b>...", chat_id)
             try:
                 if token_id:
-                    result = trading.market_buy(token_id=token_id, amount=amount, neg_risk=neg_risk, chat_id=str(chat_id), market_question=question)
+                    print(f"[COPY_TRADE] Auto-degen market_buy: token_id={token_id!r} amount={amount} neg_risk={neg_risk}")
+                    result = trading.market_buy(token_id=token_id, amount=amount, neg_risk=neg_risk,
+                                                chat_id=str(chat_id), market_question=question)
                 else:
+                    print(f"[COPY_TRADE] Auto-degen fallback quick_buy: slug={slug!r} outcome={outcome!r}")
                     result = trading.quick_buy(slug, outcome, amount, str(chat_id))
                 if result and result.get("success"):
                     tg.send(f"✅ <b>Copy Trade Executed!</b>\n\n"
@@ -3604,6 +3614,7 @@ def _extended_handle_callback(callback_query):
                 "default_amount": default_amount,
                 "token_id": token_id,
                 "neg_risk": neg_risk,
+                "event_slug": event_slug,
             }
             q_short = question[:60] + ("..." if len(question) > 60 else "")
             onboarding.send_inline(chat_id,
