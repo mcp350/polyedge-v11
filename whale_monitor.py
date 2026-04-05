@@ -165,6 +165,42 @@ def _trade_timestamp(trade: dict) -> str:
     return str(raw)
 
 
+def _resolve_market_via_gamma(token_id: str) -> dict:
+    """Resolve a CLOB token ID to market data via the Gamma API."""
+    try:
+        import polymarket_api as api
+        r = api._get(f"{api.GAMMA_BASE}/markets", params={"clob_token_ids": str(token_id)})
+        if r and isinstance(r, list) and len(r) > 0:
+            m = r[0]
+            import json as _json
+            title = m.get("question", "")
+            slug = m.get("slug", "") or m.get("market_slug", "")
+            event_slug = m.get("event_slug", "") or m.get("eventSlug", "")
+            all_outcomes = []
+            outcome_for_token = ""
+            raw_tokens = m.get("clobTokenIds", "") or m.get("clob_token_ids", "")
+            raw_outcomes = m.get("outcomes", "")
+            try:
+                token_list = _json.loads(raw_tokens) if isinstance(raw_tokens, str) else (raw_tokens or [])
+                all_outcomes = _json.loads(raw_outcomes) if isinstance(raw_outcomes, str) else (raw_outcomes or [])
+                for i, tid in enumerate(token_list):
+                    if str(tid) == str(token_id) and i < len(all_outcomes):
+                        outcome_for_token = all_outcomes[i]
+                        break
+            except Exception:
+                pass
+            return {
+                "title": title,
+                "slug": slug,
+                "event_slug": event_slug,
+                "all_outcomes": all_outcomes,
+                "outcome_for_token": outcome_for_token,
+            }
+    except Exception as e:
+        print(f"[WHALE_MON] Gamma resolve error for token {token_id}: {e}")
+    return {}
+
+
 def _parse_trade(trade: dict, wallet: dict) -> dict | None:
     """
     Convert a raw trade dict into our internal signal format.
@@ -210,10 +246,27 @@ def _parse_trade(trade: dict, wallet: dict) -> dict | None:
     token_id    = str(trade.get("asset") or trade.get("asset_id") or "")
     event_slug  = str(trade.get("eventSlug") or "")
     market_slug = str(trade.get("slug") or "")
+    all_outcomes = []
     neg_risk    = outcome not in ("YES", "NO")  # multi-outcome markets need neg_risk=True
 
+    # ── Enrich via Gamma API when slugs are missing ──
+    if token_id and (not event_slug or not market_slug or not title):
+        gamma = _resolve_market_via_gamma(token_id)
+        if gamma:
+            if not title and gamma.get("title"):
+                title = gamma["title"][:80]
+            if not market_slug and gamma.get("slug"):
+                market_slug = gamma["slug"]
+            if not event_slug and gamma.get("event_slug"):
+                event_slug = gamma["event_slug"]
+            all_outcomes = gamma.get("all_outcomes", [])
+            # Use the exact outcome name from Gamma if available
+            if gamma.get("outcome_for_token"):
+                outcome = gamma["outcome_for_token"]
+                neg_risk = outcome not in ("Yes", "No", "YES", "NO")
+
     print(f"[WHALE_MON] Parsed trade: asset={trade.get('asset')!r} token_id={token_id!r} "
-          f"outcome={outcome!r} neg_risk={neg_risk} event_slug={event_slug!r}")
+          f"outcome={outcome!r} neg_risk={neg_risk} event_slug={event_slug!r} market_slug={market_slug!r}")
 
     return {
         "type":       "TRADE",
@@ -232,6 +285,7 @@ def _parse_trade(trade: dict, wallet: dict) -> dict | None:
         "neg_risk":   neg_risk,
         "event_slug": event_slug,
         "market_slug": market_slug,
+        "all_outcomes": all_outcomes,
     }
 
 
@@ -387,6 +441,12 @@ def format_whale_alert(signal: dict) -> str:
     price     = signal.get("avg_price", 0)
     ts        = signal.get("timestamp", "")
 
+    # Build event URL for inline link
+    event_slug = signal.get("event_slug", "") or signal.get("market_slug", "")
+    event_link = ""
+    if event_slug:
+        event_link = f'\n🔗 <a href="https://polymarket.com/event/{event_slug}">View on Polymarket</a>'
+
     msg = (
         f"🐋 <b>Whale Alert!</b>\n\n"
         f"<b>{alias}</b>\n"
@@ -395,6 +455,7 @@ def format_whale_alert(signal: dict) -> str:
         f"Market: <i>\"{title}\"</i>\n"
         f"Amount: <b>{_fmt_usd(value_usd)}</b>\n"
         f"Price: <b>{_fmt_price(price)}</b>"
+        f"{event_link}"
     )
     if ts:
         msg += f"\n\n<i>🕐 {str(ts)[:19].replace('T', ' ')} UTC</i>"
@@ -449,21 +510,39 @@ def dispatch_whale_alerts(signals: list) -> int:
 
         # ── Inline buttons ──────────────────────────────────────────────────
         buttons = []
+        all_outcomes = signal.get("all_outcomes", [])
 
-        # Row 1 — Research Event (URL button → Polymarket page) + Copy Trade
-        row1 = []
+        # Row 1 — Clickable Polymarket event link (URL button)
+        event_url = ""
         if link_slug:
-            row1.append({
-                "text": "📊 Research Event",
-                "url": f"https://polymarket.com/event/{link_slug}",
-            })
-        row1.append({
-            "text": "💰 Copy Trade",
-            "callback_data": f"copytrade_{cache_idx}",
-        })
-        buttons.append(row1)
+            event_url = f"https://polymarket.com/event/{link_slug}"
+            buttons.append([{"text": "🔗 Open on Polymarket", "url": event_url}])
 
-        # Row 2 — view trader / portfolio
+        # Row 2 — Research Event (CALLBACK button → triggers AI research in bot)
+        if link_slug:
+            buttons.append([
+                {"text": "🔬 Research Event", "callback_data": f"whale_research_{link_slug[:50]}"},
+            ])
+
+        # Row 3 — Buy buttons with actual outcome names (matches research buy flow)
+        slug_for_buy = market_slug or event_slug or ""
+        if slug_for_buy:
+            if all_outcomes and len(all_outcomes) >= 2:
+                # Multi-outcome or named outcomes — show actual names
+                o1, o2 = all_outcomes[0], all_outcomes[1]
+                buttons.append([
+                    {"text": f"🟩 Buy {o1[:12]}", "callback_data": f"whale_buy_{slug_for_buy[:42]}_{o1}"},
+                    {"text": f"🟥 Buy {o2[:12]}", "callback_data": f"whale_buy_{slug_for_buy[:42]}_{o2}"},
+                ])
+            else:
+                # Binary market — show Yes/No
+                opp = "No" if outcome in ("Yes", "YES") else "Yes"
+                buttons.append([
+                    {"text": f"🟩 Buy {outcome[:12]}", "callback_data": f"whale_buy_{slug_for_buy[:42]}_{outcome}"},
+                    {"text": f"🟥 Buy {opp[:12]}", "callback_data": f"whale_buy_{slug_for_buy[:42]}_{opp}"},
+                ])
+
+        # Row 4 — View Trader + My Portfolio
         buttons.append([
             {"text": "👁 View Trader",   "callback_data": f"ct_detail_{wallet_addr[:20]}"},
             {"text": "📋 My Portfolio",  "callback_data": "ct_following"},
