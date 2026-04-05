@@ -650,7 +650,14 @@ def _auto_swap_to_usdc_e(chat_id: str, needed_amount: float) -> dict:
 
 
 def _ensure_usdc_allowance(chat_id: str, neg_risk: bool = False):
-    """Approve USDC.e spending for Polymarket exchange contract."""
+    """Approve USDC.e spending for Polymarket exchange contracts.
+
+    For regular markets: approve CTF Exchange (0x4bFb...) + NEG_RISK_ADAPTER.
+    For neg_risk markets: approve NEG_RISK_ADAPTER (0xd91E...) — this is the
+    contract that actually pulls USDC from the wallet on neg_risk buys.
+    The error "allowance: 0, spender: 0xd91E..." was caused by only approving
+    NEG_RISK_CTF_EXCHANGE for neg_risk trades instead of NEG_RISK_ADAPTER.
+    """
     import wallet_manager as wm
     from web3 import Web3
 
@@ -660,7 +667,6 @@ def _ensure_usdc_allowance(chat_id: str, neg_risk: bool = False):
     if cached.get(exchange_key):
         return
 
-    exchange_addr = _NEG_RISK_CTF_EXCHANGE if neg_risk else _CTF_EXCHANGE
     pk = wm.get_primary_private_key(chat_str)
     if not pk:
         return
@@ -671,31 +677,43 @@ def _ensure_usdc_allowance(chat_id: str, neg_risk: bool = False):
     address = w3.eth.account.from_key(pk).address
     usdc_e = w3.eth.contract(address=Web3.to_checksum_address(_USDC_E), abi=_ERC20_ABI)
 
-    current = usdc_e.functions.allowance(address, Web3.to_checksum_address(exchange_addr)).call()
-    balance = usdc_e.functions.balanceOf(address).call()
+    _APPROVAL_THRESHOLD = _MAX_APPROVAL // 2  # anything above half-max counts as approved
 
-    if current >= balance and balance > 0:
-        _approved_users.setdefault(chat_str, {})[exchange_key] = True
-        log.info(f"USDC.e allowance OK for {address[:10]}...")
-        return
+    def _approve_spender(spender_addr: str, label: str):
+        current = usdc_e.functions.allowance(
+            address, Web3.to_checksum_address(spender_addr)).call()
+        if current >= _APPROVAL_THRESHOLD:
+            log.info(f"USDC.e allowance already set for {label} ({address[:10]}...)")
+            return
+        log.info(f"Setting USDC.e approval for {label} ({address[:10]}...)")
+        nonce = w3.eth.get_transaction_count(address)
+        tx = usdc_e.functions.approve(
+            Web3.to_checksum_address(spender_addr), _MAX_APPROVAL
+        ).build_transaction({
+            "from": address, "nonce": nonce, "gas": 100_000,
+            "gasPrice": w3.eth.gas_price, "chainId": CHAIN_ID,
+        })
+        signed = w3.eth.account.sign_transaction(tx, private_key=pk)
+        tx_hash = w3.eth.send_raw_transaction(signed.raw_transaction)
+        receipt = w3.eth.wait_for_transaction_receipt(tx_hash, timeout=60)
+        if receipt.status == 1:
+            log.info(f"USDC.e approved for {label}! tx={tx_hash.hex()}")
+        else:
+            raise Exception(f"USDC.e approval for {label} failed")
 
-    log.info(f"Setting USDC.e approval for {address[:10]}...")
-    nonce = w3.eth.get_transaction_count(address)
-    tx = usdc_e.functions.approve(
-        Web3.to_checksum_address(exchange_addr), _MAX_APPROVAL
-    ).build_transaction({
-        "from": address, "nonce": nonce, "gas": 100_000,
-        "gasPrice": w3.eth.gas_price, "chainId": CHAIN_ID,
-    })
-    signed = w3.eth.account.sign_transaction(tx, private_key=pk)
-    tx_hash = w3.eth.send_raw_transaction(signed.raw_transaction)
-    receipt = w3.eth.wait_for_transaction_receipt(tx_hash, timeout=60)
-
-    if receipt.status == 1:
-        _approved_users.setdefault(chat_str, {})[exchange_key] = True
-        log.info(f"USDC.e approved! tx={tx_hash.hex()}")
+    if neg_risk:
+        # neg_risk orders: NEG_RISK_ADAPTER is the USDC spender
+        _approve_spender(_NEG_RISK_ADAPTER, "neg_risk_adapter")
     else:
-        raise Exception("USDC.e approval transaction failed")
+        # regular orders: CTF Exchange is the primary USDC spender
+        _approve_spender(_CTF_EXCHANGE, "ctf_exchange")
+        # also pre-approve the adapter so neg_risk markets work without re-approving
+        try:
+            _approve_spender(_NEG_RISK_ADAPTER, "neg_risk_adapter")
+        except Exception as e:
+            log.warning(f"Pre-approval of neg_risk_adapter failed (non-fatal): {e}")
+
+    _approved_users.setdefault(chat_str, {})[exchange_key] = True
 
 
 # ERC-1155 ABI for Conditional Tokens (setApprovalForAll + isApprovedForAll)
