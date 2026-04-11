@@ -4,7 +4,7 @@ Event Research | Portfolio | Strategies | Research | Settings
 Wallet Tracking — Read-Only via Public Address
 PAID-ONLY ACCESS — $99/mo subscription or access code
 """
-import os, sys, signal, atexit
+import os, sys, signal, atexit, json
 import time, threading, requests
 from datetime import datetime, timezone
 import pytz
@@ -1571,17 +1571,43 @@ def show_account(chat_id):
 # SECTION: LIVE TRADING
 # ═══════════════════════════════════════════════
 
-# Small slug cache so research Buy buttons can store the full slug
-# without hitting Telegram's 64-byte callback_data limit.
-_rbuy_slug_cache = {}   # idx (0-199) -> full slug string
+# Persistent slug cache so research Buy buttons survive bot restarts.
+# Stored as JSON file alongside main.py.
+_RBUY_CACHE_FILE = os.path.join(os.path.dirname(__file__), ".rbuy_cache.json")
+_rbuy_slug_cache = {}   # str(idx) -> full slug string
 _rbuy_slug_counter = 0
+
+def _rbuy_cache_load():
+    """Load slug cache from disk on startup."""
+    global _rbuy_slug_cache, _rbuy_slug_counter
+    try:
+        if os.path.exists(_RBUY_CACHE_FILE):
+            with open(_RBUY_CACHE_FILE) as f:
+                data = json.loads(f.read())
+            _rbuy_slug_cache = {int(k): v for k, v in data.get("cache", {}).items()}
+            _rbuy_slug_counter = data.get("counter", 0)
+    except Exception as e:
+        print(f"[RBUY_CACHE] Load error (starting fresh): {e}")
+        _rbuy_slug_cache = {}
+        _rbuy_slug_counter = 0
+
+def _rbuy_cache_save():
+    """Persist slug cache to disk."""
+    try:
+        with open(_RBUY_CACHE_FILE, "w") as f:
+            f.write(json.dumps({"cache": {str(k): v for k, v in _rbuy_slug_cache.items()}, "counter": _rbuy_slug_counter}))
+    except Exception as e:
+        print(f"[RBUY_CACHE] Save error: {e}")
+
+_rbuy_cache_load()
 
 def _cache_rbuy_slug(slug: str) -> int:
     """Store a full market slug and return a short integer index."""
     global _rbuy_slug_counter
-    idx = _rbuy_slug_counter % 200
+    idx = _rbuy_slug_counter % 500
     _rbuy_slug_cache[idx] = slug
     _rbuy_slug_counter += 1
+    _rbuy_cache_save()
     return idx
 
 _trending_cache = {"markets": [], "ts": 0}
