@@ -22,4 +22,4 @@ Polytragent is a Telegram-based AI trading agent for Polymarket — the world's 
 
 ---
 
-*Polytragent — Built by LuvKaizen*
+*Polytragent — Built by [3betmedia](https://3betmedia.com)*
